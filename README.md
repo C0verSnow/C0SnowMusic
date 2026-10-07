@@ -2,9 +2,49 @@
 
 参考项目：[AlgerMusicPlayer](https://github.com/f1515x/AlgerMusicPlayer)、[NeriPlayer](https://github.com/f1515x/NeriPlayer)。
 
-## 扫码下载收藏夹第一首歌
+## 安装并播放 B 站收藏（issue #5）
 
-[scripts/download_favorite.py](scripts/download_favorite.py) 实现 [issue #3](https://github.com/C0verSnow/C0SnowMusic/issues/3)。它向 B 站申请二维码，保存为 `bilibili.png`，每隔 1.5 秒询问登录状态。你用 B 站客户端扫码并确认后，它读取自己的收藏夹，下载第一首歌并生成同名说明文件。
+现在这是完整的 Electron 桌面软件：保留 AlgerMusicPlayer 的播放器、歌曲库、设置等功能，新增侧栏「B 站音乐」。B 站扫码、Cookie、收藏夹选择和 WBI 签名由软件内部模块完成；播放是流式读取音轨，无需先下载整首歌，也不需要安装 Python。
+
+打开软件 → 点「B 站音乐」→ 生成二维码 → 用 B 站客户端扫码并确认 → 获取收藏夹第一首歌 → 点播放。可以暂停、继续和拖动进度条。收藏夹 ID 不填时，按 B 站返回顺序选择第一个非空收藏夹，播放夹内按收藏时间倒序的第一条视频第一 P；也可以填自己的收藏夹 ID。
+
+音轨使用浏览器支持的 AAC，按带宽选择最高的一条，并在请求失败时尝试同一音轨的备用地址。没有独立 AAC 音轨、第一条失效、没有收藏或登录失效时会直接说明原因，不改选其他视频。媒体地址过期后点「获取收藏夹第一首歌」重新取流。账号 Cookie 只存在主进程内存，退出软件或退出登录就清除，不交给页面，也不转发给音频 CDN。
+
+### 安装包从哪里来
+
+[Build C0SnowMusic player](https://github.com/C0verSnow/C0SnowMusic/actions/workflows/build-player.yml) 在 GitHub 的远端机器执行模拟接口测试、构建和打包。Artifacts 提供 ARM64 / x64 的完整 Linux deb、Windows x64 安装程序、macOS ARM64 的 dmg / zip。Deb 包含 Electron、界面和 B 站模块；系统桌面依赖交给 apt 安装。遵守本仓库约定，不在本地或部署服务器编译、跑测试。
+
+指定服务器 `192.168.1.245` 是 ARM64，必须选择 `C0SnowMusic-linux-arm64`，把里面的 deb 放到 `/home/C0SnowMusic/deb.deb`，然后在服务器执行：
+
+```sh
+cd /home/C0SnowMusic
+apt-get install ./deb.deb
+c0snowmusic --bilibili
+```
+
+普通桌面用户直接启动菜单里的 C0SnowMusic 即可。以 root 运行 Electron 时需要 `--no-sandbox`；服务器验收会用专用普通用户和虚拟桌面运行。
+
+### 没有桌面的服务器怎么留下六张图
+
+用户已经确认：服务器不用音箱出声，以虚拟桌面截图和真实播放进度验收。服务器用 Xvfb 提供桌面、PulseAudio 的空输出接收解码后的音频；这不能证明音箱实际出声。
+
+```sh
+c0snowmusic --bilibili --bilibili-autoplay --evidence-dir=/home/C0SnowMusic/evidence
+```
+
+这个参数组合会自动生成二维码，登录成功后取收藏并开始播放。仍需用真实 B 站账号扫码确认；不会复用旧下载文件假装成功。页面被浏览器限制自动播放时，点击播放按钮。
+
+播放开始后，软件每隔 10 秒保存一次自己的真实窗口，共 6 张 `playback-01.png` 到 `playback-06.png`；同时写 `manifest.json`，记录歌曲、截图时间、播放器时间、时长和解码就绪状态。只有没有报错、没有暂停且播放时间确实增加时才留下下一张图，二维码另外保存为 `bilibili.png`。短于验收时长的歌曲不能凑足六张；重新获取歌曲会重新开始本轮记录。
+
+原 `scripts/download_favorite.py` 默认改为启动已安装的软件并扫码播放，`--capture-evidence` 可启用截图，`--output-dir` 指定截图目录。Python 入口仅作方便启动用；deb 自身不依赖它。旧版下载功能需要显式传 `--download-only`。
+
+### 上游来源
+
+导入的是 [algerkong/AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer)，固定提交 `b277ef17a8d6f05152d42528e6930205b95d0fab`。保留上游 MIT LICENSE、原始说明 [docs/AlgerMusicPlayer-README.md](docs/AlgerMusicPlayer-README.md) 和代码署名。应用标识、安装名称、更新地址改为 C0SnowMusic；未沿用上游自动发布工作流，移除了 HTML 中的上游站点统计脚本。
+
+## 扫码下载收藏夹第一首歌（旧版）
+
+[scripts/download_favorite.py](scripts/download_favorite.py) 实现 [issue #3](https://github.com/C0verSnow/C0SnowMusic/issues/3)。在 `--download-only` 模式下，它向 B 站申请二维码，保存为 `bilibili.png`，每隔 1.5 秒询问登录状态。你用 B 站客户端扫码并确认后，它读取自己的收藏夹，下载第一首歌并生成同名说明文件。
 
 选歌规则：按 B 站返回的自建收藏夹顺序，取第一个非空收藏夹；夹内按收藏时间倒序，取第一条视频的第一 P。歌名用视频标题，不判断视频是不是音乐，也不读取订阅别人的收藏夹。第一条视频失效或没有独立音轨时直接报错，不换歌。
 

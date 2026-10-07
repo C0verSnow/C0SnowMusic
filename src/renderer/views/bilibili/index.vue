@@ -34,7 +34,7 @@
 </template>
 <script setup lang="ts">
 import { nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from 'vue';
-import type { BilibiliTrack } from '../../../../shared/bilibili';
+import type { BilibiliTrack } from '../../../shared/bilibili';
 import { audioService } from '@/services/audioService';
 import { usePlayerStore } from '@/store/modules/player';
 defineOptions({name:'Bilibili'});
