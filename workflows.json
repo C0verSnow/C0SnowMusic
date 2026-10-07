@@ -1,0 +1,1140 @@
+{
+  "schema_version": "1.0",
+  "title": "NeriPlayer：B 站登录到播放音乐的接口工作流",
+  "issue": "https://github.com/C0verSnow/C0SnowMusic/issues/1",
+  "upstream": {
+    "repository": "https://github.com/f1515x/NeriPlayer",
+    "commit": "3e1abcb704a76a3cd211878c7303d4058866c4d4",
+    "inspected_date": "2026-10-07",
+    "evidence": "静态阅读此提交源码；请求是模板，不是真实抓包，也未实测登录或出声。"
+  },
+  "scope": {
+    "included": "登录、Cookie、WBI、搜索/收藏夹/合集选歌、分 P、取音轨、空音轨回退和媒体读取。每个请求模板独立保存。",
+    "excluded": "评论、点赞、歌词、UP 主空间浏览、一起听、广告跳过及下载管理等外围功能；WebView 页面内部请求源码不可见。"
+  },
+  "template_rules": [
+    "{{name}} 是运行时变量，需按变量说明替换，不能直接发送占位符。",
+    "query 中的数值采用源码字符串形式；headers 中标注 if_nonempty 的值为空时省略整个头。",
+    "workflows.steps 是典型顺序，不是每项都无条件执行的脚本；每个请求的 condition 决定是否执行。",
+    "WBI 请求自动先执行 ensure_wbi；首次调用可能出现匿名指纹/nav/ticket 子请求。",
+    "参数和字段来自源码；未知响应内容不伪造，response.extract 记录读取路径。"
+  ],
+  "variables": {
+    "qrcode_key": "qr_generate.data.qrcode_key",
+    "qr_cookie_header_if_nonempty": "累计二维码请求响应 Set-Cookie，序列化 name=value; name=value",
+    "stored_cookie_header": "保存的 Cookie Map，至少有非空 SESSDATA；不要提交真实值",
+    "effective_cookie_header": "有任意保存 Cookie 则用保存值，否则用匿名 Cookie（缓存 1 小时）",
+    "latest_stored_cookie_header_if_nonempty": "播放器订阅 cookieFlow 得到的最新保存 Cookie",
+    "user_mid": "登录 Cookie DedeUserID，或显式 nav 登录检查的 data.mid；收藏夹接口的 up_mid",
+    "keyword": "用户搜索词",
+    "bvid": "搜索/收藏/合集/详情返回的 BV 号，或用户提供的 BV 号",
+    "avid": "视频 AV 数字 ID；详情参数叫 aid，getPlayInfoByAvid 参数叫 avid",
+    "cid": "选中的 pages 条目 cid，不是 aid/BV 号，也不是页码",
+    "media_id": "选中的收藏夹 id",
+    "uploader_mid": "合集所属 UP 主 ID",
+    "season_id": "选中的视频合集 ID",
+    "page_number": "当前分页号，从 1 开始",
+    "unix_seconds": "签名时当前 Unix 秒数",
+    "selected_stream_url": "select_audio 选中音轨的候选 URL，完整保留已有查询串"
+  },
+  "wbi_signing": {
+    "key_sources": [
+      "wbi_nav",
+      "wbi_ticket"
+    ],
+    "cache_ms": 600000,
+    "mixin_index": [
+      46,
+      47,
+      18,
+      2,
+      53,
+      8,
+      23,
+      32,
+      15,
+      50,
+      10,
+      31,
+      58,
+      3,
+      45,
+      35,
+      27,
+      43,
+      5,
+      49,
+      33,
+      9,
+      42,
+      19,
+      29,
+      28,
+      14,
+      39,
+      12,
+      38,
+      41,
+      13,
+      37,
+      48,
+      7,
+      16,
+      24,
+      55,
+      40,
+      61,
+      26,
+      17,
+      0,
+      1,
+      60,
+      51,
+      30,
+      4,
+      22,
+      25,
+      54,
+      21,
+      56,
+      62,
+      6,
+      63,
+      57,
+      20,
+      34,
+      52,
+      59,
+      11,
+      36,
+      44
+    ],
+    "algorithm": [
+      "取 img_url 和 sub_url 最后路径段去掉扩展名，拼接 imgKey+subKey。",
+      "按 mixin_index 顺序取字符（跳过超出长度的索引），截取前 32 字符作为 mixinKey。",
+      "先删除原始参数值中的字符 !'()*，再加入 wts=当前 Unix 秒数。",
+      "按参数名排序，键和值分别用 UTF-8 URL 编码，空格为 %20，不用 +，用 & 连接 key=value。",
+      "w_rid=MD5(上述查询串+mixinKey)，输出小写十六进制。",
+      "最终 URL 保留排序参数并追加 w_rid；每次重试重新生成 wts/w_rid。"
+    ],
+    "sources": [
+      {
+        "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+        "line": 1090,
+        "symbol_or_text": "private suspend fun signWbiUrl",
+        "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1090"
+      },
+      {
+        "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+        "line": 1192,
+        "symbol_or_text": "private fun ensureValidMixin",
+        "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1192"
+      }
+    ]
+  },
+  "workflows": [
+    {
+      "id": "qr_search_play",
+      "description": "扫码登录后搜索选歌并播放（无缓存的典型顺序，条件步骤按说明执行）",
+      "steps": [
+        "qr_generate",
+        "qr_poll",
+        "save_cookies",
+        "ensure_wbi",
+        "search_video",
+        "video_view",
+        "choose_page",
+        "play_dash",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    },
+    {
+      "id": "existing_id_play",
+      "description": "已经有视频 ID，不必重新搜索",
+      "steps": [
+        "ensure_wbi",
+        "video_view",
+        "choose_page",
+        "play_dash",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    },
+    {
+      "id": "web_login_fallback",
+      "description": "用户主动切换到网页登录，之后走相同的播放路线",
+      "steps": [
+        "web_login",
+        "save_cookies",
+        "ensure_wbi",
+        "video_view",
+        "choose_page",
+        "play_dash",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    },
+    {
+      "id": "created_favorite_play",
+      "description": "从自己的收藏夹选歌",
+      "steps": [
+        "fav_created",
+        "fav_created_page",
+        "fav_info",
+        "fav_resources",
+        "ensure_wbi",
+        "video_view",
+        "choose_page",
+        "play_dash",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    },
+    {
+      "id": "collected_favorite_play",
+      "description": "从他人收藏夹或视频合集选歌",
+      "steps": [
+        "fav_collected",
+        "fav_info",
+        "fav_resources",
+        "collection_archives",
+        "ensure_wbi",
+        "video_view",
+        "choose_page",
+        "play_dash",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    },
+    {
+      "id": "session_check",
+      "description": "显式检查已存登录态；非扫码登录固定步骤",
+      "steps": [
+        "validate_login"
+      ]
+    },
+    {
+      "id": "wbi_key_resolution",
+      "description": "缓存有效直接复用，否则 nav；nav 异常才 ticket；没有保存 Cookie 时可能先取匿名身份",
+      "steps": [
+        "anonymous_fingerprint",
+        "wbi_nav",
+        "wbi_ticket",
+        "make_wbi_signature"
+      ]
+    },
+    {
+      "id": "page_list_only",
+      "description": "单独读取分页信息的辅助方法，不是主播放器固定步骤",
+      "steps": [
+        "page_list"
+      ]
+    },
+    {
+      "id": "empty_dash_fallback",
+      "description": "符合条件的 DASH 空音轨重试耗尽后回退 HTML5 单段 MP4",
+      "steps": [
+        "play_dash",
+        "play_html5",
+        "select_audio",
+        "media_get",
+        "player_start"
+      ]
+    }
+  ],
+  "local_steps": [
+    {
+      "id": "save_cookies",
+      "description": "二维码成功或 WebView 取到非空 SESSDATA 后，将 Cookie Map 传给 BiliAuthViewModel.importCookiesFromMap，再保存到 BiliCookieRepository 的加密偏好存储。这一步不发 HTTP。",
+      "sources": [
+        {
+          "path": "app/src/main/java/moe/ouom/neriplayer/ui/viewmodel/auth/BiliAuthViewModel.kt",
+          "line": 119,
+          "symbol_or_text": "fun importCookiesFromMap",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/app/src/main/java/moe/ouom/neriplayer/ui/viewmodel/auth/BiliAuthViewModel.kt#L119"
+        },
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/auth/BiliCookieRepository.kt",
+          "line": 125,
+          "symbol_or_text": "fun saveCookies",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/auth/BiliCookieRepository.kt#L125"
+        }
+      ]
+    },
+    {
+      "id": "ensure_wbi",
+      "description": "每次 WBI 请求前调用签名函数；key 缓存 10 分钟，有缓存不再请求 nav。没有缓存执行 wbi_key_resolution。",
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1116,
+          "symbol_or_text": "private suspend fun getOrRefreshMixinKey",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1116"
+        }
+      ]
+    },
+    {
+      "id": "make_wbi_signature",
+      "description": "按 wbi_signing 做本地签名，不发网络请求。",
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1090,
+          "symbol_or_text": "private suspend fun signWbiUrl",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1090"
+        }
+      ]
+    },
+    {
+      "id": "choose_page",
+      "description": "从 video_view.pages 选出想听的分 P，将对应 cid 和 data.bvid 交给取流接口。已有 cid 精确匹配；没有 cid 时 part 同名优先，否则第一页。找不到指定 cid 则失败，不能改播其他 P。",
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/playback/resolver/BiliSongResolver.kt",
+          "line": 171,
+          "symbol_or_text": "internal fun selectBiliPlaybackPage",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/playback/resolver/BiliSongResolver.kt#L171"
+        }
+      ]
+    },
+    {
+      "id": "select_audio",
+      "description": "合并普通、Dolby、Hi-Res 音轨，按用户音质偏好选一条，无匹配逐级降低；没有音轨时按 play_dash/play_html5 规则尝试单段 MP4。对主备 URL 排序得到候选地址。",
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/playback/quality/BiliAudioSelector.kt",
+          "line": 65,
+          "symbol_or_text": "fun selectStreamByPreference",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/playback/quality/BiliAudioSelector.kt#L65"
+        },
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/stream/BiliStreamUrls.kt",
+          "line": 26,
+          "symbol_or_text": "fun prioritizeBiliStreamUrls",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/stream/BiliStreamUrls.kt#L26"
+        }
+      ]
+    },
+    {
+      "id": "player_start",
+      "description": "将 URL 和 MIME type 设置为 MediaItem，播放器 prepare 后按播放意图启动。地址非空只能说明取流成功；播放器进入可播放状态并 isPlaying=true、播放位置持续增加，才能判断开始播放。本文未用真实账号或设备验证出声。",
+      "sources": [
+        {
+          "path": "modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/url/PlayerManagerUrlExtensions.kt",
+          "line": 1257,
+          "symbol_or_text": "player.setMediaItem(mediaItem)",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/url/PlayerManagerUrlExtensions.kt#L1257"
+        },
+        {
+          "path": "modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/lifecycle/PlayerManagerLifecycleExtensions.kt",
+          "line": 896,
+          "symbol_or_text": "override fun onIsPlayingChanged",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/lifecycle/PlayerManagerLifecycleExtensions.kt#L896"
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "id": "qr_generate",
+      "purpose": "生成登录二维码",
+      "condition": "此路线走到这一步时",
+      "request": {
+        "method": "GET",
+        "url": "https://passport.bilibili.com/x/passport-login/web/qrcode/generate",
+        "headers": {
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Referer": "https://passport.bilibili.com/login",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Cookie": "{{qr_cookie_header_if_nonempty}}"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功、根 code=0 且 data.qrcode_key/data.url 非空",
+        "extract": {
+          "qrcode_key": "$.data.qrcode_key",
+          "qr_content": "$.data.url"
+        }
+      },
+      "notes": [
+        "客户端开始新一轮登录时清空二维码 Cookie 容器。返回 url 在本地生成二维码，不是音频地址。",
+        "每次响应的 Set-Cookie 都要合并到 qr_cookie_header；删除标记会移除 Cookie。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliQrLoginClient.kt",
+          "line": 45,
+          "symbol_or_text": "fun createSession",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliQrLoginClient.kt#L45"
+        }
+      ]
+    },
+    {
+      "id": "qr_poll",
+      "purpose": "等待扫码和确认",
+      "condition": "此路线走到这一步时",
+      "request": {
+        "method": "GET",
+        "url": "https://passport.bilibili.com/x/passport-login/web/qrcode/poll",
+        "headers": {
+          "Accept": "application/json, text/plain, */*",
+          "Accept-Language": "zh-CN,zh-Hans;q=0.9",
+          "Cache-Control": "no-cache",
+          "Pragma": "no-cache",
+          "Referer": "https://passport.bilibili.com/login",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Cookie": "{{qr_cookie_header_if_nonempty}}"
+        },
+        "query": {
+          "qrcode_key": "{{qrcode_key}}"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "根 code=0 后再看 data.code；data.code=0 才是确认登录",
+        "extract": {
+          "login_status": "$.data.code",
+          "login_message": "$.data.message",
+          "cookies": "HTTP Set-Cookie，合并到二维码会话容器"
+        }
+      },
+      "notes": [
+        "86101=未扫描，86090=已扫描待确认，86038=过期，0=确认成功。未扫描和待确认时每隔 1500ms 再问一次。",
+        "DNS、连接或超时错误最多尝试 3 次，间隔 100ms；不是所有 HTTP/业务错误都重试。",
+        "成功后必须有非空 SESSDATA。Cookie 来自响应头，不是从 data.url 解析；refresh_token 未在此实现中保存或使用。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliQrLoginClient.kt",
+          "line": 62,
+          "symbol_or_text": "fun checkLogin",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliQrLoginClient.kt#L62"
+        }
+      ]
+    },
+    {
+      "id": "web_login",
+      "purpose": "扫码失败时打开 B 站网页登录页",
+      "condition": "用户点击网页登录备用入口",
+      "request": {
+        "method": "GET",
+        "url": "https://passport.bilibili.com/login",
+        "headers": {
+          "User-Agent": "WebView 实际 UA（页面请求由 WebView 管理）"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "html",
+        "success": "页面完成登录后 CookieManager 中有非空 SESSDATA",
+        "extract": {
+          "cookies": "WebView CookieManager，合并多个 B 站域名的 Cookie"
+        }
+      },
+      "notes": [
+        "这是 HTML 页面导航，不是 NeriPlayer 自己实现的密码或短信登录 JSON API。页面内部接口由 B 站管理，源码未枚举，不能编造。"
+      ],
+      "sources": [
+        {
+          "path": "app/src/main/java/moe/ouom/neriplayer/activity/auth/BiliWebLoginActivity.kt",
+          "line": 81,
+          "symbol_or_text": "private const val LOGIN_URL",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/app/src/main/java/moe/ouom/neriplayer/activity/auth/BiliWebLoginActivity.kt#L81"
+        }
+      ]
+    },
+    {
+      "id": "validate_login",
+      "purpose": "检查已存登录态是否仍可用",
+      "condition": "显式调用此登录检查方法时；扫码保存 Cookie 后并没有自动调用",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/web-interface/nav",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{stored_cookie_header}}"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功、code=0、data.isLogin=true、data.mid>0",
+        "extract": {
+          "mid": "$.data.mid",
+          "is_login": "$.data.isLogin"
+        }
+      },
+      "notes": [
+        "缺 SESSDATA 直接返回 false，不发请求；网络异常返回 null，不能当成未登录。",
+        "本地 Cookie 健康判断只检查 SESSDATA，不代表服务端确认；nav 登录检查与取 WBI key 是不同用途。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1217,
+          "symbol_or_text": "suspend fun validateLoginSession",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1217"
+        }
+      ]
+    },
+    {
+      "id": "anonymous_fingerprint",
+      "purpose": "没有保存任何 Cookie 时取得匿名身份",
+      "condition": "stored cookies 整个 Map 为空且匿名 Cookie 缓存不可用",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/frontend/finger/spi",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Mobile/15E148 Safari/604.1 Edg/114.0.0.0"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功并读取 data",
+        "extract": {
+          "buvid3": "$.data.b_3（回退 data.buvid3）",
+          "buvid4": "$.data.b_4（回退 data.buvid4）",
+          "optional_cookies": "$.data.buvid_fp / buvid_fp_plain / b_lsid，忽略空值"
+        }
+      },
+      "notes": [
+        "匿名 Cookie 缓存 1 小时；不是扫码主路线的固定前置请求。已有任意保存 Cookie 时不会额外补匿名指纹。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliCookieSession.kt",
+          "line": 46,
+          "symbol_or_text": "private suspend fun fetchAnonymousCookies",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/auth/BiliCookieSession.kt#L46"
+        }
+      ]
+    },
+    {
+      "id": "wbi_nav",
+      "purpose": "取得 WBI 签名用的两段 key",
+      "condition": "第一个 WBI 请求前，或本客户端 WBI key 缓存超过 10 分钟",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/web-interface/nav",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功且 data.wbi_img.img_url/sub_url 非空",
+        "extract": {
+          "img_url": "$.data.wbi_img.img_url",
+          "sub_url": "$.data.wbi_img.sub_url"
+        }
+      },
+      "notes": [
+        "此方法不要求根 code=0 或 isLogin=true，只读取 key URL；nav 取 key 不是登录成功判断。",
+        "先取得 effective cookies；空保存记录可能触发 anonymous_fingerprint。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1142,
+          "symbol_or_text": "private suspend fun fetchMixinKeyFromNav",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1142"
+        }
+      ]
+    },
+    {
+      "id": "wbi_ticket",
+      "purpose": "nav 取 key 失败时换备用方式",
+      "condition": "fetchMixinKeyFromNav 抛异常",
+      "request": {
+        "method": "POST",
+        "url": "https://api.bilibili.com/bapis/bilibili.api.ticket.v1.Ticket/GenWebTicket",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
+        },
+        "query": {
+          "key_id": "ec02",
+          "hexsign": "{{hmac_sha256_hex_key_XgwSnGZ1p_message_ts_plus_unix_seconds}}",
+          "context[ts]": "{{unix_seconds}}"
+        },
+        "body": {
+          "encoding": "empty",
+          "value": ""
+        },
+        "wbi_signed": false,
+        "optional_query": {
+          "csrf": "{{bili_jct_if_nonempty}}"
+        }
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功且 data.nav.img/sub 非空",
+        "extract": {
+          "img_url": "$.data.nav.img",
+          "sub_url": "$.data.nav.sub"
+        }
+      },
+      "notes": [
+        "所有参数在 URL 查询串里，POST body 是空字节数组，没有 JSON body。",
+        "effective cookies 中 bili_jct 非空时额外加入查询参数 csrf；源码不发送 Cookie 或 Referer 请求头。",
+        "HMAC 消息为字符串 ts 加当前秒数，key 为源码协议常量 XgwSnGZ1p；不是用户凭据。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1163,
+          "symbol_or_text": "private suspend fun fetchMixinKeyFromTicket",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1163"
+        }
+      ]
+    },
+    {
+      "id": "search_video",
+      "purpose": "按关键词找想听的视频",
+      "condition": "用户走搜索选歌路线；已有视频 ID 可跳过",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/web-interface/wbi/search/type",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "search_type": "video",
+          "keyword": "{{keyword}}",
+          "order": "totalrank",
+          "duration": "0",
+          "tids": "0",
+          "page": "1",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        },
+        "body": null,
+        "wbi_signed": true
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.result；调用者应检查 HTTP 和业务响应",
+        "extract": {
+          "videos": "$.data.result[type=video]；aid/bvid/title/author/duration"
+        }
+      },
+      "notes": [
+        "order/duration/tids/page 可由调用者改变；源码默认值如 query 所示。",
+        "搜索结果没有选定分 P 的 cid，需要继续读取视频详情。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 366,
+          "symbol_or_text": "suspend fun searchVideos",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L366"
+        }
+      ]
+    },
+    {
+      "id": "fav_created",
+      "purpose": "读取自己的收藏夹",
+      "condition": "用户走自己收藏夹选歌路线",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/v3/fav/folder/created/list-all",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "up_mid": "{{user_mid}}",
+          "web_location": "333.1387"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.count/list",
+        "extract": {
+          "folders": "$.data.list；id 作为 media_id",
+          "total": "$.data.count"
+        }
+      },
+      "notes": [],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 790,
+          "symbol_or_text": "private suspend fun fetchCreatedFavFoldersListAll",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L790"
+        }
+      ]
+    },
+    {
+      "id": "fav_created_page",
+      "purpose": "补齐没有一次返回完的收藏夹",
+      "condition": "fav_created 的 count 大于已收到 list 长度",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/v3/fav/folder/created/list",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "up_mid": "{{user_mid}}",
+          "pn": "{{page_number}}",
+          "ps": "20",
+          "web_location": "333.1387"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.count/list",
+        "extract": {
+          "folders": "$.data.list"
+        }
+      },
+      "notes": [
+        "按 count 算页数，最多并发 6 页；失败时保留 list-all 结果。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 802,
+          "symbol_or_text": "private suspend fun fetchCreatedFavFoldersByPage",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L802"
+        }
+      ]
+    },
+    {
+      "id": "fav_collected",
+      "purpose": "读取收藏的他人收藏夹和合集",
+      "condition": "用户走收藏的他人收藏夹或合集路线",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/v3/fav/folder/collected/list",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "up_mid": "{{user_mid}}",
+          "pn": "{{page_number}}",
+          "ps": "20",
+          "platform": "web"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.count/list",
+        "extract": {
+          "folders_or_seasons": "$.data.list"
+        }
+      },
+      "notes": [
+        "从第 1 页开始，直到达到 count 或列表为空；platform=web 时可能混入视频合集，需区分条目类型。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 821,
+          "symbol_or_text": "private suspend fun fetchCollectedFavFoldersByPage",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L821"
+        }
+      ]
+    },
+    {
+      "id": "fav_info",
+      "purpose": "读取收藏夹名称等信息",
+      "condition": "需要单独加载收藏夹详情时；不属于取流必需请求",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/v3/fav/folder/info",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "media_id": "{{media_id}}"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data",
+        "extract": {
+          "folder": "$.data"
+        }
+      },
+      "notes": [],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 583,
+          "symbol_or_text": "suspend fun getFavFolderInfo",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L583"
+        }
+      ]
+    },
+    {
+      "id": "fav_resources",
+      "purpose": "从收藏夹读取视频列表",
+      "condition": "选中的条目是收藏夹",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/v3/fav/resource/list",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "media_id": "{{media_id}}",
+          "pn": "{{page_number}}",
+          "ps": "20",
+          "order": "mtime",
+          "platform": "web"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.info/medias/has_more",
+        "extract": {
+          "videos": "$.data.medias；id 是视频 AV ID，bvid 兼容 bv_id",
+          "has_more": "$.data.has_more"
+        }
+      },
+      "notes": [
+        "pn 从 1 开始；order 可选 mtime/view/pubtime；可选 keyword、tid、type（scopeType）。",
+        "读取视频 id（AV ID）及 bvid/bv_id，再进入 video_view；收藏内容页大小默认 20。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 607,
+          "symbol_or_text": "suspend fun getFavFolderContents",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L607"
+        }
+      ]
+    },
+    {
+      "id": "collection_archives",
+      "purpose": "从视频合集读取视频列表",
+      "condition": "选中的条目是合集",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/polymer/web-space/seasons_archives_list",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "mid": "{{uploader_mid}}",
+          "season_id": "{{season_id}}",
+          "sort_reverse": "false",
+          "page_num": "{{page_number}}",
+          "page_size": "30",
+          "web_location": "333.999",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        },
+        "body": null,
+        "wbi_signed": true
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data.meta/page/archives",
+        "extract": {
+          "videos": "$.data.archives",
+          "total": "$.data.page.total（回退 meta.total）"
+        }
+      },
+      "notes": [
+        "合集的 mid 是 UP 主 ID，不能直接替换成当前登录用户 ID；分页从 1 开始。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 713,
+          "symbol_or_text": "suspend fun getCollectionArchives",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L713"
+        }
+      ]
+    },
+    {
+      "id": "video_view",
+      "purpose": "取得视频和每个分 P 的信息",
+      "condition": "此路线走到这一步时",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/web-interface/wbi/view",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "bvid": "{{bvid}}",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        },
+        "body": null,
+        "wbi_signed": true,
+        "alternative_query": {
+          "aid": "{{avid}}",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        }
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data；播放调用者还要求解析成功且选定 cid>0",
+        "extract": {
+          "aid": "$.data.aid",
+          "bvid": "$.data.bvid",
+          "pages": "$.data.pages[*]；cid/page/part/duration",
+          "metadata": "$.data.title/pic/owner"
+        }
+      },
+      "notes": [
+        "只有 avid 时改传 aid={{avid}}，不要同时传 bvid 和 aid。",
+        "播放解析器读取详情，按已存 cid 精确匹配分 P；已指定 cid 不会偷换成第一页。没有 cid 时优先匹配 part 名称，再用第一页。",
+        "已有 bvid 解析失败可尝试 aid；旧歌曲 ID 还会尝试 id/10000 的兼容算法。这些分支重复本接口，并不另造接口。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 265,
+          "symbol_or_text": "private suspend fun fetchVideoBasicInfo",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L265"
+        }
+      ]
+    },
+    {
+      "id": "page_list",
+      "purpose": "单独读取分 P 列表",
+      "condition": "调用者单独需要分页列表时；主播放解析器直接使用 video_view.pages",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/player/pagelist",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "bvid": "{{bvid}}"
+        },
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "json",
+        "success": "源码读取 data 数组",
+        "extract": {
+          "pages": "$.data[*]；cid/page/part/duration"
+        }
+      },
+      "notes": [
+        "也可改传 aid；此接口在该实现里不做 WBI 签名。不是 video_view 之后必发的请求。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1423,
+          "symbol_or_text": "suspend fun getVideoPageList(bvid",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1423"
+        }
+      ]
+    },
+    {
+      "id": "play_dash",
+      "purpose": "按 bvid 和选中 cid 获取可用音轨",
+      "condition": "此路线走到这一步时",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/player/wbi/playurl",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "bvid": "{{bvid}}",
+          "cid": "{{cid}}",
+          "fnval": "272",
+          "fnver": "0",
+          "fourk": "0",
+          "otype": "json",
+          "platform": "pc",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        },
+        "body": null,
+        "wbi_signed": true
+      },
+      "response": {
+        "format": "json",
+        "success": "HTTP 成功且根 code=0；存在非空可用音轨或可回退的单段 durl",
+        "extract": {
+          "regular_audio": "$.data.dash.audio[*]",
+          "dolby_audio": "$.data.dash.dolby.audio[*]",
+          "hires_audio": "$.data.dash.flac.audio",
+          "progressive_fallback": "$.data.durl[*]"
+        }
+      },
+      "notes": [
+        "默认 fnval=16|256=272（DASH + Dolby），不是 4048。默认不传 qn、high_quality、try_look、session、gaia_source、isGaiaAvoided。",
+        "getPlayInfoByAvid 的替代输入名称是 avid（详情接口用 aid）；实际音频适配器使用 bvid。",
+        "每条音轨读取 baseUrl/base_url、backupUrl/backup_url、bandwidth、mimeType/mime_type、codecs；码率为 bandwidth/1000 kbps。",
+        "如果无普通/杜比/Hi-Res 音轨但有 DASH 视频或 durl，最多请求 3 次，等待 250ms、500ms；没有可重试材料则直接返回单段 durl 或空结果。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 193,
+          "symbol_or_text": "suspend fun getPlayInfoByBvid",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L193"
+        }
+      ]
+    },
+    {
+      "id": "play_html5",
+      "purpose": "DASH 空音轨重试仍失败时取 MP4",
+      "condition": "play_dash 满足空音轨重试条件且 3 次均未取到音轨",
+      "request": {
+        "method": "GET",
+        "url": "https://api.bilibili.com/x/player/wbi/playurl",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{effective_cookie_header}}"
+        },
+        "query": {
+          "bvid": "{{bvid}}",
+          "cid": "{{cid}}",
+          "fnval": "0",
+          "fnver": "0",
+          "fourk": "0",
+          "otype": "json",
+          "platform": "html5",
+          "high_quality": "1",
+          "wts": "{{unix_seconds}}",
+          "w_rid": "{{md5_signed_query_plus_mixin_key}}"
+        },
+        "body": null,
+        "wbi_signed": true
+      },
+      "response": {
+        "format": "json",
+        "success": "根 code=0 且 data.durl 恰好有 1 段、地址非空",
+        "extract": {
+          "mp4_url": "$.data.durl[0].url",
+          "backup_urls": "$.data.durl[0].backup_url（兼容 backupUrl）"
+        }
+      },
+      "notes": [
+        "MP4 包含视频容器，播放器播放其中声音；不是从这个接口再下载独立 MP3。",
+        "HTML5 没有可用单段 durl 时再尝试最后一次 pc 响应的单段 durl；仍没有则无可用地址。"
+      ],
+      "sources": [
+        {
+          "path": "modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt",
+          "line": 1324,
+          "symbol_or_text": "private fun buildHtml5FallbackOptions",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/platform/src/main/java/moe/ouom/neriplayer/platform/bilibili/api/client/BiliClient.kt#L1324"
+        }
+      ]
+    },
+    {
+      "id": "media_get",
+      "purpose": "播放器真正读取媒体字节",
+      "condition": "此路线走到这一步时",
+      "request": {
+        "method": "GET",
+        "url": "{{selected_stream_url}}",
+        "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Referer": "https://www.bilibili.com",
+          "Cookie": "{{latest_stored_cookie_header_if_nonempty}}"
+        },
+        "query": {},
+        "body": null,
+        "wbi_signed": false
+      },
+      "response": {
+        "format": "binary",
+        "success": "HTTP 成功且播放器能够解码；不能用 JSON code 判断",
+        "extract": {
+          "media_bytes": "HTTP response body（音频或 MP4 字节）"
+        }
+      },
+      "notes": [
+        "URL 完整使用返回的签名地址，保留原有查询串，不拼接 B 站 API 参数，不做 WBI。",
+        "Referer/UA/Cookie 在识别为 B 站流地址时注入；Cookie 随 cookieFlow 更新。匿名 API Cookie 不会自动写入播放器 Cookie。",
+        "Range 由媒体数据源根据位置/长度生成，可能分段请求、seek 或重试，不是固定 bytes=0-。有缓存或本地文件命中时可能不发网络请求。",
+        "候选地址先去重，再优先 upos-*.bilivideo.*，其次其他 bilivideo.*，再 *.mountaintoys.cn；同分保持原顺序。"
+      ],
+      "sources": [
+        {
+          "path": "modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/engine/datasource/ConditionalHttpDataSourceFactory.kt",
+          "line": 155,
+          "symbol_or_text": "private fun buildBiliHeaders",
+          "url": "https://github.com/f1515x/NeriPlayer/blob/3e1abcb704a76a3cd211878c7303d4058866c4d4/modules/playback/runtime/src/main/java/moe/ouom/neriplayer/core/player/engine/datasource/ConditionalHttpDataSourceFactory.kt#L155"
+        }
+      ]
+    }
+  ],
+  "failure_handling": [
+    "登录二维码过期：重新生成；未知登录码、根 code 非零或 Cookie 不完整：展示错误。",
+    "保存 Cookie 不等于服务端确认；validate_login false 表示检查未通过，null 表示网络等异常无法确认。",
+    "WBI nav 失败时 ticket；两个取 key 方式都失败则后续签名无法完成。",
+    "搜索/详情/收藏等部分解析方法没有统一检查业务 code，空 data 不应视为有效结果。",
+    "playurl 根 code 非零抛异常；没有音轨且没有可用单段 durl 返回空，播放器展示没有播放地址。",
+    "媒体 CDN 失败与 playurl 业务失败是不同阶段；播放器有候选地址与恢复机制，本工作流不保证所有流或音质都能播放。"
+  ],
+  "verification": {
+    "local_compilation": "未执行（仓库禁止）",
+    "live_login_and_playback": "未执行，没有使用真实账号 Cookie 或设备",
+    "static_checks": "使用 scripts/validate_workflows.py 检查 JSON、步骤引用、请求结构、关键参数和源码引用；可指定源码目录核对固定提交。"
+  }
+}
