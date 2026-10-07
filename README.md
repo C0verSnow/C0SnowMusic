@@ -40,6 +40,8 @@ c0snowmusic --bilibili --bilibili-autoplay --evidence-dir=/home/C0SnowMusic/evid
 
 原 `scripts/download_favorite.py` 默认改为启动已安装的软件并扫码播放，`--capture-evidence` 可启用截图，`--output-dir` 指定截图目录。Python 入口仅作方便启动用；deb 自身不依赖它。旧版下载功能需要显式传 `--download-only`。
 
+2026-10-07 已在指定 ARM64 服务器完成真实扫码和流式播放验收：六张截图相邻间隔约 10 秒，播放进度从 8.321 秒增长到 58.325 秒，均无暂停或解码错误。完整 deb 保存在 `/home/C0SnowMusic/deb.deb`。四个平台的[远端 CI](https://github.com/C0verSnow/C0SnowMusic/actions/runs/37619675006)全部通过，截图和原始记录见[真实运行记录](docs/verification/issue-5/README.md)。
+
 ### 上游来源
 
 导入的是 [algerkong/AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer)，固定提交 `b277ef17a8d6f05152d42528e6930205b95d0fab`。保留上游 MIT LICENSE、原始说明 [docs/AlgerMusicPlayer-README.md](docs/AlgerMusicPlayer-README.md) 和代码署名。应用标识、安装名称、更新地址改为 C0SnowMusic；未沿用上游自动发布工作流，移除了 HTML 中的上游站点统计脚本。
