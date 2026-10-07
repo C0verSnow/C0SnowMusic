@@ -1,0 +1,68 @@
+name: Build C0SnowMusic player
+on:
+  pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
+  push:
+    branches: [main, 'feature/issue-5-*']
+    paths-ignore: ['**/*.md', 'docs/**']
+  workflow_dispatch:
+concurrency:
+  group: player-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04-arm
+            name: linux-arm64
+            command: npx electron-builder --linux deb --arm64 --publish never
+          - os: ubuntu-24.04
+            name: linux-x64
+            command: npx electron-builder --linux deb --x64 --publish never
+          - os: windows-latest
+            name: windows-x64
+            command: npx electron-builder --win --x64 --publish never
+          - os: macos-latest
+            name: macos-arm64
+            command: npx electron-builder --mac --arm64 --publish never
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      HUSKY: '0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install desktop dependencies (remote CI only)
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - name: Test Bilibili API flow with simulated responses
+        run: npm run test:bilibili
+      - name: Build desktop application
+        run: npm run build
+      - name: Check desktop types (remote CI only)
+        run: npm run typecheck
+      - name: Package complete desktop installer
+        run: ${{ matrix.command }}
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: C0SnowMusic-${{ matrix.name }}
+          path: |
+            dist/*.deb
+            dist/*.exe
+            dist/*.dmg
+            dist/*.zip
+          if-no-files-found: error
+      - name: Upload dependency lock
+        if: matrix.name == 'linux-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-dependency-lock
+          path: package-lock.json

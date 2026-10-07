@@ -7,3 +7,13 @@ bilibili.png
 *.flac
 *.mp3
 *.bin
+
+# Desktop build output and local dependencies
+node_modules/
+out/
+dist/
+*.tsbuildinfo
+.DS_Store
+src/renderer/auto-imports.d.ts
+src/renderer/components.d.ts
+evidence/

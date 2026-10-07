@@ -1,0 +1,67 @@
+{
+  "app": "c0snowmusic",
+  "version": "0.1.0",
+  "track": {
+    "title": "流窜式养老100城",
+    "bvid": "BV1TzdnBkEqo",
+    "cid": 37602725821,
+    "folder": "默认收藏夹"
+  },
+  "intervalSeconds": 10,
+  "captures": [
+    {
+      "file": "playback-01.png",
+      "capturedAt": "2026-10-07T14:00:53.166Z",
+      "currentTime": 8.320963,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    },
+    {
+      "file": "playback-02.png",
+      "capturedAt": "2026-10-07T14:01:03.163Z",
+      "currentTime": 18.323175,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    },
+    {
+      "file": "playback-03.png",
+      "capturedAt": "2026-10-07T14:01:13.165Z",
+      "currentTime": 28.323431,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    },
+    {
+      "file": "playback-04.png",
+      "capturedAt": "2026-10-07T14:01:23.167Z",
+      "currentTime": 38.324082,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    },
+    {
+      "file": "playback-05.png",
+      "capturedAt": "2026-10-07T14:01:33.170Z",
+      "currentTime": 48.324367,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    },
+    {
+      "file": "playback-06.png",
+      "capturedAt": "2026-10-07T14:01:43.171Z",
+      "currentTime": 58.324786,
+      "duration": 203.917415,
+      "paused": false,
+      "readyState": 4,
+      "error": false
+    }
+  ]
+}

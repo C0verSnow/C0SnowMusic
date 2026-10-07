@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""扫码登录后下载第一个非空收藏夹的第一条视频音频。"""
+"""启动 C0SnowMusic 扫码播放；--download-only 保留旧版下载方式。"""
 
 import argparse
 import hashlib
 import re
 import sys
+import shutil
+import subprocess
 import tempfile
 import time
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-import qrcode
-import requests
+try:
+    import qrcode
+    import requests
+except ImportError:
+    qrcode = None
+    requests = None
 
 API = "https://api.bilibili.com"
 PASSPORT = "https://passport.bilibili.com"
@@ -257,9 +263,25 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=Path("/home/C0SnowMusic"))
     parser.add_argument("--folder-id", type=int, help="指定自建收藏夹 ID；默认取第一个非空收藏夹")
     parser.add_argument("--login-timeout", type=int, default=180, help="等待扫码的秒数，默认 180")
+    parser.add_argument("--download-only", action="store_true", help="仅下载音轨，使用 issue #3 的旧版方式")
+    parser.add_argument("--capture-evidence", action="store_true", help="播放时每隔 10 秒保存截图，共 6 张")
     args = parser.parse_args()
     if args.login_timeout <= 0 or (args.folder_id is not None and args.folder_id <= 0):
         parser.error("等待时间和收藏夹 ID 必须大于 0")
+    if not args.download_only:
+        executable = shutil.which("c0snowmusic")
+        if not executable:
+            print("请先安装远端 CI 生成的 C0SnowMusic deb，或使用 --download-only 下载音轨。", file=sys.stderr)
+            return 1
+        if args.folder_id is not None:
+            parser.error("播放时请在软件页面输入收藏夹 ID")
+        command = [executable, "--bilibili", "--bilibili-autoplay"]
+        if args.capture_evidence:
+            command.append(f"--evidence-dir={args.output_dir.resolve()}")
+        return subprocess.call(command)
+    if qrcode is None or requests is None:
+        print("旧版下载需要先安装 requirements.txt 中的依赖。", file=sys.stderr)
+        return 1
     try:
         run(args.output_dir, args.folder_id, args.login_timeout)
     except KeyboardInterrupt:
