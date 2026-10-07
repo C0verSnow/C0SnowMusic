@@ -5,6 +5,9 @@
 - 完成 issue #1：把 NeriPlayer 从 B 站登录到播放音乐的接口整理成 workflows.json，并用大白话说明。
 
 ## 做完：
+- 2026-10-07：issue #3 已完成。服务器 /home/C0SnowMusic 的脚本和依赖已部署，文件校验值与提交一致。用户实际扫码登录成功，默认收藏夹第一条视频第一 P 已下载，产出 bilibili.png、流窜式养老100城.m4a（2,299,000 字节）和流窜式养老100城.MD。
+- issue #3 的 24 项模拟接口测试在 Python 3.10、3.12 的远端 CI 全部通过：https://github.com/C0verSnow/C0SnowMusic/actions/runs/37606373499 。文档检查也通过：https://github.com/C0verSnow/C0SnowMusic/actions/runs/37606373477 。没有在本地或部署服务器运行测试。
+- 已更新 PR #4 的交付与验证说明，并关闭 issue #3；PR 保持打开，等待审核，未合并。
 - 2026-10-07：已提交 PR #4：https://github.com/C0verSnow/C0SnowMusic/pull/4 。文档检查通过，发现测试工作流的安装命令需要加引号，已修正；服务器脚本与依赖已安装。
 - 2026-10-07：issue #3 的扫码下载脚本、依赖文件和使用文档已写好；已加入远端 CI 的模拟接口测试，暂未运行，正在准备服务器运行环境。
 - 确认本仓库只有 issue #1 未完成，已同步远端并建立 feature/issue-1-bilibili-workflows 分支。
@@ -22,4 +25,4 @@
 - issue #1 没有真实账号或设备登录、播放出声的验证，交付的是源码分析和请求模板。
 
 ## 在做：
-- 2026-10-07：已读取 issue #3 和评论，同步 main，建立 feature/issue-3-favorite-audio 分支。服务器可以 SSH 登录，但 /home/C0SnowMusic 尚不存在；正在实现脚本和远端 CI 测试。
+- issue #3 开始时已读取需求、同步 main，并建立 feature/issue-3-favorite-audio 分支；过程中确认多收藏夹选择规则，修复 CI 配置，完成服务器部署和真实扫码下载，目前无待实现内容。

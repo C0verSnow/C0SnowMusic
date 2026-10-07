@@ -48,6 +48,8 @@ Cookie 只保存在进程内存中，不写入文件，不发送给音频 CDN。
 
 脚本测试由 [GitHub Actions](.github/workflows/test-download.yml) 在 Python 3.10、3.12 上执行，使用模拟响应检查扫码状态、收藏夹分页、WBI 签名、音轨选择、下载清理、重名保护和 PNG/音频/MD 整体流程。仓库约定禁止本地编译验证，这些测试不在本地或部署服务器运行。真实扫码和真实音频产出需要用户扫码，CI 模拟测试不能代替真实账号实测。
 
+2026-10-07 已在指定服务器完成真实扫码登录和下载：生成 `bilibili.png`、`流窜式养老100城.m4a`（2,299,000 字节）及同名 `.MD`。[远端测试](https://github.com/C0verSnow/C0SnowMusic/actions/runs/37606373499) 的两个 Python 版本各 24 项测试全部通过。此记录验证了当时该账号的第一条收藏视频可下载，其他视频仍取决于各自权限和接口响应。
+
 ## B 站登录到播放音乐
 
 [workflows.json](workflows.json) 整理了 NeriPlayer 的 19 个请求模板和 9 条流程路线，完成 [issue #1](https://github.com/C0verSnow/C0SnowMusic/issues/1) 的源码分析。依据的源码固定在提交 `3e1abcb704a76a3cd211878c7303d4058866c4d4`，每个请求都有对应源码链接，方便核对。
