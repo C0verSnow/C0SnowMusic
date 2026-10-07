@@ -16,7 +16,7 @@ cd /home/C0SnowMusic
 # 系统缺少 venv 时，先安装系统提供的 python3-venv 包。
 python3 -m venv .venv
 .venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
-.venv/bin/python scripts/download_favorite.py
+.venv/bin/python scripts/download_favorite.py --download-only
 ```
 
 看到“二维码已保存”后，从服务器取回图片，用 B 站客户端扫码。另开一个本地终端执行：
@@ -39,7 +39,7 @@ bilibili.png
 
 ```sh
 # 指定自己的收藏夹，不再遍历其他收藏夹。
-.venv/bin/python scripts/download_favorite.py --folder-id 123456
+.venv/bin/python scripts/download_favorite.py --download-only --folder-id 123456
 # 修改输出目录和等待扫码时长。
 .venv/bin/python scripts/download_favorite.py --output-dir /home/C0SnowMusic/output --login-timeout 600
 ```
