@@ -4,6 +4,9 @@ on:
   push:
     branches: [main, 'feature/issue-5-*']
   workflow_dispatch:
+concurrency:
+  group: player-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -41,6 +44,8 @@ jobs:
         run: npm run test:bilibili
       - name: Build desktop application
         run: npm run build
+      - name: Check desktop types (remote CI only)
+        run: npm run typecheck
       - name: Package complete desktop installer
         run: ${{ matrix.command }}
       - name: Upload installers

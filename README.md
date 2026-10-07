@@ -32,6 +32,8 @@ c0snowmusic --bilibili
 c0snowmusic --bilibili --bilibili-autoplay --evidence-dir=/home/C0SnowMusic/evidence
 ```
 
+服务器专用启动脚本是 `scripts/server-playback.sh`，创建普通用户，用 Xvfb 和 PulseAudio 空输出启动这个参数组合。运行前需安装 Xvfb、PulseAudio、dbus-x11 和中文字体，安装完整 deb 后再用 root 执行脚本。
+
 这个参数组合会自动生成二维码，登录成功后取收藏并开始播放。仍需用真实 B 站账号扫码确认；不会复用旧下载文件假装成功。页面被浏览器限制自动播放时，点击播放按钮。
 
 播放开始后，软件每隔 10 秒保存一次自己的真实窗口，共 6 张 `playback-01.png` 到 `playback-06.png`；同时写 `manifest.json`，记录歌曲、截图时间、播放器时间、时长和解码就绪状态。只有没有报错、没有暂停且播放时间确实增加时才留下下一张图，二维码另外保存为 `bilibili.png`。短于验收时长的歌曲不能凑足六张；重新获取歌曲会重新开始本轮记录。

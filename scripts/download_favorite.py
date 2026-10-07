@@ -12,8 +12,12 @@ import time
 from pathlib import Path
 from urllib.parse import urlencode, urlsplit
 
-import qrcode
-import requests
+try:
+    import qrcode
+    import requests
+except ImportError:
+    qrcode = None
+    requests = None
 
 API = "https://api.bilibili.com"
 PASSPORT = "https://passport.bilibili.com"
@@ -275,6 +279,9 @@ def main():
         if args.capture_evidence:
             command.append(f"--evidence-dir={args.output_dir.resolve()}")
         return subprocess.call(command)
+    if qrcode is None or requests is None:
+        print("旧版下载需要先安装 requirements.txt 中的依赖。", file=sys.stderr)
+        return 1
     try:
         run(args.output_dir, args.folder_id, args.login_timeout)
     except KeyboardInterrupt:
