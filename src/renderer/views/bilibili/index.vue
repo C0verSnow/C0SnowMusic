@@ -74,6 +74,7 @@ async function login(){
     while(own===generation && Date.now()<deadline){
       await new Promise(r=>setTimeout(r,1500)); if(own!==generation) return;
       const result=await api().poll();
+      if(own!==generation) return;
       if(result.code===0){username.value=result.username || 'B 站用户';image.value='';status.value='登录成功';polling.value=false;if(autoplay) await loadFavorite();return;}
       if(result.code===86038) throw new Error('二维码已过期，请重新生成。');
       if(result.code===86090) status.value='已扫码，请在手机上确认登录';

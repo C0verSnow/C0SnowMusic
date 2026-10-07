@@ -1,8 +1,10 @@
 name: Build C0SnowMusic player
 on:
   pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
   push:
     branches: [main, 'feature/issue-5-*']
+    paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
 concurrency:
   group: player-${{ github.event.pull_request.head.ref || github.ref_name }}
