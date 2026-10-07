@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+output/
+bilibili.png
+*.part
+*.m4a
+*.flac
+*.mp3
+*.bin

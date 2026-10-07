@@ -2,6 +2,54 @@
 
 参考项目：[AlgerMusicPlayer](https://github.com/f1515x/AlgerMusicPlayer)、[NeriPlayer](https://github.com/f1515x/NeriPlayer)。
 
+## 扫码下载收藏夹第一首歌
+
+[scripts/download_favorite.py](scripts/download_favorite.py) 实现 [issue #3](https://github.com/C0verSnow/C0SnowMusic/issues/3)。它向 B 站申请二维码，保存为 `bilibili.png`，每隔 1.5 秒询问登录状态。你用 B 站客户端扫码并确认后，它读取自己的收藏夹，下载第一首歌并生成同名说明文件。
+
+选歌规则：按 B 站返回的自建收藏夹顺序，取第一个非空收藏夹；夹内按收藏时间倒序，取第一条视频的第一 P。歌名用视频标题，不判断视频是不是音乐，也不读取订阅别人的收藏夹。第一条视频失效或没有独立音轨时直接报错，不换歌。
+
+需要 Python 3.10 或更新版本。首次在指定服务器安装（以下都是服务器上的命令）：
+
+```sh
+ssh root@192.168.1.245
+cd /home/C0SnowMusic
+# 系统缺少 venv 时，先安装系统提供的 python3-venv 包。
+python3 -m venv .venv
+.venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
+.venv/bin/python scripts/download_favorite.py
+```
+
+看到“二维码已保存”后，从服务器取回图片，用 B 站客户端扫码。另开一个本地终端执行：
+
+```sh
+scp root@192.168.1.245:/home/C0SnowMusic/bilibili.png ./bilibili.png
+```
+
+默认等待 180 秒，可用 `--login-timeout 600` 延长。过期或超时后重新运行即可。成功会在 `/home/C0SnowMusic` 得到：
+
+```text
+bilibili.png
+歌名.m4a
+歌名.MD
+```
+
+音频使用 B 站实际提供的格式，可能是 `.m4a`、`.flac` 或 `.mp3`，不需要 ffmpeg，不做转码。请求可用音轨后按带宽选择最高的一条；权限、版权和 B 站风控可能影响可用音轨。下载中断会删除临时文件，并尝试同一音轨的备用地址；已有同名文件会添加序号保留。说明文件包含视频链接、收藏夹、分 P、文件名、大小和格式。
+
+可选参数：
+
+```sh
+# 指定自己的收藏夹，不再遍历其他收藏夹。
+.venv/bin/python scripts/download_favorite.py --folder-id 123456
+# 修改输出目录和等待扫码时长。
+.venv/bin/python scripts/download_favorite.py --output-dir /home/C0SnowMusic/output --login-timeout 600
+```
+
+Cookie 只保存在进程内存中，不写入文件，不发送给音频 CDN。每次运行都需重新扫码。输出目录应由你自己管理；不要把登录二维码和下载的音频提交到 Git。下载仅适用于账号有权访问的内容。
+
+脚本测试由 [GitHub Actions](.github/workflows/test-download.yml) 在 Python 3.10、3.12 上执行，使用模拟响应检查扫码状态、收藏夹分页、WBI 签名、音轨选择、下载清理、重名保护和 PNG/音频/MD 整体流程。仓库约定禁止本地编译验证，这些测试不在本地或部署服务器运行。真实扫码和真实音频产出需要用户扫码，CI 模拟测试不能代替真实账号实测。
+
+2026-10-07 已在指定服务器完成真实扫码登录和下载：生成 `bilibili.png`、`流窜式养老100城.m4a`（2,299,000 字节）及同名 `.MD`。[远端测试](https://github.com/C0verSnow/C0SnowMusic/actions/runs/37606373499) 的两个 Python 版本各 24 项测试全部通过。此记录验证了当时该账号的第一条收藏视频可下载，其他视频仍取决于各自权限和接口响应。
+
 ## B 站登录到播放音乐
 
 [workflows.json](workflows.json) 整理了 NeriPlayer 的 19 个请求模板和 9 条流程路线，完成 [issue #1](https://github.com/C0verSnow/C0SnowMusic/issues/1) 的源码分析。依据的源码固定在提交 `3e1abcb704a76a3cd211878c7303d4058866c4d4`，每个请求都有对应源码链接，方便核对。
@@ -29,7 +77,7 @@ Cookie 和媒体地址都应使用当前会话实际返回的值。文件只保�
 
 ## 检查方式和实际验证范围
 
-本次只做源码阅读、JSON 静态检查和差异检查，没有进行本地构建、编译或会触发编译的测试，也没有用真实 B 站账号或设备实测登录、播放出声。当前仓库没有音乐播放器程序，所以这份交付是接口分析，不是新增播放器。
+issue #1 的交付只做源码阅读、JSON 静态检查和差异检查，没有进行本地构建、编译或会触发编译的测试，也没有用真实 B 站账号或设备实测登录、播放出声。这份 JSON 是接口分析；issue #3 新增的下载脚本见本文前面的使用说明，脚本不负责播放出声。
 
 只检查文档结构，不访问 B 站、不运行编译：
 
