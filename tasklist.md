@@ -5,6 +5,7 @@
 - 完成 issue #1：把 NeriPlayer 从 B 站登录到播放音乐的接口整理成 workflows.json，并用大白话说明。
 
 ## 做完：
+- 2026-10-07：已提交 PR #4：https://github.com/C0verSnow/C0SnowMusic/pull/4 。文档检查通过，发现测试工作流的安装命令需要加引号，已修正；服务器脚本与依赖已安装。
 - 2026-10-07：issue #3 的扫码下载脚本、依赖文件和使用文档已写好；已加入远端 CI 的模拟接口测试，暂未运行，正在准备服务器运行环境。
 - 确认本仓库只有 issue #1 未完成，已同步远端并建立 feature/issue-1-bilibili-workflows 分支。
 - 下载 NeriPlayer 源码供阅读，不执行本地编译。
