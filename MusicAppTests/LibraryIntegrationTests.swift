@@ -1,4 +1,5 @@
 import XCTest
+import MediaPlayer
 import SwiftData
 import UIKit
 @testable import C0SnowMusic
@@ -195,6 +196,20 @@ import UIKit
             UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
         }
         try await library.setDownloadedCover(song, data: cover)
+        let player = try PlaybackStore(library: library, systemIntegration: false)
+        player.currentSong = song
+        player.refreshMediaInfo()
+        defer { player.pause(); MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+        var requestedSize: CGSize?
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        repeat {
+            requestedSize = await Task.detached {
+                let artwork = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork
+                return artwork?.image(at: CGSize(width: 32, height: 32))?.size
+            }.value
+            if requestedSize == nil { try await Task.sleep(for: .milliseconds(100)) }
+        } while requestedSize == nil && ContinuousClock.now < deadline
+        XCTAssertGreaterThan(try XCTUnwrap(requestedSize).width, 0)
         let restored = try makeLibrary(root: root)
         let saved = try XCTUnwrap(restored.songs.first)
         XCTAssertEqual(saved.lyrics, "[00:01.00]First line")

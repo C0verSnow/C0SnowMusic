@@ -39,7 +39,8 @@ import UIKit
                 Task { [weak self, weak store] in
                     guard let store, let payload = await ArtworkCache.shared.load(id: id, files: store.files, thumbnail: false),
                           store.currentSong?.artworkID == id else { return }
-                    self?.artwork = MPMediaItemArtwork(boundsSize: payload.image.size) { _ in payload.image }
+                    // MediaPlayer requests the image on its own queue, outside MainActor.
+                    self?.artwork = MPMediaItemArtwork(boundsSize: payload.image.size) { @Sendable _ in payload.image }
                     self?.update(store)
                 }
             }
