@@ -1,68 +1,110 @@
-name: Build C0SnowMusic player
+name: Build and test native iOS player
 on:
   pull_request:
     paths-ignore: ['**/*.md', 'docs/**']
   push:
-    branches: [main, 'feature/issue-5-*']
+    branches: [main, 'feature/issue-7-*']
     paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
 concurrency:
-  group: player-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: ios-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 permissions:
   contents: read
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04-arm
-            name: linux-arm64
-            command: npx electron-builder --linux deb --arm64 --publish never
-          - os: ubuntu-24.04
-            name: linux-x64
-            command: npx electron-builder --linux deb --x64 --publish never
-          - os: windows-latest
-            name: windows-x64
-            command: npx electron-builder --win --x64 --publish never
-          - os: macos-latest
-            name: macos-arm64
-            command: npx electron-builder --mac --arm64 --publish never
-    runs-on: ${{ matrix.os }}
-    env:
-      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      HUSKY: '0'
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: maxim-lobanov/setup-xcode@v1
         with:
-          node-version: '22'
-      - name: Install desktop dependencies (remote CI only)
-        shell: bash
+          xcode-version: latest-stable
+      - name: Check iOS SDK and select simulator
         run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - name: Test Bilibili API flow with simulated responses
-        run: npm run test:bilibili
-      - name: Build desktop application
-        run: npm run build
-      - name: Check desktop types (remote CI only)
-        run: npm run typecheck
-      - name: Package complete desktop installer
-        run: ${{ matrix.command }}
-      - name: Upload installers
+          xcodebuild -version
+          xcodebuild -showsdks
+          python3 - <<'PY'
+          import json, os, subprocess
+          devices = json.loads(subprocess.check_output(['xcrun', 'simctl', 'list', 'devices', 'available', '--json']))['devices']
+          candidates = [(runtime, device) for runtime, values in devices.items() if 'iOS-26' in runtime for device in values if device['name'].startswith('iPhone')]
+          if not candidates:
+              raise SystemExit('An iOS 26 simulator runtime is required')
+          runtime, device = sorted(candidates, key=lambda item: (item[0], item[1]['name'].startswith('iPhone 17'), item[1]['name']))[-1]
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write(f"IOS_SIMULATOR_ID={device['udid']}\n")
+          print(runtime, device['name'], device['udid'])
+          PY
+      - name: Generate real audio fixtures (remote CI only)
+        run: |
+          if ! command -v ffmpeg >/dev/null; then brew install ffmpeg; fi
+          python3 scripts/make_audio_fixtures.py
+      - name: Build simulator application and tests
+        run: |
+          mkdir -p build
+          set -o pipefail
+          xcodebuild build-for-testing -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
+      - name: Build unsigned iPhone Release application
+        run: |
+          set -o pipefail
+          xcodebuild build -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/device-build.log
+      - name: Verify packaged iPhone app icon
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          app = Path('DerivedData/Build/Products/Release-iphoneos/C0SnowMusic.app')
+          with (app / 'Info.plist').open('rb') as file:
+              info = plistlib.load(file)
+          primary = info['CFBundleIcons']['CFBundlePrimaryIcon']
+          assert primary['CFBundleIconName'] == 'AppIcon', primary
+          assert (app / 'Assets.car').is_file()
+          print('iPhone Release includes AppIcon and compiled asset catalog')
+          PY
+      - name: Package unsigned IPA for on-device signing
+        run: |
+          mkdir -p build/Payload
+          ditto DerivedData/Build/Products/Release-iphoneos/C0SnowMusic.app build/Payload/C0SnowMusic.app
+          ditto -c -k --keepParent build/Payload build/C0SnowMusic-unsigned.ipa
+          rm -rf build/Payload
+      - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: C0SnowMusic-${{ matrix.name }}
-          path: |
-            dist/*.deb
-            dist/*.exe
-            dist/*.dmg
-            dist/*.zip
+          name: C0SnowMusic-unsigned-iPhone
+          path: build/C0SnowMusic-unsigned.ipa
           if-no-files-found: error
-      - name: Upload dependency lock
-        if: matrix.name == 'linux-arm64'
+      - name: Boot iOS simulator
+        timeout-minutes: 8
+        run: |
+          xcrun simctl boot "$IOS_SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_ID" -b
+      - name: Run unit, audio integration, and UI tests
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+            -parallel-testing-enabled NO -resultBundlePath build/Tests.xcresult \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 90 \
+            -maximum-test-execution-time-allowance 120 \
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/test.log
+      - name: Export UI screenshots
+        if: always()
+        run: |
+          if [ -d build/Tests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/Screenshots
+          fi
+      - name: Upload test evidence and logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-dependency-lock
-          path: package-lock.json
+          name: iOS-test-evidence
+          path: |
+            build/*.log
+            build/*.xcresult/
+            build/Screenshots/
+          if-no-files-found: warn

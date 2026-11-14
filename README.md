@@ -1,139 +1,76 @@
 # C0SnowMusic
 
-参考项目：[AlgerMusicPlayer](https://github.com/f1515x/AlgerMusicPlayer)、[NeriPlayer](https://github.com/f1515x/NeriPlayer)。
+iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。无需账号，不接入在线曲库，不上传音乐。播放和资料库离线使用；歌词和封面可由用户主动联网查询。
 
-## 安装并播放 B 站收藏（issue #5）
+本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
-现在这是完整的 Electron 桌面软件：保留 AlgerMusicPlayer 的播放器、歌曲库、设置等功能，新增侧栏「B 站音乐」。B 站扫码、Cookie、收藏夹选择和 WBI 签名由软件内部模块完成；播放是流式读取音轨，无需先下载整首歌，也不需要安装 Python。
+## 打开与运行
 
-打开软件 → 点「B 站音乐」→ 生成二维码 → 用 B 站客户端扫码并确认 → 获取收藏夹第一首歌 → 点播放。可以暂停、继续和拖动进度条。收藏夹 ID 不填时，按 B 站返回顺序选择第一个非空收藏夹，播放夹内按收藏时间倒序的第一条视频第一 P；也可以填自己的收藏夹 ID。
+1. 安装含 iOS 26 SDK 的 Xcode 26 或更新版本。
+2. 打开 `C0SnowMusic.xcodeproj`，选择共享 Scheme `C0SnowMusic`。
+3. 在 Signing & Capabilities 中选择自己的 Team；必要时把 Bundle Identifier 改成自己的唯一标识。
+4. 选择 iOS 26 iPhone 或模拟器，运行。
+5. 点击右上角「+」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
 
-音轨使用浏览器支持的 AAC，按带宽选择最高的一条，并在请求失败时尝试同一音轨的备用地址。没有独立 AAC 音轨、第一条失效、没有收藏或登录失效时会直接说明原因，不改选其他视频。媒体地址过期后点「获取收藏夹第一首歌」重新取流。账号 Cookie 只存在主进程内存，退出软件或退出登录就清除，不交给页面，也不转发给音频 CDN。
+本项目无第三方运行时依赖，无需 Node、CMake、XcodeGen、CocoaPods 或服务端。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
-### 安装包从哪里来
+仓库约定禁止本地编译验证。自动编译与测试使用原有 `build-player.yml` 改造的 GitHub Actions；以上 Xcode 步骤供用户安装真机使用。CI 上传的 iPhone `.app` 未签名，不能直接安装；必须用自己的开发者签名构建或导出。
 
-[Build C0SnowMusic player](https://github.com/C0verSnow/C0SnowMusic/actions/workflows/build-player.yml) 在 GitHub 的远端机器执行模拟接口测试、构建和打包。Artifacts 提供 ARM64 / x64 的完整 Linux deb、Windows x64 安装程序、macOS ARM64 的 dmg / zip。Deb 包含 Electron、界面和 B 站模块；系统桌面依赖交给 apt 安装。遵守本仓库约定，不在本地或部署服务器编译、跑测试。
+## 功能
 
-指定服务器 `192.168.1.245` 是 ARM64，必须选择 `C0SnowMusic-linux-arm64`，把里面的 deb 放到 `/home/C0SnowMusic/deb.deb`，然后在服务器执行：
+- 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
+- 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
+- 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。
+- 应用沙盒保存音频、元数据与封面；封面降采样、内存和磁盘缓存。
+- 歌曲、专辑、艺术家、流派、最近添加、最近播放、收藏；排序与防抖搜索。
+- 播放列表创建、重命名、添加、移除、排序、删除及照片封面。
+- 一个共享 PlaybackStore / AVPlayer；队列编辑、随机、单曲循环、列表循环和自动下一首。
+- 后台播放、锁屏/控制中心/耳机控制、中断与拔耳机处理；恢复队列和进度时不自动发声。
+- 内嵌歌词、LRC 导入、逐行高亮、滚动跟随和点词跳转；手动滚动后暂停跟随六秒。
+- 编辑音乐库中的歌曲信息；不改写音频文件。
+- 支持系统深浅外观、Dynamic Type、VoiceOver 和 Reduce Motion。全屏播放器始终使用暗色以保证对比度。
 
-```sh
-cd /home/C0SnowMusic
-apt-get install ./deb.deb
-c0snowmusic --bilibili
-```
+## 音频兼容性
 
-普通桌面用户直接启动菜单里的 C0SnowMusic 即可。以 root 运行 Electron 时需要 `--no-sandbox`；服务器验收会用专用普通用户和虚拟桌面运行。
+目标容器和编码：MP3、FLAC、M4A/AAC、ALAC、WAV、AIFF。扩展名只用于系统文件选择过滤。导入会检查 AVURLAsset 可播放性、音轨、时长和首段 PCM 解码；完整播放错误通过播放器显示。
 
-### 没有桌面的服务器怎么留下六张图
+首段解码通过不代表整份文件无损坏。不同容器、编码、位深、采样率和设备组合必须实际播放验证。系统无法解码的文件会明确报错，处理办法是转换为 ALAC、M4A 或 WAV；当前没有引入额外解码器。FLAC 另有独立 Vorbis Comment / Picture 读取器，补充系统未暴露的标签。缺少元数据时使用原始文件名、「未知艺术家」「未知专辑」和中性封面。
 
-用户已经确认：服务器不用音箱出声，以虚拟桌面截图和真实播放进度验收。服务器用 Xvfb 提供桌面、PulseAudio 的空输出接收解码后的音频；这不能证明音箱实际出声。
+远端测试生成三秒合成音，验证真实导入和 AVPlayer 播放推进、暂停、Seek、结束事件，包含 MP3、FLAC、AAC、ALAC、WAV、AIFF 和 24-bit/96 kHz 双声道 FLAC。完整结果及尚未验收项见 [测试与验收](docs/VERIFICATION.md)。未经过真机测试的格式不能据此声称已在所有 iPhone 完整支持。
 
-```sh
-c0snowmusic --bilibili --bilibili-autoplay --evidence-dir=/home/C0SnowMusic/evidence
-```
+## 下载歌词、封面和校准时间
 
-服务器专用启动脚本是 `scripts/server-playback.sh`，创建普通用户，用 Xvfb 和 PulseAudio 空输出启动这个参数组合。运行前需安装 Xvfb、PulseAudio、dbus-x11 和中文字体，安装完整 deb 后再用 root 执行脚本。
+全屏播放器打开「歌词」，点击「在线查找歌词与封面」或底部搜索按钮。歌名和艺术家可编辑；缺少标签但文件名形如 `艺术家 – 歌名` 时会预填这两个字段。
 
-这个参数组合会自动生成二维码，登录成功后取收藏并开始播放。仍需用真实 B 站账号扫码确认；不会复用旧下载文件假装成功。页面被浏览器限制自动播放时，点击播放按钮。
+1. 点击「搜索歌词」。优先按歌名、歌手、专辑和音频真实时长精确查询 LRCLIB，找不到合适同步版本再列出搜索候选。
+2. 核对专辑和录音版本，选择「使用此版本」。匹配结果中的标准歌名和艺术家会自动写回资料库，更新艺人分组和系统播放信息，无须逐项手改；其他标签保留。同步歌词保存为带时间戳的 LRC；没有时间戳时显示纯文本，不伪造同步。
+3. 默认同时下载缺失的封面，来源为 MusicBrainz / Cover Art Archive。已有封面保留；封面服务失败不会撤销已经保存的歌词。
+4. 在「歌词时间校准」里，可按 0.5 秒调整提前或延后，范围 ±30 秒。高亮和点行跳转使用同一个偏移量，并按歌曲保存。LRC 自带 offset 同样生效。
 
-播放开始后，软件每隔 10 秒保存一次自己的真实窗口，共 6 张 `playback-01.png` 到 `playback-06.png`；同时写 `manifest.json`，记录歌曲、截图时间、播放器时间、时长和解码就绪状态。只有没有报错、没有暂停且播放时间确实增加时才留下下一张图，二维码另外保存为 `bilibili.png`。短于验收时长的歌曲不能凑足六张；重新获取歌曲会重新开始本轮记录。
+下载后歌词和封面留在本地，关闭、重启或断网仍可使用。只有主动搜索/下载时才向服务发送歌名、艺术家、专辑和时长；不会上传音频。429/503 的 Retry-After 会阻止过早请求，网络失败可以重试。
 
-原 `scripts/download_favorite.py` 默认改为启动已安装的软件并扫码播放，`--capture-evidence` 可启用截图，`--output-dir` 指定截图目录。Python 入口仅作方便启动用；deb 自身不依赖它。旧版下载功能需要显式传 `--download-only`。
+本次参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，实现为原生 Swift URLSession，没有引入 Python 运行时。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
 
-2026-10-07 已在指定 ARM64 服务器完成真实扫码和流式播放验收：六张截图相邻间隔约 10 秒，播放进度从 8.321 秒增长到 58.325 秒，均无暂停或解码错误。完整 deb 保存在 `/home/C0SnowMusic/deb.deb`。四个平台的[远端 CI](https://github.com/C0verSnow/C0SnowMusic/actions/runs/37619675006)全部通过，截图和原始记录见[真实运行记录](docs/verification/issue-5/README.md)。
+## 应用图标
 
-### 上游来源
+按用户提供的 `Apple Music-iOS-512x512.png` 生成图标。源文件位于 `Design/AppIconSource.png`；1024px 无透明图片位于 AppIcon.appiconset，并在工程中指定 `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`。修改源图后，在 macOS 用 `osascript -l JavaScript scripts/make_app_icon.js <仓库绝对路径>` 重新生成，不手改生成文件。
 
-导入的是 [algerkong/AlgerMusicPlayer](https://github.com/algerkong/AlgerMusicPlayer)，固定提交 `b277ef17a8d6f05152d42528e6930205b95d0fab`。保留上游 MIT LICENSE、原始说明 [docs/AlgerMusicPlayer-README.md](docs/AlgerMusicPlayer-README.md) 和代码署名。应用标识、安装名称、更新地址改为 C0SnowMusic；未沿用上游自动发布工作流，移除了 HTML 中的上游站点统计脚本。
+## 文件与隐私
 
-## 扫码下载收藏夹第一首歌（旧版）
+音频位于 `Application Support/MusicLibrary/Audio/`，数据库只存相对路径。导入使用 Security-Scoped URL；分块复制到 `Staging/`，检查后同卷移动；保存数据库失败会清理新文件。完全相同文件在复制前通过内容哈希识别。
 
-[scripts/download_favorite.py](scripts/download_favorite.py) 实现 [issue #3](https://github.com/C0verSnow/C0SnowMusic/issues/3)。在 `--download-only` 模式下，它向 B 站申请二维码，保存为 `bilibili.png`，每隔 1.5 秒询问登录状态。你用 B 站客户端扫码并确认后，它读取自己的收藏夹，下载第一首歌并生成同名说明文件。
+音频和数据库默认参与系统设备备份。设置中可排除音频备份；封面有播放器版和列表缩略图。删除时可选择：
 
-选歌规则：按 B 站返回的自建收藏夹顺序，取第一个非空收藏夹；夹内按收藏时间倒序，取第一条视频的第一 P。歌名用视频标题，不判断视频是不是音乐，也不读取订阅别人的收藏夹。第一条视频失效或没有独立音轨时直接报错，不换歌。
+- **仅移除记录**：移除歌曲和播放列表引用，文件留在 `Removed/`，可在设置里重新导入。
+- **同时删除音频文件**：移除记录并删除应用沙盒中的副本；「文件」中的原始文件不变。
 
-需要 Python 3.10 或更新版本。首次在指定服务器安装（以下都是服务器上的命令）：
+允许打开其他 App 提供的音频，使用标准文档打开流程，没有 Share Extension，因此不需要 App Group。只配置 `UIBackgroundModes = audio`，不请求 Apple Music、麦克风或整个照片库权限。照片封面通过系统照片选择器提供单个已选择项目。
 
-```sh
-ssh root@192.168.1.245
-cd /home/C0SnowMusic
-# 系统缺少 venv 时，先安装系统提供的 python3-venv 包。
-python3 -m venv .venv
-.venv/bin/python -m pip install --only-binary=:all: -r requirements.txt
-.venv/bin/python scripts/download_favorite.py --download-only
-```
+## 工程与验证
 
-看到“二维码已保存”后，从服务器取回图片，用 B 站客户端扫码。另开一个本地终端执行：
+- [架构、阶段与参考来源](docs/ARCHITECTURE.md)
+- [测试、真机验收和已知限制](docs/VERIFICATION.md)
+- [第三方来源与许可证](docs/THIRD_PARTY.md)
+- [任务过程](tasklist.md)
 
-```sh
-scp root@192.168.1.245:/home/C0SnowMusic/bilibili.png ./bilibili.png
-```
-
-默认等待 180 秒，可用 `--login-timeout 600` 延长。过期或超时后重新运行即可。成功会在 `/home/C0SnowMusic` 得到：
-
-```text
-bilibili.png
-歌名.m4a
-歌名.MD
-```
-
-音频使用 B 站实际提供的格式，可能是 `.m4a`、`.flac` 或 `.mp3`，不需要 ffmpeg，不做转码。请求可用音轨后按带宽选择最高的一条；权限、版权和 B 站风控可能影响可用音轨。下载中断会删除临时文件，并尝试同一音轨的备用地址；已有同名文件会添加序号保留。说明文件包含视频链接、收藏夹、分 P、文件名、大小和格式。
-
-可选参数：
-
-```sh
-# 指定自己的收藏夹，不再遍历其他收藏夹。
-.venv/bin/python scripts/download_favorite.py --download-only --folder-id 123456
-# 修改输出目录和等待扫码时长。
-.venv/bin/python scripts/download_favorite.py --output-dir /home/C0SnowMusic/output --login-timeout 600
-```
-
-Cookie 只保存在进程内存中，不写入文件，不发送给音频 CDN。每次运行都需重新扫码。输出目录应由你自己管理；不要把登录二维码和下载的音频提交到 Git。下载仅适用于账号有权访问的内容。
-
-脚本测试由 [GitHub Actions](.github/workflows/test-download.yml) 在 Python 3.10、3.12 上执行，使用模拟响应检查扫码状态、收藏夹分页、WBI 签名、音轨选择、下载清理、重名保护和 PNG/音频/MD 整体流程。仓库约定禁止本地编译验证，这些测试不在本地或部署服务器运行。真实扫码和真实音频产出需要用户扫码，CI 模拟测试不能代替真实账号实测。
-
-2026-10-07 已在指定服务器完成真实扫码登录和下载：生成 `bilibili.png`、`流窜式养老100城.m4a`（2,299,000 字节）及同名 `.MD`。[远端测试](https://github.com/C0verSnow/C0SnowMusic/actions/runs/37606373499) 的两个 Python 版本各 24 项测试全部通过。此记录验证了当时该账号的第一条收藏视频可下载，其他视频仍取决于各自权限和接口响应。
-
-## B 站登录到播放音乐
-
-[workflows.json](workflows.json) 整理了 NeriPlayer 的 19 个请求模板和 9 条流程路线，完成 [issue #1](https://github.com/C0verSnow/C0SnowMusic/issues/1) 的源码分析。依据的源码固定在提交 `3e1abcb704a76a3cd211878c7303d4058866c4d4`，每个请求都有对应源码链接，方便核对。
-
-用大白话说，整个过程是：
-
-1. 向 B 站要一个二维码，用 B 站客户端扫码并确认。程序每隔 1.5 秒询问是否确认，成功后从响应头收集 Cookie，并保存到本地加密存储。最关键的是 `SESSDATA`。
-2. 搜索想听的视频，或者从收藏夹、合集里选视频。已经知道 BV 号或 AV 号时可以跳过搜索。
-3. 读取视频详情，找到想听的那一 P 的 `cid`。BV/AV 号表示整个视频，`cid` 表示具体某一段，不能混用。已指定某一 P 时，找不到就报错，不会换成第一 P。
-4. 请求播放地址之前，先获取 WBI 签名用的 key，再用参数和当前时间算出 `w_rid`。这个 key 缓存 10 分钟；获取失败还有 WebTicket 备用方式。签名计算本身不发网络请求。
-5. 把 BV 号和 `cid` 发给 `playurl`，拿到普通、杜比或 Hi-Res 音轨及备用地址，再按用户音质设置选择。默认参数是 `fnval=272`。满足空音轨重试条件时最多请求 3 次，仍没有音轨就试 HTML5 的单段 MP4；播放器播放其中的声音。
-6. 播放器用返回的完整媒体 URL 拉取字节，并带上适用的 Referer、User-Agent 和 Cookie。拿到地址只说明取流成功；还要能解码、开始播放并持续推进播放位置，才算真正播放起来。
-
-扫码不方便时可以打开 B 站网页登录页。该页面内部的密码、短信等请求由 B 站网页管理，NeriPlayer 源码没有逐个实现，本文没有编造这些接口。评论、歌词、UP 主空间浏览、一起听等外围请求也不属于这里的登录到取流主线。
-
-## 怎么读 JSON
-
-- `requests`：每个 HTTP 请求的 URL、方法、请求头、查询参数、响应读取位置、执行条件和源码出处。媒体响应是二进制，网页登录页是 HTML，其余接口返回 JSON。
-- `workflows`：主路线及备用路线的典型顺序。步骤有条件，不能把列表当成全部无条件执行的脚本。例如收藏条目是合集时走合集接口，是收藏夹时走收藏夹内容接口。
-- `local_steps`：保存 Cookie、签名、选择分 P、选择音轨和启动播放器等本地操作。
-- `wbi_signing`：key 来源、索引表、参数过滤、编码及 MD5 算法。
-- `variables`：运行时变量的来源。`{{name}}` 是占位符，不能原样发送；其中签名结果占位符按 `wbi_signing` 计算。
-
-Cookie 和媒体地址都应使用当前会话实际返回的值。文件只保存模板，没有真实账号凭据或真实媒体链接。源码的本地登录健康判断只看是否有 `SESSDATA`；`validate_login` 是独立的服务端检查方法，并不是扫码保存后的固定请求。
-
-## 检查方式和实际验证范围
-
-issue #1 的交付只做源码阅读、JSON 静态检查和差异检查，没有进行本地构建、编译或会触发编译的测试，也没有用真实 B 站账号或设备实测登录、播放出声。这份 JSON 是接口分析；issue #3 新增的下载脚本见本文前面的使用说明，脚本不负责播放出声。
-
-只检查文档结构，不访问 B 站、不运行编译：
-
-```sh
-python3 scripts/validate_workflows.py
-git diff --check
-```
-
-如果本地已经有上述固定提交的 NeriPlayer 源码，还可以核对所有源码链接的行号和文字：
-
-```sh
-python3 scripts/validate_workflows.py --source-root /path/to/NeriPlayer
-```
-
-PR 的 GitHub Actions 会执行相同的 JSON 静态检查，不安装 Android 工具链。真实登录与出声仍需账号、设备和当时可用的 B 站服务，静态检查通过不能代替这一验证。
+CI 在 iOS 26 模拟器运行 XCTest 集成测试和 XCUITest，再编译未签名 iPhone Release。测试音频由 `scripts/make_audio_fixtures.py` 在远端生成，无真实用户音乐、无下载音源，Release 不包含这些测试资源。检查日志和 `.xcresult` 从 Actions 的 `iOS-test-evidence` 下载。

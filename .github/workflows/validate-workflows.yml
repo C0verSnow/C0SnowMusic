@@ -1,22 +1,16 @@
-name: Validate workflow documentation
-
+name: Validate project files
 on:
   pull_request:
   push:
-    branches: [main]
-
+    branches: [main, 'feature/issue-7-*']
 permissions:
   contents: read
-
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Check JSON and workflow references (no build)
-        run: python scripts/validate_workflows.py
+      - name: Check project and application property lists (no build)
+        run: plutil -lint MusicApp/Info.plist C0SnowMusic.xcodeproj/project.pbxproj
       - name: Check whitespace
         run: git diff-tree --check HEAD
