@@ -89,6 +89,7 @@ struct MusicLookupView: View {
         defer { downloading = nil }
         library.applyDownloadedMatch(match, to: song)
         if let error = library.error { self.error = error; return }
+        title = match.trackName; artist = match.artistName
         playback.refreshMediaInfo()
         notice = "歌名和艺术家已更新。"
         if match.text != nil {
