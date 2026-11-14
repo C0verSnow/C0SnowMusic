@@ -39,6 +39,16 @@ import UIKit
         XCTAssertNotNil(flac.artistID)
     }
 
+    func testEmbeddedLyricsSurviveMP3AndFLACImport() async throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.files.root) }
+        for ext in ["mp3", "flac"] {
+            try await library.importOne(fixture("Fixture", ext: ext))
+        }
+        XCTAssertEqual(library.songs.count, 2)
+        for song in library.songs { XCTAssertTrue(song.lyrics.contains("First line"), song.format) }
+    }
+
     func testDuplicateBytesWithDifferentNamesAndKeepCopy() async throws {
         let library = try makeLibrary()
         defer { try? FileManager.default.removeItem(at: library.files.root) }

@@ -19,22 +19,17 @@ struct MusicRootView: View {
             Tab("搜索", systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            if playback.currentSong != nil {
-                MiniPlayerView(expanded: $expanded)
-                    .matchedTransitionSource(id: "player", in: playerTransition)
-            }
-        }
+        .modifier(PlayerAccessoryModifier(enabled: playback.currentSong != nil, expanded: $expanded, namespace: playerTransition))
         .fullScreenCover(isPresented: $expanded) {
             if reduceMotion { NowPlayingView() }
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
         }
         .sheet(isPresented: $settings) { NavigationStack { SettingsView() } }
-        .fileImporter(isPresented: $importing, allowedContentTypes: AudioImportService.contentTypes, allowsMultipleSelection: true) { result in
-            switch result {
-            case .success(let urls): library.startImport(urls)
-            case .failure(let error): library.error = error.localizedDescription
-            }
+        .sheet(isPresented: $importing) {
+            DocumentImportPicker(types: AudioImportService.contentTypes, multiple: true) { urls in
+                importing = false
+                library.startImport(urls)
+            } onCancel: { importing = false }
         }
         .overlay(alignment: .top) {
             if let progress = library.importProgress {
@@ -72,5 +67,24 @@ struct MusicRootView: View {
                     }
                 }
         }
+    }
+}
+
+private struct PlayerAccessoryModifier: ViewModifier {
+    let enabled: Bool
+    @Binding var expanded: Bool
+    let namespace: Namespace.ID
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if #available(iOS 26.1, *) {
+            content.tabViewBottomAccessory(isEnabled: enabled) { accessory }
+        } else {
+            content.tabViewBottomAccessory { if enabled { accessory } }
+        }
+    }
+
+    private var accessory: some View {
+        MiniPlayerView(expanded: $expanded)
+            .matchedTransitionSource(id: "player", in: namespace)
     }
 }

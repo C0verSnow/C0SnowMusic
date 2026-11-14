@@ -56,6 +56,7 @@ import SwiftData
             }
             importStatus = "\(Task.isCancelled ? "已取消。" : "")已导入 \(imported) 首，跳过 \(skipped) 首，失败 \(importFailures.count) 首。"
             importProgress = nil; importTask = nil
+            if !importFailures.isEmpty { error = importFailures.prefix(5).joined(separator: "\n") + "\n完整明细可在设置中查看。" }
             let pending = deferredImports; deferredImports = []
             if !Task.isCancelled, !pending.isEmpty { startImport(pending) }
         }

@@ -29,7 +29,7 @@ Song、Album、Artist、Playlist、PlaylistItem 和 PlaybackSession 为持久化
 
 ## UI 和交互
 
-原生 `TabView` 使用 `tabBarMinimizeBehavior(.onScrollDown)` 和 `tabViewBottomAccessory`，让系统协调安全区域和玻璃材质。`matchedTransitionSource` 与系统 zoom 转场承接 Mini Player 和全屏播放器；减少动态效果时使用普通系统呈现。主内容不铺玻璃材质。
+原生 `TabView` 使用 `tabBarMinimizeBehavior(.onScrollDown)` 和 `tabViewBottomAccessory`，让系统协调安全区域和玻璃材质。`matchedTransitionSource` 与系统 zoom 转场承接 Mini Player 和全屏播放器；减少动态效果时使用普通系统呈现。主内容不铺玻璃材质。iOS 26.1 起使用 `tabViewBottomAccessory(isEnabled:content:)` 隐藏未加载歌曲时的附件，保留 Tab 和导航状态；iOS 26.0 使用原有条件内容。
 
 全屏播放器使用封面缓存中的单次取色、静态渐变、原生系统音量和 AirPlay 选择器。滑块拖动仅预览，放手 Seek；头部拖动收起，避免与进度条争夺手势。歌词仅按文件时间戳逐行同步，不虚构逐字精度。
 

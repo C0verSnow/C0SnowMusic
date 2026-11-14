@@ -60,10 +60,22 @@ import SwiftData
 
     func importTestFixturesIfRequested() async {
         #if DEBUG
-        guard ProcessInfo.processInfo.arguments.contains("--fixture-library"), let library else { return }
+        let arguments = ProcessInfo.processInfo.arguments
+        guard arguments.contains("--fixture-library") || arguments.contains("--picker-fixture"), let library else { return }
         if let url = Bundle.main.url(forResource: "Test Tone", withExtension: "wav", subdirectory: "Fixtures") {
-            do { try await library.importOne(url) }
-            catch { library.error = error.localizedDescription }
+            do {
+                if arguments.contains("--picker-fixture") {
+                    let destination = URL.documentsDirectory.appending(path: "Test Tone.wav")
+                    try FileManager.default.createDirectory(at: .documentsDirectory, withIntermediateDirectories: true)
+                    if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
+                    try FileManager.default.copyItem(at: url, to: destination)
+                    if let lrc = Bundle.main.url(forResource: "Fixture", withExtension: "lrc", subdirectory: "Fixtures") {
+                        let lyricsURL = URL.documentsDirectory.appending(path: "Fixture.lrc")
+                        if FileManager.default.fileExists(atPath: lyricsURL.path) { try FileManager.default.removeItem(at: lyricsURL) }
+                        try FileManager.default.copyItem(at: lrc, to: lyricsURL)
+                    }
+                } else { try await library.importOne(url) }
+            } catch { library.error = error.localizedDescription }
         }
         #endif
     }

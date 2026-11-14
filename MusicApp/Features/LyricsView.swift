@@ -46,18 +46,17 @@ struct LyricsView: View {
         }
         .navigationTitle("歌词").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .topBarLeading) { Button("导入 LRC", systemImage: "plus") { importing = true } } }
-        .fileImporter(isPresented: $importing, allowedContentTypes: [UTType(filenameExtension: "lrc") ?? .plainText, .plainText]) { result in
-            guard let song = playback.currentSong else { return }
-            switch result {
-            case .success(let url):
+        .sheet(isPresented: $importing) {
+            DocumentImportPicker(types: [UTType(filenameExtension: "lrc") ?? .plainText, .plainText]) { urls in
+                importing = false
+                guard let song = playback.currentSong, let url = urls.first else { return }
                 Task {
                     do {
                         let lyrics = try await library.importer.readLyrics(url)
                         library.transaction { song.lyrics = lyrics }
                     } catch { library.error = error.localizedDescription }
                 }
-            case .failure(let error): library.error = error.localizedDescription
-            }
+            } onCancel: { importing = false }
         }
     }
 }
