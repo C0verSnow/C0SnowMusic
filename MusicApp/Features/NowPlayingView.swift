@@ -19,13 +19,13 @@ struct NowPlayingView: View {
         GeometryReader { geometry in
             if let song = playback.currentSong {
                 ScrollView {
-                    VStack(spacing: 26) {
+                    VStack(spacing: max(12, min(26, geometry.size.height * 0.025))) {
                         Button("收起播放器", systemImage: "chevron.down") { dismiss() }
                             .labelStyle(.iconOnly).font(.title3.bold()).frame(width: 64, height: 44)
                             .accessibilityIdentifier("collapsePlayer")
                         ArtworkView(id: song.artworkID, thumbnail: false, cornerRadius: 14)
                             .aspectRatio(1, contentMode: .fit)
-                            .frame(maxWidth: min(geometry.size.width - 64, geometry.size.height * 0.40))
+                            .frame(maxWidth: min(geometry.size.width - 64, geometry.size.height * 0.35))
                             .shadow(color: .black.opacity(0.3), radius: 24, y: 16)
                             .scaleEffect(playback.isPlaying || reduceMotion ? 1 : 0.94)
                             .animation(reduceMotion ? nil : .spring(duration: 0.45), value: playback.isPlaying)

@@ -24,7 +24,10 @@ struct ArtworkView: View {
         .accessibilityHidden(true)
         .task(id: "\(id ?? "")-\(thumbnail)") {
             image = nil
-            if let id { image = await ArtworkCache.shared.load(id: id, files: library.files, thumbnail: thumbnail)?.image }
+            if let id {
+                let loaded = await ArtworkCache.shared.load(id: id, files: library.files, thumbnail: thumbnail)?.image
+                if !Task.isCancelled { image = loaded }
+            }
         }
     }
 }

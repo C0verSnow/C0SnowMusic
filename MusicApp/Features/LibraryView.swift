@@ -11,13 +11,13 @@ struct LibraryView: View {
     var body: some View {
         List {
             Section {
-                NavigationLink("播放列表", systemImage: "music.note.list", value: LibraryRoute.playlists)
-                NavigationLink("艺术家", systemImage: "music.mic", value: LibraryRoute.artists)
-                NavigationLink("专辑", systemImage: "square.stack", value: LibraryRoute.albums)
-                NavigationLink("歌曲", systemImage: "music.note", value: LibraryRoute.songs(.all))
-                NavigationLink("流派", systemImage: "guitars", value: LibraryRoute.genres)
-                NavigationLink("最近播放", systemImage: "clock", value: LibraryRoute.songs(.history))
-                NavigationLink("收藏歌曲", systemImage: "star", value: LibraryRoute.songs(.favorites))
+                NavigationLink(value: LibraryRoute.playlists) { Label("播放列表", systemImage: "music.note.list") }
+                NavigationLink(value: LibraryRoute.artists) { Label("艺术家", systemImage: "music.mic") }
+                NavigationLink(value: LibraryRoute.albums) { Label("专辑", systemImage: "square.stack") }
+                NavigationLink(value: LibraryRoute.songs(.all) { Label("歌曲", systemImage: "music.note") })
+                NavigationLink(value: LibraryRoute.genres) { Label("流派", systemImage: "guitars") }
+                NavigationLink(value: LibraryRoute.songs(.history) { Label("最近播放", systemImage: "clock") })
+                NavigationLink(value: LibraryRoute.songs(.favorites) { Label("收藏歌曲", systemImage: "star") })
             }
             Section("最近添加") {
                 if library.songs.isEmpty { EmptyLibraryView().listRowSeparator(.hidden) }

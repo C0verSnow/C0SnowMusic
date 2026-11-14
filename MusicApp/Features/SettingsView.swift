@@ -22,7 +22,14 @@ struct SettingsView: View {
             Section("本地存储") {
                 LabeledContent("歌曲", value: "\(library.songs.count)")
                 LabeledContent("音频文件", value: ByteCountFormatter.string(fromByteCount: library.songs.reduce(0) { $0 + $1.fileSize }, countStyle: .file))
-                Toggle("音乐文件不参与设备备份", isOn: $excludeBackup).disabled(changingBackup)
+                Toggle("音乐文件不参与设备备份", isOn: Binding(get: { excludeBackup }, set: { new in
+                    changingBackup = true
+                    Task {
+                        do { try await library.importer.setBackupExcluded(new); excludeBackup = new }
+                        catch { library.error = error.localizedDescription }
+                        changingBackup = false
+                    }
+                })).disabled(changingBackup)
                 Text("默认保留设备备份。开启后，重新安装应用或更换设备时需要自行恢复原始音乐文件。")
                     .font(.footnote).foregroundStyle(.secondary)
                 Button("重新导入仅移除记录的文件") { library.restoreRemovedFiles() }.disabled(library.importProgress != nil)
@@ -40,13 +47,5 @@ struct SettingsView: View {
         }
         .navigationTitle("设置").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
-        .onChange(of: excludeBackup) { old, new in
-            changingBackup = true
-            Task {
-                do { try await library.importer.setBackupExcluded(new) }
-                catch { excludeBackup = old; library.error = error.localizedDescription }
-                changingBackup = false
-            }
-        }
     }
 }

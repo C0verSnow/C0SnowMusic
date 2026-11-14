@@ -48,7 +48,7 @@ import UIKit
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    private func register(_ command: MPRemoteCommand, action: @escaping @MainActor () -> Void) {
+    private func register(_ command: MPRemoteCommand, action: @escaping @MainActor @Sendable () -> Void) {
         let target = command.addTarget { _ in
             Task { @MainActor in action() }
             return .success

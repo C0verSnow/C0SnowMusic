@@ -12,12 +12,14 @@ import SwiftData
     var artists: [Artist] = []
     var playlists: [Playlist] = []
     var items: [PlaylistItem] = []
+    var revision = 0
     var error: String?
     var importProgress: Double?
     var importStatus = ""
     var importFailures: [String] = []
     var duplicatePolicy = DuplicatePolicy.skip
     @ObservationIgnored private var importTask: Task<Void, Never>?
+    @ObservationIgnored private var deferredImports: [URL] = []
 
     init(context: ModelContext, files: LibraryFiles) throws {
         self.context = context; self.files = files
@@ -33,10 +35,11 @@ import SwiftData
         artists = try context.fetch(FetchDescriptor<Artist>(sortBy: [SortDescriptor(\.name)]))
         playlists = try context.fetch(FetchDescriptor<Playlist>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))
         items = try context.fetch(FetchDescriptor<PlaylistItem>(sortBy: [SortDescriptor(\.sortOrder)]))
+        revision += 1
     }
 
     func startImport(_ urls: [URL]) {
-        guard importTask == nil else { return }
+        guard importTask == nil else { deferredImports += urls; return }
         importProgress = 0; importFailures = []
         importTask = Task {
             var imported = 0; var skipped = 0
@@ -51,6 +54,8 @@ import SwiftData
             }
             importStatus = "\(Task.isCancelled ? "已取消。" : "")已导入 \(imported) 首，跳过 \(skipped) 首，失败 \(importFailures.count) 首。"
             importProgress = nil; importTask = nil
+            let pending = deferredImports; deferredImports = []
+            if !Task.isCancelled, !pending.isEmpty { startImport(pending) }
         }
     }
 
@@ -64,13 +69,14 @@ import SwiftData
             context.insert(song)
             assignGroups(song)
             try context.save()
-            try refresh()
-            return true
         } catch {
             context.rollback()
             await importer.discard(audio)
             throw error
         }
+        if url.deletingLastPathComponent() == files.url(for: "Removed") { try? FileManager.default.removeItem(at: url) }
+        try refresh()
+        return true
     }
 
     func transaction(_ change: () throws -> Void) {
@@ -112,16 +118,17 @@ import SwiftData
             context.delete(song)
             pruneGroups(excluding: songID)
             try context.save()
-            playback.removeSong(songID)
-            try refresh()
-            if deleteFile, moved { try FileManager.default.removeItem(at: tombstone) }
         } catch {
             context.rollback()
             let movedURL = deleteFile ? tombstone : retained
             if moved, FileManager.default.fileExists(atPath: movedURL.path) { try? FileManager.default.moveItem(at: movedURL, to: source) }
             self.error = error.localizedDescription
             try? refresh()
+            return
         }
+        playback.removeSong(song.id)
+        if deleteFile, moved { try? FileManager.default.removeItem(at: tombstone) }
+        do { try refresh() } catch { self.error = error.localizedDescription }
     }
 
     func restoreRemovedFiles() {

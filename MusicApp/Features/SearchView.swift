@@ -30,7 +30,7 @@ struct SearchView: View {
         }
         .listStyle(.plain).navigationTitle("搜索")
         .searchable(text: $text, prompt: "歌曲、艺术家、专辑、播放列表")
-        .task(id: text + "\(library.songs.count)-\(library.playlists.count)") {
+        .task(id: text + "\(library.revision)") {
             searching = true
             do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
             let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
