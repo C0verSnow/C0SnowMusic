@@ -47,6 +47,10 @@ import XCTest
         app.buttons["完成"].tap()
         app.buttons["showLyrics"].tap()
         XCTAssertTrue(app.staticTexts["暂无歌词"].waitForExistence(timeout: 5))
+        app.buttons["lookupLyrics"].tap()
+        XCTAssertTrue(app.textFields["lookupTitle"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["lookupTitle"].value as? String, "Test Tone")
+        app.buttons["完成"].tap()
         app.buttons["导入 LRC"].tap()
         let lyricFile = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "Fixture")).firstMatch
         XCTAssertTrue(lyricFile.waitForExistence(timeout: 15))
@@ -54,6 +58,9 @@ import XCTest
         let lyricsOpen = app.buttons.matching(NSPredicate(format: "label IN %@", ["Open", "打开"])).firstMatch
         if lyricsOpen.waitForExistence(timeout: 2) { lyricsOpen.tap() }
         XCTAssertTrue(app.buttons["First line，跳到 0:00"].waitForExistence(timeout: 10))
+        let firstLine = app.buttons["lyric-line-0"]
+        firstLine.tap()
+        XCTAssertEqual(firstLine.value as? String, "当前歌词")
         captureScreen("Imported synchronized LRC")
         app.buttons["完成"].tap()
         collapse.tap()

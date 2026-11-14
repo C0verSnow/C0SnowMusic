@@ -25,7 +25,7 @@ struct MusicLookupView: View {
                 TextField("专辑（可选）", text: $album)
                 Button { requestID += 1 } label: {
                     HStack { Text("搜索歌词"); Spacer(); if searching { ProgressView() } }
-                }.disabled(searching || downloading != nil || title.trimmingCharacters(in: .whitespaces).isEmpty)
+                }.disabled(searching || downloading != nil || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Toggle("同时下载缺失的封面", isOn: $includeCover)
             } footer: {
                 Text("搜索会将歌名、艺术家和专辑发给 LRCLIB；封面查询使用 MusicBrainz 和 Cover Art Archive，不发送音频文件。")
@@ -53,10 +53,10 @@ struct MusicLookupView: View {
                             downloadTask = Task { await apply(match) }
                         } label: {
                             HStack {
-                                Text(match.text == nil ? "下载封面" : "使用此版本")
+                                Text(match.text == nil ? (song.artworkID == nil ? "下载封面" : "已有封面") : "使用此版本")
                                 if downloading == match.id { ProgressView() }
                             }
-                        }.disabled(downloading != nil || (match.text == nil && !includeCover))
+                        }.disabled(downloading != nil || (match.text == nil && (!includeCover || song.artworkID != nil)))
                     }.padding(.vertical, 6)
                 }
             }

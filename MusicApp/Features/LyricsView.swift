@@ -28,6 +28,8 @@ struct LyricsView: View {
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                     .buttonStyle(.plain).id(line.id)
+                                    .accessibilityIdentifier("lyric-line-\(line.id)")
+                                    .accessibilityValue(activeID == line.id ? "当前歌词" : "")
                                     .accessibilityLabel("\(line.text)，跳到 \(playbackTime(timeline.playbackTime(for: line)))")
                                 }
                             }.padding(28)
