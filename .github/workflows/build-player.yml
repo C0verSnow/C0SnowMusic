@@ -1,8 +1,10 @@
 name: Build and test native iOS player
 on:
   pull_request:
+    paths-ignore: ['**/*.md', 'docs/**']
   push:
     branches: [main, 'feature/issue-7-*']
+    paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
 concurrency:
   group: ios-${{ github.event.pull_request.head.ref || github.ref_name }}

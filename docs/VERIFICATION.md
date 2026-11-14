@@ -5,7 +5,9 @@
 - 本地只有 Command Line Tools，Swift 6.4 可用；没有完整 Xcode、iOS SDK 或连接的 iPhone。
 - 遵守仓库约定，没有执行本地构建、编译或会触发编译的测试。
 - `plutil -lint` 已检查 Xcode 工程与 Info.plist；`git diff --check` 已通过。
-- 远端 iOS 编译、模拟器测试：等待首次运行，结果会在本文件更新。
+- [远端 CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 全部通过，测试源码为 `5ca0723`：Xcode 26.3，iOS 26 模拟器，13 项单元/集成测试、2 项 UI 测试，以及未签名 iPhone Release 编译。
+- 已生成 `C0SnowMusic-unsigned.ipa`，用户已传到 iPhone；通过 iPhone Mirroring 操作心动签，已完成签名，正在安装与真机播放验收。
+- 集成测试先前发生的 SIGTRAP 已定位到 ModelContainer 生命周期；LibraryStore 明确持有容器后，同一组测试全部通过。临时诊断任务已移除。
 - 真机安装、听音、后台、锁屏、耳机和来电验收：未执行。
 
 ## 自动化覆盖
