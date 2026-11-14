@@ -2,15 +2,15 @@
 
 ## 当前证据
 
-- 本机只有 Command Line Tools，没有完整 Xcode 和 iOS SDK。本地没有编译、构建或运行会触发编译的测试；仅阅读代码，检查属性列表、资源、语法和差异。真机通过 iPhone Mirroring 操作，不是 USB 调试会话。
+- 本机只有 Command Line Tools，没有完整 Xcode 和 iOS SDK。本地没有编译、构建或运行会触发编译的测试；仅阅读代码，检查属性列表、资源、语法和差异。真机通过 iPhone Mirroring 操作，不是 USB 调试会话；本轮系统日志显示 iPhone OS 27.0（24A435）。
 - [CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 是早期源码的通过结果，不能代表本轮源码。
 - [CI 43609769276](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43609769276)：模拟器、iPhone Release、图标和 IPA 通过；21 项单元/集成有 1 项 MP3 歌词失败，2 项 UI 有 1 项因嵌套页面出现两个“完成”按钮失败。
 - [诊断 CI 43611483223](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43611483223)：2 项 UI 全通过，21 项单元/集成仍有 1 项 MP3 歌词失败。真实文件日志确定 `id3/TXXX` 的 `.info` 为 `USLT`，文本值正常；读取器已补认该别名，临时诊断已删除。
 - 修复提交 `55c0a10` 的 [CI 43612778897](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43612778897) 全通过；之后真机发现新的封面回调崩溃，不能据此宣称真机完成。
 - 真机已通过 Chrome 下载 1.0.1，用户从心动签导入，沿用现有证书和 Bundle ID 覆盖安装成功。Spotlight 显示指定图标；原歌曲和 2:35 进度保留，启动时保持暂停。
 - 真机搜索 Die For You / The Weeknd / Starboy / 4:20 成功，同步歌词保存并显示；点击首行跳到 0:28，播放时高亮与滚动跟随，偏移可设为延后 0.5 秒，测试后恢复为 0。
-- 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。准备 1.0.3 修复并补系统后台读取回归。
-- 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮完整锁屏、耳机和来电验收待新版安装后由用户配合。
+- 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。已在 1.0.3 / `5ab55d5` 把只读图片回调显式标为 `@Sendable`，并补系统后台读取回归；[CI 43614305475](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43614305475) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。
+- 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮 1.0.3 锁屏持续播放、封面、暂停和恢复已由用户确认正常；耳机和来电继续验收。
 
 ## 自动化覆盖
 
@@ -38,13 +38,16 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 - [ ] 检查无封面、嵌入封面、超大封面、中文日文文件名和长标题。
 - [ ] 模拟磁盘空间不足，确认报错与未完成文件清理。
 - [x] 退到主屏幕继续播放，控制中心暂停和恢复。
-- [ ] 锁屏持续播放，锁屏和耳机上一首/下一首/暂停。
-- [ ] 拔耳机暂停，来电中断恢复，蓝牙及 AirPlay 切换。
+- [x] 锁屏 30 秒持续播放，锁屏封面、暂停和恢复（用户确认）。
+- [ ] 锁屏和耳机上一首/下一首；耳机暂停控制。
+- [x] 耳机断开自动暂停，来电中断和挂断恢复（用户确认）。
+- [ ] 蓝牙及 AirPlay 路由切换的完整真机检查。
 - [ ] 强制退出和重新启动，音乐库、播放列表、队列与进度仍在，且不自动发声。
 - [ ] 不同 iPhone 尺寸、横屏、深浅色、最大字体、Reduce Motion、VoiceOver。
 - [x] Mini Player 展开、按钮收起、歌词点选跳转、高亮跟随和 0.5 秒校准。
 - [ ] 下拉收起、底栏滚动收缩、手动滚动暂停跟随的完整真机验收。
-- [ ] 1.0.2 覆盖安装后确认封面保存，重启和断网后歌词、封面和校准仍在。
+- [x] 1.0.3 覆盖安装后正常启动，原歌曲、进度和歌词保留，已下载的 Starboy 封面在 Mini Player 和全屏播放器显示，背景取色更新，未再次退出。
+- [ ] 真机断网、强制退出后确认歌词、封面和校准仍在。
 
 ## 已知限制与处理
 
@@ -61,3 +64,20 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 - 新增同步/纯文本/纯音乐、未知时长、相似歌名不同版本、封面艺人专辑匹配、Retry-After 和校准后高亮/Seek 同时钟测试。
 - 新增下载结果的磁盘持久化与原音频哈希不变验证；测试使用自造短文本、合成音和自造图片。
 - 新增 iPhone Release 产物图标配置检查。用户歌曲、完整歌词与真实专辑封面不进入测试仓库。
+
+## 1.0.3 真机复验
+
+- Chrome 下载、心动签应用内导入、沿用原证书和 Bundle ID 签名覆盖安装。已核对 1.0.3 / build 4。
+- 上一版已保存到本地的 Starboy 封面在新版本启动后显示；Mini Player、全屏封面和背景取色正常，系统封面链路没有再次触发原崩溃。原歌曲、进度和歌词仍在，启动保持暂停。
+- 已关闭镜像，由用户在实机播放并锁屏等待 30 秒。用户确认持续出声、锁屏封面、锁屏暂停和恢复均正常。
+- 用户确认耳机断开自动暂停、来电中断和挂断恢复均正常。其他格式因手机没有样本，由用户明确要求保留待办；离线强制重启另行记录。
+
+## 真机封面崩溃的证据
+
+2026-11-14 11:05（America/New_York），1.0.2 / build 3。用户确认 App 自己退出；通过手机「设置 → Analytics & Improvements → View Analytics Logs」读取对应记录。异常为 `EXC_BREAKPOINT / SIGTRAP`，触发线程 2；关键栈为 Swift actor 隔离检查、`RemoteCommandManager.update` 内图片闭包、`MPMediaItemArtwork jpegDataWithSize:`、系统 Now Playing 串行队列。
+
+该回调由旧 Objective-C API 保存，在主线程上下文创建的普通 Swift 闭包继承了 MainActor 隔离；系统后台请求图片时触发运行时断言。修复仅让只读图片回调显式成为 `@Sendable`，没有关闭并发检查，也没有把同步系统请求阻塞到主线程。
+
+现有下载持久化集成测试增加真实系统链路：保存自造封面，调用 PlaybackStore 刷新系统信息，再通过后台任务从 `MPNowPlayingInfoCenter` 取 `MPMediaItemArtwork.image(at:)`，确认能返回图片。没有用 mock 替代系统图片回调。原崩溃已经有真机日志；新回归与修复一起提交，未单独运行未修复版的新增测试，远端验证结果单独记录。
+
+参考：[Apple MPMediaItemArtwork](https://developer.apple.com/documentation/mediaplayer/mpmediaitemartwork/init(boundssize:requesthandler:))、[Swift 6 跨隔离回调说明](https://www.swift.org/migration/documentation/swift-6-concurrency-migration-guide/incrementaladoption/)。真实崩溃日志中的设备标识、证书和完整歌词未提交。
