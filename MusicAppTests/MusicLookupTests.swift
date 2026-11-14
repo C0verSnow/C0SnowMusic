@@ -63,6 +63,7 @@ final class MusicLookupTests: XCTestCase {
         {"release-groups":[{"id":"2f49b57a-705c-4bd6-ae22-b3446a2018f9","title":"Example album","artist-credit":[{"name":"Example artist"}]}]}
         """.utf8)
         let release = try XCTUnwrap(JSONDecoder().decode(CoverSearchResponse.self, from: data).groups.first)
+        XCTAssertEqual(release.artworkURL.absoluteString, "https://coverartarchive.org/release-group/2f49b57a-705c-4bd6-ae22-b3446a2018f9/front-500")
         XCTAssertTrue(release.matches(album: "Example album", artist: "example ARTIST"))
         XCTAssertFalse(release.matches(album: "Live album", artist: "Example artist"))
         XCTAssertFalse(release.matches(album: "Example album", artist: "Different artist"))

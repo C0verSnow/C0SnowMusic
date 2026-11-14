@@ -66,7 +66,7 @@ enum MetadataExtractor {
             guard let value = try? await item.load(.stringValue), !value.isEmpty else { continue }
             if lower.contains("txxx"), let attributes = try? await item.load(.extraAttributes),
                let description = attributes[.info] as? String,
-               ["lyrics", "unsyncedlyrics"].contains(description.lowercased()) {
+               ["lyrics", "unsyncedlyrics", "uslt"].contains(description.lowercased()) {
                 result.lyrics = value
                 continue
             }

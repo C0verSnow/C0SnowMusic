@@ -1,5 +1,4 @@
 import XCTest
-import AVFoundation
 import SwiftData
 import UIKit
 @testable import C0SnowMusic
@@ -47,19 +46,7 @@ import UIKit
             try await library.importOne(fixture("Fixture", ext: ext))
         }
         XCTAssertEqual(library.songs.count, 2)
-        for song in library.songs {
-            if !song.lyrics.contains("First line") {
-                let asset = AVURLAsset(url: library.files.url(for: song.fileRelativePath))
-                for format in try await asset.load(.availableMetadataFormats) {
-                    for item in try await asset.loadMetadata(for: format) {
-                        let value = try? await item.load(.stringValue)
-                        let attributes = try? await item.load(.extraAttributes)
-                        print("[DEBUG-id3-lookup] key=\(String(describing: item.key)) common=\(String(describing: item.commonKey)) identifier=\(String(describing: item.identifier)) value=\(String(describing: value)) attributes=\(String(describing: attributes))")
-                    }
-                }
-            }
-            XCTAssertTrue(song.lyrics.contains("First line"), song.format)
-        }
+        for song in library.songs { XCTAssertTrue(song.lyrics.contains("First line"), song.format) }
     }
 
     func testDuplicateBytesWithDifferentNamesAndKeepCopy() async throws {

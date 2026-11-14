@@ -75,6 +75,11 @@ struct CoverReleaseGroup: Decodable, Identifiable, Sendable {
     enum CodingKeys: String, CodingKey { case id, title; case artistCredit = "artist-credit" }
     struct ArtistCredit: Decodable, Sendable { let name: String; let joinphrase: String? }
 
+    // CAA rejects uppercase UUIDs even though UUID.uuidString emits uppercase.
+    var artworkURL: URL {
+        URL(string: "https://coverartarchive.org/release-group/\(id.uuidString.lowercased())/front-500")!
+    }
+
     func matches(album: String, artist: String) -> Bool {
         LyricsMatch.normalized(title) == LyricsMatch.normalized(album)
         && LyricsMatch.normalized(artistCredit.map { $0.name + ($0.joinphrase ?? "") }.joined()) == LyricsMatch.normalized(artist)
@@ -101,7 +106,7 @@ enum MusicLookupError: LocalizedError {
 
 actor MusicLookupClient {
     static let shared = MusicLookupClient()
-    private static let userAgent = "C0SnowMusic/1.0.1 (https://github.com/C0verSnow/C0SnowMusic)"
+    private static let userAgent = "C0SnowMusic/1.0.2 (https://github.com/C0verSnow/C0SnowMusic)"
     private let session: URLSession
     private var retryDates: [String: Date] = [:]
     private var lastMusicBrainzRequest = Date.distantPast
@@ -160,8 +165,7 @@ actor MusicLookupClient {
         let result = try JSONDecoder().decode(CoverSearchResponse.self, from: data)
         let groups = result.groups.filter { $0.matches(album: match.albumName, artist: match.artistName) }
         for group in groups {
-            let url = URL(string: "https://coverartarchive.org/release-group/\(group.id)/front-500")!
-            do { return try await fetch(url) }
+            do { return try await fetch(group.artworkURL) }
             catch MusicLookupError.unavailable(404) { continue }
         }
         throw MusicLookupError.noCover
