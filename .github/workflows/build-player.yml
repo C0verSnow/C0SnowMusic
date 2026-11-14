@@ -28,7 +28,7 @@ jobs:
           candidates = [(runtime, device) for runtime, values in devices.items() if 'iOS-26' in runtime for device in values if device['name'].startswith('iPhone')]
           if not candidates:
               raise SystemExit('An iOS 26 simulator runtime is required')
-          runtime, device = sorted(candidates, key=lambda item: (item[0], item[1]['name']))[-1]
+          runtime, device = sorted(candidates, key=lambda item: (item[0], item[1]['name'].startswith('iPhone 17'), item[1]['name']))[-1]
           with open(os.environ['GITHUB_ENV'], 'a') as output:
               output.write(f"IOS_SIMULATOR_ID={device['udid']}\n")
           print(runtime, device['name'], device['udid'])
@@ -37,14 +37,34 @@ jobs:
         run: |
           if ! command -v ffmpeg >/dev/null; then brew install ffmpeg; fi
           python3 scripts/make_audio_fixtures.py
-      - name: Build and run unit, audio integration, and UI tests
+      - name: Build simulator application and tests
         run: |
           mkdir -p build
           set -o pipefail
-          xcodebuild test -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+          xcodebuild build-for-testing -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+            -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
+      - name: Boot iOS simulator
+        timeout-minutes: 8
+        run: |
+          xcrun simctl boot "$IOS_SIMULATOR_ID" || true
+          xcrun simctl bootstatus "$IOS_SIMULATOR_ID" -b
+      - name: Run unit, audio integration, and UI tests
+        timeout-minutes: 15
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
             -parallel-testing-enabled NO -resultBundlePath build/Tests.xcresult \
+            -test-timeouts-enabled YES -default-test-execution-time-allowance 90 \
+            -maximum-test-execution-time-allowance 120 \
             -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/test.log
+      - name: Export UI screenshots
+        if: always()
+        run: |
+          if [ -d build/Tests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/Screenshots
+          fi
       - name: Build unsigned iPhone Release application
         run: |
           set -o pipefail

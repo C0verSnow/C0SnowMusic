@@ -40,10 +40,13 @@ import SwiftData
     func open() {
         do {
             let testing = ProcessInfo.processInfo.arguments.contains("--ui-testing")
-            let schema = Schema(versionedSchema: LibrarySchemaV1.self)
-            let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: testing, cloudKitDatabase: .none)
-            let container = try ModelContainer(for: schema, migrationPlan: LibraryMigrationPlan.self, configurations: [configuration])
             let files = testing ? LibraryFiles(root: URL.temporaryDirectory.appending(path: "C0SnowMusic-UITests-\(UUID())")) : LibraryFiles()
+            try files.createDirectories()
+            let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+            let configuration = testing
+                ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
+                : ModelConfiguration(schema: schema, url: files.url(for: "Library.store"), cloudKitDatabase: .none)
+            let container = try ModelContainer(for: schema, migrationPlan: LibraryMigrationPlan.self, configurations: [configuration])
             let library = try LibraryStore(context: container.mainContext, files: files)
             let playback = try PlaybackStore(library: library)
             self.container = container; self.library = library; self.playback = playback; error = nil

@@ -31,16 +31,22 @@ import XCTest
         let collapse = app.buttons["collapsePlayer"]
         XCTAssertTrue(collapse.waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["playerPlayPause"].exists)
+        captureScreen("Full screen player")
         app.buttons["showQueue"].tap()
         XCTAssertTrue(app.navigationBars["播放队列"].waitForExistence(timeout: 5))
+        captureScreen("Playback queue")
         app.buttons["完成"].tap()
         app.buttons["showLyrics"].tap()
         XCTAssertTrue(app.staticTexts["暂无歌词"].waitForExistence(timeout: 5))
         app.buttons["完成"].tap()
         collapse.tap()
         XCTAssertTrue(mini.waitForExistence(timeout: 5))
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Native library and mini player"
+        captureScreen("Native library and mini player")
+    }
+
+    private func captureScreen(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIApplication().screenshot())
+        attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
     }

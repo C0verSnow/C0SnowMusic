@@ -74,7 +74,7 @@ import SwiftData
             await importer.discard(audio)
             throw error
         }
-        if url.deletingLastPathComponent() == files.url(for: "Removed") { try? FileManager.default.removeItem(at: url) }
+        if url.deletingLastPathComponent().path == files.url(for: "Removed").path { try? FileManager.default.removeItem(at: url) }
         try refresh()
         return true
     }
@@ -107,13 +107,13 @@ import SwiftData
     }
 
     func remove(_ song: Song, deleteFile: Bool, playback: PlaybackStore) {
+        let songID = song.id
         let source = files.url(for: song.fileRelativePath)
         let tombstone = files.url(for: "Staging/deleting-\(song.id)")
         let retained = files.url(for: "Removed/\(song.id).\(source.pathExtension)")
         let moved = FileManager.default.fileExists(atPath: source.path)
         do {
             if moved { try FileManager.default.moveItem(at: source, to: deleteFile ? tombstone : retained) }
-            let songID = song.id
             for item in items where item.songID == songID { context.delete(item) }
             context.delete(song)
             pruneGroups(excluding: songID)
@@ -126,7 +126,7 @@ import SwiftData
             try? refresh()
             return
         }
-        playback.removeSong(song.id)
+        playback.removeSong(songID)
         if deleteFile, moved { try? FileManager.default.removeItem(at: tombstone) }
         do { try refresh() } catch { self.error = error.localizedDescription }
     }

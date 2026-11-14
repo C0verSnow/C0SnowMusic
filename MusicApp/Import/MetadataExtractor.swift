@@ -56,13 +56,20 @@ enum MetadataExtractor {
                 if result.artwork == nil { result.artwork = try? await item.load(.dataValue) }
                 continue
             }
+            if lower.contains("trkn") || lower.contains("disk") {
+                if let data = try? await item.load(.dataValue), data.count >= 4 {
+                    let number = Int(data[2]) << 8 | Int(data[3])
+                    if lower.contains("trkn") { result.track = number } else { result.disc = number }
+                }
+                continue
+            }
             guard let value = try? await item.load(.stringValue), !value.isEmpty else { continue }
             if lower == "title" || lower.contains("tit2") || lower.contains("©nam") { result.title = value }
             else if lower.contains("albumartist") || lower.contains("album_artist") || lower.contains("tpe2") || lower.contains("aart") { result.albumArtist = value }
             else if lower == "artist" || lower.contains("tpe1") || lower.contains("©art") { result.artist = value }
             else if lower.contains("albumname") || lower == "album" || lower.contains("talb") || lower.contains("©alb") { result.album = value }
-            else if lower.contains("lyric") || lower.contains("uslt") { result.lyrics = value }
-            else if lower.contains("genre") || lower.contains("tcon") || lower.contains("©gen") { result.genre = value }
+            else if lower.contains("lyric") || lower.contains("uslt") || lower.contains("©lyr") { result.lyrics = value }
+            else if lower.contains("genre") || lower.contains("tcon") || lower.contains("©gen") || lower.contains("gnre") { result.genre = value }
             else if lower.contains("year") || lower.contains("date") || lower.contains("tdrc") || lower.contains("tyer") || lower.contains("©day") { result.year = Int(value.prefix(4)) }
             else if lower.contains("track") || lower.contains("trck") { result.track = Int(value.split(separator: "/").first ?? "") ?? 0 }
             else if lower.contains("disc") || lower.contains("tpos") { result.disc = Int(value.split(separator: "/").first ?? "") ?? 0 }

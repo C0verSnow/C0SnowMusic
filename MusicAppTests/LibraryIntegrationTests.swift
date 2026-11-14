@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import UIKit
 @testable import C0SnowMusic
 
 @MainActor final class LibraryIntegrationTests: XCTestCase {
@@ -121,6 +122,50 @@ import SwiftData
         XCTAssertTrue(library.albums.isEmpty)
         XCTAssertTrue(library.artists.isEmpty)
         XCTAssertNil(library.error)
+    }
+
+    func testSharedPlaybackStoreAutomaticallyAdvancesQueue() async throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.files.root) }
+        try await library.importOne(fixture("Test Tone", ext: "wav"))
+        try await library.importOne(fixture("Fixture", ext: "flac"))
+        let songs = library.songs
+        let player = try PlaybackStore(library: library, systemIntegration: false)
+        player.play(songs)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(12))
+        while player.currentSong?.id != songs[1].id, player.playbackError == nil, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertNil(player.playbackError)
+        XCTAssertEqual(player.currentSong?.id, songs[1].id)
+        XCTAssertEqual(player.currentQueueIndex, 1)
+        player.pause()
+        player.seek(to: 1.25)
+        try await Task.sleep(for: .milliseconds(400))
+        XCTAssertFalse(player.isPlaying)
+        XCTAssertEqual(player.currentTime, 1.25, accuracy: 0.1)
+        player.saveSession()
+        let session = try XCTUnwrap(library.context.fetch(FetchDescriptor<PlaybackSession>()).first)
+        XCTAssertEqual(session.currentPosition, 1.25, accuracy: 0.1)
+    }
+
+    func testArtworkDownsamplingAndDiskCache() async throws {
+        let files = LibraryFiles(root: URL.temporaryDirectory.appending(path: UUID().uuidString))
+        try files.createDirectories()
+        defer { try? FileManager.default.removeItem(at: files.root) }
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 2_000, height: 2_000), format: format)
+        let data = renderer.jpegData(withCompressionQuality: 0.9) { context in
+            UIColor.systemBlue.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 2_000, height: 2_000))
+        }
+        let cache = ArtworkCache()
+        try await cache.save(data, id: "cover", files: files)
+        let full = await cache.load(id: "cover", files: files, thumbnail: false)
+        let thumbnail = await ArtworkCache().load(id: "cover", files: files, thumbnail: true)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(full?.image.cgImage).width, 1_024)
+        XCTAssertLessThanOrEqual(try XCTUnwrap(thumbnail?.image.cgImage).width, 160)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: files.artworkURL("cover", thumbnail: true).path))
     }
 
     func testCancelledImportDoesNotCommit() async throws {

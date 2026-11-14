@@ -18,7 +18,10 @@ struct PlaylistsView: View {
                         }
                     }
                 }
-            }.onDelete { offsets in for index in offsets { library.deletePlaylist(library.playlists[index]) } }
+            }.onDelete { offsets in
+                let selected = offsets.map { library.playlists[$0] }
+                for playlist in selected { library.deletePlaylist(playlist) }
+            }
         }
         .navigationTitle("播放列表")
         .alert("新建播放列表", isPresented: $creating) {
