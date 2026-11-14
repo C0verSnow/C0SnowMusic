@@ -50,7 +50,7 @@ import XCTest
         app.buttons["lookupLyrics"].tap()
         XCTAssertTrue(app.textFields["lookupTitle"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["lookupTitle"].value as? String, "Test Tone")
-        app.buttons["完成"].tap()
+        app.navigationBars["歌词与封面"].buttons["完成"].tap()
         app.buttons["导入 LRC"].tap()
         let lyricFile = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "Fixture")).firstMatch
         XCTAssertTrue(lyricFile.waitForExistence(timeout: 15))
