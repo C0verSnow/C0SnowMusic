@@ -178,6 +178,28 @@ import UIKit
         XCTAssertTrue(FileManager.default.fileExists(atPath: files.artworkURL("cover", thumbnail: true).path))
     }
 
+    func testDownloadedLyricsAndArtworkPersistWithoutChangingAudio() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = try makeLibrary(root: root)
+        try await library.importOne(fixture("Test Tone", ext: "wav"))
+        let song = try XCTUnwrap(library.songs.first)
+        let originalHash = song.fileHash
+        library.transaction { song.lyrics = "[00:01.00]First line" }
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let cover = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).jpegData(withCompressionQuality: 0.9) { context in
+            UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
+        }
+        try await library.setDownloadedCover(song, data: cover)
+        let restored = try makeLibrary(root: root)
+        let saved = try XCTUnwrap(restored.songs.first)
+        XCTAssertEqual(saved.lyrics, "[00:01.00]First line")
+        let artworkID = try XCTUnwrap(saved.artworkID)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: restored.files.artworkURL(artworkID).path))
+        XCTAssertEqual(try LibraryFiles.hash(restored.files.url(for: saved.fileRelativePath)), originalHash)
+    }
+
     func testCancelledImportDoesNotCommit() async throws {
         let library = try makeLibrary()
         defer { try? FileManager.default.removeItem(at: library.files.root) }

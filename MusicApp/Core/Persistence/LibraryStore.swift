@@ -204,6 +204,18 @@ import SwiftData
         } catch { self.error = error.localizedDescription }
     }
 
+    func setDownloadedCover(_ song: Song, data: Data) async throws {
+        let id = UUID().uuidString
+        guard try await ArtworkCache.shared.save(data, id: id, files: files) else { throw MusicLookupError.invalidResponse }
+        transaction {
+            song.artworkID = id
+            if song.albumTitle != "未知专辑", let album = albums.first(where: { $0.id == song.albumID }) {
+                album.artworkID = id
+            }
+        }
+        if let error { throw NSError(domain: "MusicLibrary", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
+    }
+
     private func assignGroups(_ song: Song) {
         let allArtists = (try? context.fetch(FetchDescriptor<Artist>())) ?? []
         let artist = allArtists.first { $0.name == song.artist } ?? Artist(name: song.artist)

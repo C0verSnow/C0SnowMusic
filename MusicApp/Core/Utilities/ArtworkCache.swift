@@ -33,13 +33,16 @@ actor ArtworkCache {
         return ArtworkPayload(image: image, tint: tint)
     }
 
-    func save(_ data: Data, id: String, files: LibraryFiles) throws {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return }
+    @discardableResult func save(_ data: Data, id: String, files: LibraryFiles) throws -> Bool {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return false }
+        var saved = 0
         for (pixels, thumbnail) in [(1_024, false), (160, true)] {
             if let image = Self.downsample(source, pixels: pixels), let jpeg = UIImage(cgImage: image).jpegData(compressionQuality: 0.85) {
                 try jpeg.write(to: files.artworkURL(id, thumbnail: thumbnail), options: .atomic)
+                saved += 1
             }
         }
+        return saved == 2
     }
 
     private static func downsample(_ source: CGImageSource, pixels: Int) -> CGImage? {

@@ -25,3 +25,14 @@ enum LRCParser {
         return entries.sorted { $0.0 < $1.0 }.enumerated().map { LyricLine(id: $0.offset, time: $0.element.0, text: $0.element.1) }
     }
 }
+
+struct LyricTimeline {
+    let lines: [LyricLine]
+    var offset: Double = 0
+
+    func activeLine(at playbackTime: Double) -> Int? {
+        lines.last { $0.time + offset <= playbackTime }?.id
+    }
+
+    func playbackTime(for line: LyricLine) -> Double { max(0, line.time + offset) }
+}

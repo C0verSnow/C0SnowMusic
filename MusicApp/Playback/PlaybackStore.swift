@@ -134,6 +134,8 @@ import SwiftData
 
     func song(for entry: QueueEntry) -> Song? { library.songs.first { $0.id == entry.songID } }
 
+    func refreshMediaInfo() { remote.update(self) }
+
     func saveSession() {
         session.currentSongID = currentSong?.id; session.currentPosition = currentTime
         session.repeatMode = repeatMode.rawValue; session.shuffleEnabled = shuffleEnabled

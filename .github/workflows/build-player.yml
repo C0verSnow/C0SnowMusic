@@ -52,6 +52,19 @@ jobs:
           xcodebuild build -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
             -configuration Release -destination 'generic/platform=iOS' \
             -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/device-build.log
+      - name: Verify packaged iPhone app icon
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          from pathlib import Path
+          app = Path('DerivedData/Build/Products/Release-iphoneos/C0SnowMusic.app')
+          with (app / 'Info.plist').open('rb') as file:
+              info = plistlib.load(file)
+          primary = info['CFBundleIcons']['CFBundlePrimaryIcon']
+          assert primary['CFBundleIconName'] == 'AppIcon', primary
+          assert (app / 'Assets.car').is_file()
+          print('iPhone Release includes AppIcon and compiled asset catalog')
+          PY
       - name: Package unsigned IPA for on-device signing
         run: |
           mkdir -p build/Payload

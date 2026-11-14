@@ -1,6 +1,6 @@
 # C0SnowMusic
 
-iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。无需账号，不接入在线曲库，不上传音乐。
+iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。无需账号，不接入在线曲库，不上传音乐。播放和资料库离线使用；歌词和封面可由用户主动联网查询。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
@@ -37,6 +37,23 @@ iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、Sw
 首段解码通过不代表整份文件无损坏。不同容器、编码、位深、采样率和设备组合必须实际播放验证。系统无法解码的文件会明确报错，处理办法是转换为 ALAC、M4A 或 WAV；当前没有引入额外解码器。FLAC 另有独立 Vorbis Comment / Picture 读取器，补充系统未暴露的标签。缺少元数据时使用原始文件名、「未知艺术家」「未知专辑」和中性封面。
 
 远端测试生成三秒合成音，验证真实导入和 AVPlayer 播放推进、暂停、Seek、结束事件，包含 MP3、FLAC、AAC、ALAC、WAV、AIFF 和 24-bit/96 kHz 双声道 FLAC。完整结果及尚未验收项见 [测试与验收](docs/VERIFICATION.md)。未经过真机测试的格式不能据此声称已在所有 iPhone 完整支持。
+
+## 下载歌词、封面和校准时间
+
+全屏播放器打开「歌词」，点击「在线查找歌词与封面」或底部搜索按钮。歌名和艺术家可编辑；缺少标签但文件名形如 `艺术家 – 歌名` 时会预填这两个字段。
+
+1. 点击「搜索歌词」。优先按歌名、歌手、专辑和音频真实时长精确查询 LRCLIB，找不到合适同步版本再列出搜索候选。
+2. 核对专辑和录音版本，选择「使用此版本」。同步歌词保存为带时间戳的 LRC；没有时间戳时显示纯文本，不伪造同步。
+3. 默认同时下载缺失的封面，来源为 MusicBrainz / Cover Art Archive。已有封面保留；封面服务失败不会撤销已经保存的歌词。
+4. 在「歌词时间校准」里，可按 0.5 秒调整提前或延后，范围 ±30 秒。高亮和点行跳转使用同一个偏移量，并按歌曲保存。LRC 自带 offset 同样生效。
+
+下载后歌词和封面留在本地，关闭、重启或断网仍可使用。只有主动搜索/下载时才向服务发送歌名、艺术家、专辑和时长；不会上传音频。429/503 的 Retry-After 会阻止过早请求，网络失败可以重试。
+
+本次参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，实现为原生 Swift URLSession，没有引入 Python 运行时。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
+
+## 应用图标
+
+按用户提供的 `Apple Music-iOS-512x512.png` 生成图标。源文件位于 `Design/AppIconSource.png`；1024px 无透明图片位于 AppIcon.appiconset，并在工程中指定 `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`。修改源图后，在 macOS 用 `osascript -l JavaScript scripts/make_app_icon.js <仓库绝对路径>` 重新生成，不手改生成文件。
 
 ## 文件与隐私
 

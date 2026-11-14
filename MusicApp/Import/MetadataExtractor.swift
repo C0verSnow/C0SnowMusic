@@ -64,6 +64,12 @@ enum MetadataExtractor {
                 continue
             }
             guard let value = try? await item.load(.stringValue), !value.isEmpty else { continue }
+            if lower.contains("txxx"), let attributes = try? await item.load(.extraAttributes),
+               let description = attributes[.info] as? String,
+               ["lyrics", "unsyncedlyrics"].contains(description.lowercased()) {
+                result.lyrics = value
+                continue
+            }
             if lower == "title" || lower.contains("tit2") || lower.contains("©nam") { result.title = value }
             else if lower.contains("albumartist") || lower.contains("album_artist") || lower.contains("tpe2") || lower.contains("aart") { result.albumArtist = value }
             else if lower == "artist" || lower.contains("tpe1") || lower.contains("©art") { result.artist = value }

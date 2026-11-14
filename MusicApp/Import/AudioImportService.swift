@@ -62,8 +62,7 @@ actor AudioImportService {
         try Task.checkCancellation()
         var artworkID: String?
         if let artwork = metadata.artwork {
-            try await ArtworkCache.shared.save(artwork, id: id.uuidString, files: files)
-            artworkID = id.uuidString
+            if try await ArtworkCache.shared.save(artwork, id: id.uuidString, files: files) { artworkID = id.uuidString }
         }
         metadata.artwork = nil
         try Task.checkCancellation()

@@ -1,6 +1,6 @@
 # 参考来源与许可
 
-本应用没有第三方运行时依赖，没有复制参考项目源码或品牌素材。保留仓库已有 MIT LICENSE 的版权声明。Apple 系统框架和 SF Symbols 按其平台条款使用。
+本应用没有第三方运行时依赖，没有复制参考项目源码。应用图标按用户明确提供的图片生成。保留仓库已有 MIT LICENSE 的版权声明。Apple 系统框架和 SF Symbols 按其平台条款使用。
 
 开发前通过 GitHub 检索 `music player language:Swift`，并实际克隆、阅读五个仓库的 README、许可证、构建设置和相关源码：
 
@@ -17,3 +17,5 @@ GitHub 核对时 Petrichor 为 1,770 stars，最近提交 2026-11-11；近期 is
 取舍：优先采用 Apple 官方组件，避免演示项目中的静态歌曲、空按钮和旧 UIKit 私有行为。Petrichor 维护活跃但主要面向 macOS，且完整音频依赖会扩大本项目体积，因此只采用模块设计经验。Kaset 使用隐藏 WebView 播放，不适合本地音频核心。
 
 CI 工具：GitHub 官方 checkout / upload-artifact 和 MIT 许可的 maxim-lobanov/setup-xcode；FFmpeg 只在远端 CI 生成非版权音频夹具，不链接到应用，不分发第三方音频样本。
+
+歌词与封面在线查询的来源、MIT 项目和数据使用范围见 [LYRICS_RESEARCH.md](LYRICS_RESEARCH.md)。查询内容只按用户操作保存到设备，不把歌曲、歌词全文和专辑图提交为仓库测试素材。
