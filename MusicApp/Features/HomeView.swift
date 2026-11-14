@@ -66,7 +66,7 @@ struct DiscoverView: View {
             Section("浏览收藏") {
                 NavigationLink(value: LibraryRoute.albums) { Label("全部专辑", systemImage: "square.stack.fill") }
                 NavigationLink(value: LibraryRoute.artists) { Label("所有艺术家", systemImage: "music.mic") }
-                NavigationLink(value: LibraryRoute.songs(.recent) { Label("最近添加", systemImage: "clock.badge.plus") })
+                NavigationLink(value: LibraryRoute.songs(.recent)) { Label("最近添加", systemImage: "clock.badge.plus") }
             }
             Section("流派") {
                 ForEach(Array(Set(library.songs.map(\.genre))).sorted(), id: \.self) { genre in
