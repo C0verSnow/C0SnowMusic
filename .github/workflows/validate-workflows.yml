@@ -14,3 +14,39 @@ jobs:
         run: plutil -lint MusicApp/Info.plist C0SnowMusic.xcodeproj/project.pbxproj
       - name: Check whitespace
         run: git diff-tree --check HEAD
+
+  diagnose-import-crash:
+    runs-on: macos-15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - name: Read previous import crash evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run download 43599721127 --repo C0verSnow/C0SnowMusic --name iOS-test-evidence --dir evidence
+          xcrun xcresulttool get test-results summary --path evidence/Tests.xcresult
+          xcrun xcresulttool export diagnostics --path evidence/Tests.xcresult --output-path diagnostics
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for file in Path('diagnostics').rglob('*'):
+              if file.suffix == '.ips':
+                  text = file.read_text(errors='replace')
+                  decoder = json.JSONDecoder()
+                  try:
+                      first, end = decoder.raw_decode(text)
+                      report = json.loads(text[end:]) if text[end:].strip() else first
+                      print('[DEBUG-import-crash]', file.name, report.get('exception'), report.get('termination'))
+                      for thread in report.get('threads', []):
+                          if thread.get('triggered'):
+                              print(json.dumps(thread, ensure_ascii=False)[:10000])
+                  except ValueError:
+                      print(text[:10000])
+              elif file.suffix == '.crash':
+                  print('[DEBUG-import-crash]', file.name, file.read_text(errors='replace')[:16000])
+          PY

@@ -44,6 +44,24 @@ jobs:
           xcodebuild build-for-testing -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
             -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
+      - name: Build unsigned iPhone Release application
+        run: |
+          set -o pipefail
+          xcodebuild build -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
+            -configuration Release -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/device-build.log
+      - name: Package unsigned IPA for on-device signing
+        run: |
+          mkdir -p build/Payload
+          ditto DerivedData/Build/Products/Release-iphoneos/C0SnowMusic.app build/Payload/C0SnowMusic.app
+          ditto -c -k --keepParent build/Payload build/C0SnowMusic-unsigned.ipa
+          rm -rf build/Payload
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: C0SnowMusic-unsigned-iPhone
+          path: build/C0SnowMusic-unsigned.ipa
+          if-no-files-found: error
       - name: Boot iOS simulator
         timeout-minutes: 8
         run: |
@@ -65,23 +83,13 @@ jobs:
           if [ -d build/Tests.xcresult ]; then
             xcrun xcresulttool export attachments --path build/Tests.xcresult --output-path build/Screenshots
           fi
-      - name: Build unsigned iPhone Release application
-        run: |
-          set -o pipefail
-          xcodebuild build -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
-            -configuration Release -destination 'generic/platform=iOS' \
-            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/device-build.log
       - name: Upload test evidence and logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: iOS-test-evidence
           path: |
-            build/
+            build/*.log
+            build/*.xcresult/
+            build/Screenshots/
           if-no-files-found: warn
-      - name: Upload unsigned device application
-        uses: actions/upload-artifact@v4
-        with:
-          name: C0SnowMusic-unsigned-iPhone
-          path: DerivedData/Build/Products/Release-iphoneos/C0SnowMusic.app/
-          if-no-files-found: error

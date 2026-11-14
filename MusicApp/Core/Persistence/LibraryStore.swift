@@ -4,6 +4,7 @@ import Observation
 import SwiftData
 
 @MainActor @Observable final class LibraryStore {
+    let container: ModelContainer
     let context: ModelContext
     let files: LibraryFiles
     let importer: AudioImportService
@@ -22,6 +23,7 @@ import SwiftData
     @ObservationIgnored private var deferredImports: [URL] = []
 
     init(context: ModelContext, files: LibraryFiles) throws {
+        container = context.container
         self.context = context; self.files = files
         importer = AudioImportService(files: files)
         context.autosaveEnabled = false
