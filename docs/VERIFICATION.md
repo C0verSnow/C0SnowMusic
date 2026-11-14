@@ -2,16 +2,15 @@
 
 ## 当前证据
 
-- 本地只有 Command Line Tools，Swift 6.4 可用；没有完整 Xcode、iOS SDK 或连接的 iPhone。
-- 遵守仓库约定，没有执行本地构建、编译或会触发编译的测试。
-- `plutil -lint` 已检查 Xcode 工程与 Info.plist；`git diff --check` 已通过。
-- [远端 CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 全部通过，测试源码为 `5ca0723`：Xcode 26.3，iOS 26 模拟器，13 项单元/集成测试、2 项 UI 测试，以及未签名 iPhone Release 编译。
-- 已生成 `C0SnowMusic-unsigned.ipa`，用户已传到 iPhone；通过 iPhone Mirroring 操作心动签，已完成签名，正在安装与真机播放验收。
-- 集成测试先前发生的 SIGTRAP 已定位到 ModelContainer 生命周期；LibraryStore 明确持有容器后，同一组测试全部通过。临时诊断任务已移除。
-- 真机：通过 iPhone Mirroring 和心动签签名安装，用户确认《The Weeknd – Die For You.mp3》已导入且正常播放。
-- 新图标、在线歌词/封面、MP3 内嵌歌词修复和时间校准：等待本轮远端及真机回归；不把旧源码的通过结果当成本轮通过。
-- 实际 HTTP 查询已确认 Die For You / The Weeknd / Starboy / 260 秒有同步歌词。MusicBrainz 已返回对应 Starboy release-group，期间也曾返回 503；需分别处理歌词成功与封面服务失败。
-- 后台、控制中心、锁屏、耳机和来电完整验收：待执行。
+- 本机只有 Command Line Tools，没有完整 Xcode 和 iOS SDK。本地没有编译、构建或运行会触发编译的测试；仅阅读代码，检查属性列表、资源、语法和差异。真机通过 iPhone Mirroring 操作，不是 USB 调试会话。
+- [CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 是早期源码的通过结果，不能代表本轮源码。
+- [CI 43609769276](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43609769276)：模拟器、iPhone Release、图标和 IPA 通过；21 项单元/集成有 1 项 MP3 歌词失败，2 项 UI 有 1 项因嵌套页面出现两个“完成”按钮失败。
+- [诊断 CI 43611483223](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43611483223)：2 项 UI 全通过，21 项单元/集成仍有 1 项 MP3 歌词失败。真实文件日志确定 `id3/TXXX` 的 `.info` 为 `USLT`，文本值正常；读取器已补认该别名，临时诊断已删除。
+- 修复提交 `55c0a10` 的 [CI 43612778897](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43612778897) 全通过；之后真机发现新的封面回调崩溃，不能据此宣称真机完成。
+- 真机已通过 Chrome 下载 1.0.1，用户从心动签导入，沿用现有证书和 Bundle ID 覆盖安装成功。Spotlight 显示指定图标；原歌曲和 2:35 进度保留，启动时保持暂停。
+- 真机搜索 Die For You / The Weeknd / Starboy / 4:20 成功，同步歌词保存并显示；点击首行跳到 0:28，播放时高亮与滚动跟随，偏移可设为延后 0.5 秒，测试后恢复为 0。
+- 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。准备 1.0.3 修复并补系统后台读取回归。
+- 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮完整锁屏、耳机和来电验收待新版安装后由用户配合。
 
 ## 自动化覆盖
 
@@ -38,11 +37,14 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 - [ ] 用大体积 FLAC 检查导入取消、内存、温度和滑动流畅度。
 - [ ] 检查无封面、嵌入封面、超大封面、中文日文文件名和长标题。
 - [ ] 模拟磁盘空间不足，确认报错与未完成文件清理。
-- [ ] 后台及锁屏持续播放、控制中心和耳机上一首/下一首/暂停。
+- [x] 退到主屏幕继续播放，控制中心暂停和恢复。
+- [ ] 锁屏持续播放，锁屏和耳机上一首/下一首/暂停。
 - [ ] 拔耳机暂停，来电中断恢复，蓝牙及 AirPlay 切换。
 - [ ] 强制退出和重新启动，音乐库、播放列表、队列与进度仍在，且不自动发声。
 - [ ] 不同 iPhone 尺寸、横屏、深浅色、最大字体、Reduce Motion、VoiceOver。
-- [ ] 展开/下拉收起、底栏滚动收缩、歌词点选和手动滚动暂停跟随。
+- [x] Mini Player 展开、按钮收起、歌词点选跳转、高亮跟随和 0.5 秒校准。
+- [ ] 下拉收起、底栏滚动收缩、手动滚动暂停跟随的完整真机验收。
+- [ ] 1.0.2 覆盖安装后确认封面保存，重启和断网后歌词、封面和校准仍在。
 
 ## 已知限制与处理
 
@@ -55,7 +57,7 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 
 ## 本轮补充验证
 
-- MP3 TXXX 的 Description 必须从 AVMetadataItem.extraAttributes[.info] 读取，不能只用 TXXX 标识猜内容；已保留触发失败的真实 MP3 回归测试。
+- MP3 TXXX 的 Description 必须从 AVMetadataItem.extraAttributes[.info] 读取，并识别 lyrics / unsyncedlyrics / USLT，不能只用 TXXX 标识猜内容；已保留触发失败的真实 MP3 回归测试。
 - 新增同步/纯文本/纯音乐、未知时长、相似歌名不同版本、封面艺人专辑匹配、Retry-After 和校准后高亮/Seek 同时钟测试。
 - 新增下载结果的磁盘持久化与原音频哈希不变验证；测试使用自造短文本、合成音和自造图片。
 - 新增 iPhone Release 产物图标配置检查。用户歌曲、完整歌词与真实专辑封面不进入测试仓库。

@@ -88,3 +88,11 @@ synchsafe 每字节只用低 7 位，四字节合成位移是 21、14、7、0。
 只按声明长度遍历帧，遇到 padding 或截断停止，不扫描音频去猜帧。压缩、加密帧跳过；分组帧和 v2.4 data-length indicator 帧可选择跳过，或按规范先移除它们的额外字段后再解释 payload。不要直接把这些额外字节当编码字节。本次不解析 `SYLT`、ID3v2.2、尾部或多标签合并，也不改写文件。这些是本次建议范围，不是宣称这些格式无效。
 
 验收由远端 CI 覆盖真正文件：FFmpeg 写入的 TXXX、USLT、中文 UTF-8/UTF-16、v2.3 普通长度与 v2.4 synchsafe 长度；扩展头或转义处理若实现，也应有自造内容的字节夹具。先确认 `.info` 修复是否已经恢复现有 MP3 夹具，再决定是否需要字节回退。
+
+## 真机与远端回归纠正
+
+Unix Timestamp：1794671904。没有执行本地编译或测试。
+
+- CI 43611483223 的真实 MP3 日志显示：identifier=`id3/TXXX`，commonKey 为空，stringValue 为自造歌词，`.info=USLT`，写入器为 `Lavf63.1.102`。之前仅比较 `lyrics` / `unsyncedlyrics` 仍会漏掉此文件；现增加 `uslt` 别名，保留原真实导入回归，不增加字节解析器。
+- 真机 1.0.1 已搜索并保存同步歌词；封面实际失败为 CAA 返回 400。对 [Starboy release-group](https://musicbrainz.org/release-group/ceaa5c39-91c7-4c8a-886c-85b11fa8a1f6) 的封面地址实查：小写 ID 返回 200、JPEG、89288 字节；同一 ID 转大写返回 400。Swift `UUID.uuidString` 默认大写，因此在 CAA URL 生成处转小写；回归检查服务实际使用的 URL。该现象由实际请求证明，不是把 MusicBrainz 的间歇性 503 误判为客户端参数问题。
+- 本轮另在 GitHub 搜索 `id3MetadataUserText` 的 Swift 实现，找到 Piwigo-Mobile、primuse、Cosmos-Music-Player 等代码位置；未复制代码，修复依据为 Apple 官方 API 与当前真实文件和 HTTP 诊断。
