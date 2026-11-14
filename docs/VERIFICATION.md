@@ -10,7 +10,7 @@
 - 真机已通过 Chrome 下载 1.0.1，用户从心动签导入，沿用现有证书和 Bundle ID 覆盖安装成功。Spotlight 显示指定图标；原歌曲和 2:35 进度保留，启动时保持暂停。
 - 真机搜索 Die For You / The Weeknd / Starboy / 4:20 成功，同步歌词保存并显示；点击首行跳到 0:28，播放时高亮与滚动跟随，偏移可设为延后 0.5 秒，测试后恢复为 0。
 - 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。已在 1.0.3 / `5ab55d5` 把只读图片回调显式标为 `@Sendable`，并补系统后台读取回归；[CI 43614305475](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43614305475) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。
-- 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮 1.0.3 锁屏持续播放、封面、暂停和恢复已由用户确认正常；耳机和来电继续验收。
+- 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮 1.0.3 锁屏持续播放、封面、暂停和恢复，以及耳机断开暂停、来电中断和挂断恢复均由用户确认正常。
 
 ## 自动化覆盖
 
@@ -81,3 +81,9 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 现有下载持久化集成测试增加真实系统链路：保存自造封面，调用 PlaybackStore 刷新系统信息，再通过后台任务从 `MPNowPlayingInfoCenter` 取 `MPMediaItemArtwork.image(at:)`，确认能返回图片。没有用 mock 替代系统图片回调。原崩溃已经有真机日志；新回归与修复一起提交，未单独运行未修复版的新增测试，远端验证结果单独记录。
 
 参考：[Apple MPMediaItemArtwork](https://developer.apple.com/documentation/mediaplayer/mpmediaitemartwork/init(boundssize:requesthandler:))、[Swift 6 跨隔离回调说明](https://www.swift.org/migration/documentation/swift-6-concurrency-migration-guide/incrementaladoption/)。真实崩溃日志中的设备标识、证书和完整歌词未提交。
+
+## 1.0.4 在线匹配后自动修正
+
+用户要求联网查歌词时自动修正歌名和艺术家。选用匹配版本后，标准歌名、艺术家和歌词在同一资料库事务中保存；艺人分组与系统媒体信息同步更新，搜索框采用标准参数供下次搜索使用。专辑和流派保留；专辑艺术家原本跟随歌曲艺术家时同步更新。不在仅浏览候选时改动歌曲。
+
+真实导入与下载持久化回归增加标准歌名、艺术家、分组和重开数据库检查；保留原音频 SHA-256 不变的验证。代码 `e24fbb5` 的 [CI 43615814350](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43615814350) 正在运行，真机仍安装 1.0.3，待 1.0.4 产物覆盖安装后验收。
