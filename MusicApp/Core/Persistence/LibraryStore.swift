@@ -205,6 +205,18 @@ import SwiftData
         } catch { self.error = error.localizedDescription }
     }
 
+    func applyDownloadedMatch(_ match: LyricsMatch, to song: Song) {
+        transaction {
+            let previousArtist = song.artist
+            song.title = match.trackName
+            song.artist = match.artistName
+            if song.albumArtist == previousArtist { song.albumArtist = match.artistName }
+            if let lyrics = match.text { song.lyrics = lyrics }
+            assignGroups(song)
+            pruneGroups(excluding: nil)
+        }
+    }
+
     func setDownloadedCover(_ song: Song, data: Data) async throws {
         let id = UUID().uuidString
         guard try await ArtworkCache.shared.save(data, id: id, files: files) else { throw MusicLookupError.invalidResponse }

@@ -87,10 +87,12 @@ struct MusicLookupView: View {
     private func apply(_ match: LyricsMatch) async {
         downloading = match.id; error = nil; notice = nil
         defer { downloading = nil }
-        if let lyrics = match.text {
-            library.transaction { song.lyrics = lyrics }
-            if let error = library.error { self.error = error; return }
-            notice = match.isSynced ? "同步歌词已保存，可离线显示并跟随播放。" : "纯文本歌词已保存；这一版本没有可用时间戳。"
+        library.applyDownloadedMatch(match, to: song)
+        if let error = library.error { self.error = error; return }
+        playback.refreshMediaInfo()
+        notice = "歌名和艺术家已更新。"
+        if match.text != nil {
+            notice = (notice ?? "") + (match.isSynced ? "同步歌词已保存，可离线显示并跟随播放。" : "纯文本歌词已保存；这一版本没有可用时间戳。")
         }
         if includeCover, song.artworkID == nil {
             do {

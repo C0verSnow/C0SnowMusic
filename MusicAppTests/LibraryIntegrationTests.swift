@@ -190,7 +190,17 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         let song = try XCTUnwrap(library.songs.first)
         let originalHash = song.fileHash
-        library.transaction { song.lyrics = "[00:01.00]First line" }
+        let originalArtistID = song.artistID
+        let match = try JSONDecoder().decode(LyricsMatch.self, from: Data("""
+        {"id":1,"trackName":"Correct title","artistName":"Correct artist","albumName":"Online album","duration":3,"instrumental":false,"plainLyrics":null,"syncedLyrics":"[00:01.00]First line"}
+        """.utf8))
+        library.applyDownloadedMatch(match, to: song)
+        XCTAssertNil(library.error)
+        XCTAssertEqual(song.title, "Correct title")
+        XCTAssertEqual(song.artist, "Correct artist")
+        XCTAssertEqual(song.albumArtist, "Correct artist")
+        XCTAssertEqual(song.albumTitle, "未知专辑")
+        XCTAssertFalse(library.artists.contains { $0.id == originalArtistID })
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         let cover = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).jpegData(withCompressionQuality: 0.9) { context in
             UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
@@ -213,6 +223,9 @@ import UIKit
         let restored = try makeLibrary(root: root)
         let saved = try XCTUnwrap(restored.songs.first)
         XCTAssertEqual(saved.lyrics, "[00:01.00]First line")
+        XCTAssertEqual(saved.title, "Correct title")
+        XCTAssertEqual(saved.artist, "Correct artist")
+        XCTAssertEqual(restored.artists.first { $0.id == saved.artistID }?.name, "Correct artist")
         let artworkID = try XCTUnwrap(saved.artworkID)
         XCTAssertTrue(FileManager.default.fileExists(atPath: restored.files.artworkURL(artworkID).path))
         XCTAssertEqual(try LibraryFiles.hash(restored.files.url(for: saved.fileRelativePath)), originalHash)
