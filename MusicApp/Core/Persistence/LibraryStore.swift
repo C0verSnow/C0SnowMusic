@@ -83,6 +83,7 @@ import SwiftData
     }
 
     func transaction(_ change: () throws -> Void) {
+        error = nil
         do {
             try change()
             try context.save()

@@ -110,7 +110,10 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         try await library.importOne(fixture("Fixture", ext: "mp3"))
         let first = library.songs[0], second = library.songs[1]
+        library.createPlaylist("   ")
+        XCTAssertNotNil(library.error)
         library.createPlaylist("本地收藏")
+        XCTAssertNil(library.error)
         let playlist = try XCTUnwrap(library.playlists.first)
         library.add(first, to: playlist); library.add(second, to: playlist)
         library.moveItems(playlist, from: IndexSet(integer: 0), to: 2)
