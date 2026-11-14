@@ -14,4 +14,3 @@ jobs:
         run: plutil -lint MusicApp/Info.plist C0SnowMusic.xcodeproj/project.pbxproj
       - name: Check whitespace
         run: git diff-tree --check HEAD
-
