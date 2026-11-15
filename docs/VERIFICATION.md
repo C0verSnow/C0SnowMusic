@@ -1,6 +1,20 @@
 # 测试与验收
 
-## 当前证据
+## Issue #9 在线功能证据
+
+- 最终产品代码 `b8bf67887449c6f7bada48f17e147d174f19f6e4` 的 [CI 43680765143](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43680765143) 全通过：28 项单元/集成、3 项 UI，模拟器与 iPhone Release 编译、图标检查和 IPA 打包均通过。覆盖真实 Keychain 存取/注销、连续两次 Python/SSL/EJS/WebKit 执行、真实 yt-dlp 合成音频传输、移动页面转义解析、DASH 重新封装时长/解码/跳转、缓存淘汰与手动副本保留、设置/语言 UI。
+- 本地没有编译、构建或运行编译型测试，只做源码、Python AST、shell 语法、plist、差异和 CI 产物静态检查。已在 GitHub 检索并比较 NeriPlayer、Palladium、BeeWare、yt-dlp 等项目，来源与许可见 ONLINE_MUSIC_RESEARCH.md 和 THIRD_PARTY.md。
+- [v1.1.0-beta.1 Release](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1) 已发布，标签指向上述产品提交，附带 24,696,065 字节的 `C0SnowMusic-unsigned.ipa`；GitHub 附件状态为 uploaded，服务器提供的 SHA-256 与本地核对一致。
+- 最终 IPA 直接下载自上述 CI，SHA-256 为 `0a912f8d768cf007163a87c6603c9c0d7b9aa481bddffa2a42a40e1a48b03609`。1.1.0/build 6 已通过 iPhone Mirror、Chrome 和心动签覆盖安装，沿用现有证书与 Bundle ID；原来的 Die For You、封面和资料库保留。
+- 真机确认账户页进入 Music Settings，系统英文、简体中文/English 切换正常，账户导航标题立即更新。用户亲自在 App 内 Google 页面认证并保存；强退重开和覆盖安装后均恢复 YouTube 会话，无须 Client ID，没有读取 Safari、Chrome 或 YouTube App 的私有 Cookie。
+- 真实搜索 `BaW_jenozKc` 返回封面、标题和作者，自动预下载 162KB 纯 M4A 并播放。手动保存后清空缓存，永久副本仍可播放。随后复验清缓存时 Mini Player 同步消失，缓存归零；只移除了本次创建的测试视频及应用内副本，原歌曲保留。
+- 按用户要求搜索 The Weeknd 的 One Of The Girls。最终版本在同一进程连续完成两个官方音源下载，第二首为 The Weeknd 官方频道的 Official Audio；真实播放器显示 4:04，时间推进正常。拖到末尾后结束并暂停回零，再跳至 1:58 后播放至 2:05，未出现旧版 8:08 空尾。验收结束已暂停。
+- 本轮真机发现并修复了清缓存残留播放器引用、连续加载插件失败和 DASH 双倍时长；均补入真实实现的远端回归。先前失败或取消的 CI 不算作最终通过证据。
+- 真实网站仍会受到网络、地区和 YouTube 验证限制，不代表全部账户、全部视频和全部地区都可用。用户音乐、登录 Cookie、证书与手机私人画面未上传到仓库。
+
+- issue #9 已按原要求关闭；[PR #10](https://github.com/C0verSnow/C0SnowMusic/pull/10) 已转为待审核，未合并。后续仅更新文档，不改变标签对应的产品代码；临时下载服务已关闭。
+
+## 本地播放器历史证据（issue #7）
 
 - 本机只有 Command Line Tools，没有完整 Xcode 和 iOS SDK。本地没有编译、构建或运行会触发编译的测试；仅阅读代码，检查属性列表、资源、语法和差异。真机通过 iPhone Mirroring 操作，不是 USB 调试会话；本轮系统日志显示 iPhone OS 27.0（24A435）。
 - [CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 是早期源码的通过结果，不能代表本轮源码。
@@ -54,7 +68,7 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 
 - 没有外部解码器。无法通过系统解码检查的文件需转换为 ALAC、M4A 或 WAV；错误会显示给用户。
 - 资料库快照和搜索索引在内存中；列表使用原生懒加载，首页限制展示数量。数万首歌曲的内存和首屏时间尚未实测。
-- 没有逐字歌词、在线曲库、账户、云同步、CarPlay、均衡器、无缝衔接或交叉淡化。这些不是本次基础播放链路的依赖。
+- 没有逐字歌词、云同步、CarPlay、均衡器、无缝衔接或交叉淡化。在线搜索与 YouTube 网页会话从 issue #9 起提供，见本文上方记录。
 - 自动化不制造设备真实磁盘耗尽、来电和耳机硬件事件，这些保留为真机验收项。
 - 暂存/删除文件遇到系统强制杀进程时的崩溃恢复，以及封面孤立文件回收，尚未提供专门的修复界面。
 - UI 的布局和系统转场已实现，但没有真机逐帧对照 Apple Music，不声称像素级复刻。

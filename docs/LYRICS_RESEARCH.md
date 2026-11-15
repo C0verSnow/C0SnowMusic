@@ -4,7 +4,7 @@
 
 ## 结论
 
-采用原生 `URLSession`：歌词接 LRCLIB，封面接 MusicBrainz + Cover Art Archive。仅借鉴已有项目的查询顺序、版本匹配和保存方式，自行写 Swift；不引入 Python、Rust、FFmpeg 或服务器。现有 `LRCParser` 和 `LyricsView` 已有按播放时间高亮、滚动和点行跳转，下载的 LRC 可直接接入。
+歌词模块采用原生 `URLSession`：歌词接 LRCLIB，封面接 MusicBrainz + Cover Art Archive。仅借鉴已有项目的查询顺序、版本匹配和保存方式，自行写 Swift；歌词查询本身不依赖 Python、Rust、FFmpeg 或服务器。现有 `LRCParser` 和 `LyricsView` 已有按播放时间高亮、滚动和点行跳转，下载的 LRC 可直接接入。Issue #9 的音频下载另使用手机内 Python，见 ONLINE_MUSIC.md。
 
 ## GitHub 候选与取舍
 

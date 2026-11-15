@@ -66,7 +66,7 @@ struct MusicLookupView: View {
                 Text("先核对专辑和录音版本。下载后保存在本地；纯文本歌词不会伪造播放时间。").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("歌词与封面").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("歌词与封面").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         .onAppear {
             let query = SongLookupQuery(title: song.title, artist: song.artist, album: song.albumTitle, duration: song.duration)

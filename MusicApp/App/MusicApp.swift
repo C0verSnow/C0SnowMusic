@@ -4,6 +4,9 @@ import SwiftData
 @main struct C0SnowMusicApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var runtime = AppRuntime()
+    @State private var account = YouTubeAccountStore()
+    @State private var online = OnlineMusicStore()
+    @AppStorage("appLanguage") private var language = "system"
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +15,8 @@ import SwiftData
                     MusicRootView()
                         .environment(library)
                         .environment(playback)
+                        .environment(account)
+                        .environment(online)
                 } else if let error = runtime.error {
                     ContentUnavailableView {
                         Label("无法打开音乐库", systemImage: "externaldrive.badge.exclamationmark")
@@ -21,7 +26,9 @@ import SwiftData
                 } else { ProgressView("正在打开音乐库…") }
             }
             .tint(.pink)
+            .environment(\.locale, language == "system" ? .autoupdatingCurrent : Locale(identifier: language))
             .task { if runtime.library == nil { runtime.open() }; await runtime.importTestFixturesIfRequested() }
+            .task { await account.restore() }
             .onOpenURL { runtime.receive($0) }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { runtime.playback?.saveSession() }

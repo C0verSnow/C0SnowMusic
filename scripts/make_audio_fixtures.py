@@ -17,6 +17,7 @@ for name, options in [
     ("Fixture.mp3", ["-c:a", "libmp3lame"]),
     ("Fixture.flac", ["-c:a", "flac"]),
     ("Fixture.m4a", ["-c:a", "aac"]),
+    ("Fixture-DASH.m4a", ["-c:a", "aac", "-movflags", "+dash"]),
     ("Fixture.aac", ["-c:a", "aac", "-f", "adts"]),
     ("Fixture-ALAC.m4a", ["-c:a", "alac"]),
     ("Fixture.aiff", ["-c:a", "pcm_s16be"]),

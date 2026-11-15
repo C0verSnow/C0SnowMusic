@@ -5,3 +5,5 @@ xcuserdata/
 *.xcresult
 build/
 MusicApp/Resources/Fixtures/
+Vendor/
+__pycache__/

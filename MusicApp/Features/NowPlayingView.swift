@@ -34,15 +34,17 @@ struct NowPlayingView: View {
                                 Text(song.title).font(.title2.bold()).lineLimit(3)
                                 Text(song.artist).font(.title3).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
                             }.frame(maxWidth: .infinity, alignment: .leading)
+                            if !playback.isCachedSong {
                             Button(song.isFavorite ? "取消收藏" : "收藏", systemImage: song.isFavorite ? "star.fill" : "star") { library.toggleFavorite(song) }
                                 .labelStyle(.iconOnly).font(.title3).frame(width: 44, height: 44)
                             Menu {
                                 Button("添加到播放列表", systemImage: "text.badge.plus") { addingToPlaylist = true }
                                 Button("下一首播放", systemImage: "text.line.first.and.arrowtriangle.forward") { playback.enqueue(song, next: true) }
                                 Button("编辑歌曲信息", systemImage: "pencil") { editMetadata = true }
-                                ShareLink(item: library.files.url(for: song.fileRelativePath)) { Label("分享音频", systemImage: "square.and.arrow.up") }
+                                ShareLink(item: playback.audioURL(for: song)) { Label("分享音频", systemImage: "square.and.arrow.up") }
                             } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44).glassEffect(.regular.interactive(), in: .circle) }
                             .accessibilityLabel("歌曲操作")
+                            }
                         }
                         progress
                         HStack {
@@ -58,6 +60,7 @@ struct NowPlayingView: View {
                         SystemVolumeView().frame(height: 44).accessibilityLabel("系统音量")
                         HStack {
                             Button("歌词", systemImage: "quote.bubble") { panel = .lyrics }.accessibilityIdentifier("showLyrics")
+                                .disabled(playback.isCachedSong)
                             Spacer()
                             AirPlayView().frame(width: 44, height: 44).accessibilityLabel("选择音频输出设备")
                             Spacer()

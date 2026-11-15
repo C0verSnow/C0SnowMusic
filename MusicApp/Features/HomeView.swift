@@ -41,7 +41,7 @@ struct HomeView: View {
                     }.padding(.horizontal)
                 }
             }.padding(.vertical)
-        }.navigationTitle("首页")
+        }.localizedNavigationTitle("首页")
     }
     private var recentAlbums: [Album] {
         let ids = library.songs.sorted { $0.dateAdded > $1.dateAdded }.compactMap(\.albumID)
@@ -74,6 +74,6 @@ struct DiscoverView: View {
                 }
                 if library.songs.isEmpty { Text("导入音乐后，流派会出现在这里。").foregroundStyle(.secondary) }
             }
-        }.listStyle(.plain).navigationTitle("发现")
+        }.listStyle(.plain).localizedNavigationTitle("发现")
     }
 }

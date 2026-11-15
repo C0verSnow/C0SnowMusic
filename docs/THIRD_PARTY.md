@@ -1,6 +1,20 @@
 # 参考来源与许可
 
-本应用没有第三方运行时依赖，没有复制参考项目源码。应用图标按用户明确提供的图片生成。保留仓库已有 MIT LICENSE 的版权声明。Apple 系统框架和 SF Symbols 按其平台条款使用。
+本应用从 issue #9 起新增预编译 Python 和 yt-dlp 在线下载依赖。没有复制参考播放器源码。应用图标按用户明确提供的图片生成。保留仓库已有 MIT LICENSE 的版权声明。Apple 系统框架和 SF Symbols 按其平台条款使用。
+
+## 在线功能实际分发依赖
+
+| 依赖 | 固定版本 | 原始许可证与用途 |
+| --- | --- | --- |
+| [Python-Apple-support](https://github.com/beeware/Python-Apple-support) | 3.13-b18 | BeeWare 包装工程 MIT；Python 和标准库组件的 PSF、OpenSSL 等完整许可在打入应用的 `python/lib/python3.13/LICENSE.txt`。 |
+| [yt-dlp](https://github.com/yt-dlp/yt-dlp) | 2026.10.26 | Unlicense；仅分发纯 Python wheel，许可和其内置第三方通知保留在 `app_packages`。 |
+| [yt-dlp-ejs](https://github.com/yt-dlp/ejs) | 0.8.0 | MIT，签名挑战脚本；许可随 wheel 保留。 |
+| [yt-dlp-apple-webkit-jsi](https://github.com/grqz/yt-dlp-apple-webkit-jsi) | 0.1.1 | Apache-2.0，通过系统 WebKit 执行挑战；原包不改写，本项目通过入口适配器添加自己的导航限制。 |
+| [certifi](https://github.com/certifi/python-certifi) | 2026.10.23 | MPL-2.0，HTTPS 根证书；许可随 wheel 保留。 |
+
+Google/YouTube 网页会话参考 [NeriPlayer](https://github.com/cwuom/NeriPlayer)（GPLv3）的设计，不复制源码，使用苹果系统 WebKit 与 Keychain 自行实现。
+
+下载脚本固定版本与 SHA-256，不提交生成的二进制或 wheel。方案参考 Palladium 的本机嵌入结构，不复制 GPL 实现；候选、维护状态和已知问题详见 [ONLINE_MUSIC_RESEARCH.md](ONLINE_MUSIC_RESEARCH.md)。下表记录 issue #7 的历史借鉴范围。
 
 开发前通过 GitHub 检索 `music player language:Swift`，并实际克隆、阅读五个仓库的 README、许可证、构建设置和相关源码：
 

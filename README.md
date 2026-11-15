@@ -1,6 +1,10 @@
 # C0SnowMusic
 
-iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。无需账号，不接入在线曲库，不上传音乐。播放和资料库离线使用；歌词和封面可由用户主动联网查询。
+[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/C0SnowMusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1)
+
+IPA 未签名，须用自己的 Apple 证书签名安装。
+
+iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不上传音乐；可选 Google 登录、YouTube 卡片搜索和手机本机音频下载。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
@@ -12,13 +16,16 @@ iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、Sw
 4. 选择 iOS 26 iPhone 或模拟器，运行。
 5. 点击右上角「+」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
 
-本项目无第三方运行时依赖，无需 Node、CMake、XcodeGen、CocoaPods 或服务端。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
+在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
 仓库约定禁止本地编译验证。自动编译与测试使用原有 `build-player.yml` 改造的 GitHub Actions；以上 Xcode 步骤供用户安装真机使用。CI 上传的 iPhone `.app` 未签名，不能直接安装；必须用自己的开发者签名构建或导出。
 
 ## 功能
 
 - 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
+- 右上角账户页包含 YouTube 网页登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
+- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；首次结果自动预下载第一首，也可逐首操作。
+- 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
 - 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。
 - 应用沙盒保存音频、元数据与封面；封面降采样、内存和磁盘缓存。
@@ -49,7 +56,13 @@ iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、Sw
 
 下载后歌词和封面留在本地，关闭、重启或断网仍可使用。只有主动搜索/下载时才向服务发送歌名、艺术家、专辑和时长；不会上传音频。429/503 的 Retry-After 会阻止过早请求，网络失败可以重试。
 
-本次参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，实现为原生 Swift URLSession，没有引入 Python 运行时。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
+歌词查询参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，仍使用原生 Swift URLSession，不经过音频下载用的 Python。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
+
+## 在线搜索、下载和 Google 登录
+
+见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。下载全部在手机完成，不请求中转服务器。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
+
+Google 登录按 [NeriPlayer](https://github.com/cwuom/NeriPlayer) 的网页会话思路独立实现：通过 Google 网页登录 YouTube，确认已登录后把 Cookie 存入本机 Keychain，供搜索和 yt-dlp 使用。不需要 Google Client ID 或服务器。Google 可能拒绝内嵌浏览器登录；以真机结果为准，不会把失败显示成成功。
 
 ## 应用图标
 
@@ -71,6 +84,7 @@ iPhone 上的原生本地音乐播放器，最低 iOS 26.0。使用 Swift 6、Sw
 - [架构、阶段与参考来源](docs/ARCHITECTURE.md)
 - [测试、真机验收和已知限制](docs/VERIFICATION.md)
 - [第三方来源与许可证](docs/THIRD_PARTY.md)
+- [在线功能、打包与已知限制](docs/ONLINE_MUSIC.md)
 - [任务过程](tasklist.md)
 
 CI 在 iOS 26 模拟器运行 XCTest 集成测试和 XCUITest，再编译未签名 iPhone Release。测试音频由 `scripts/make_audio_fixtures.py` 在远端生成，无真实用户音乐、无下载音源，Release 不包含这些测试资源。检查日志和 `.xcresult` 从 Actions 的 `iOS-test-evidence` 下载。

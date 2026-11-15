@@ -10,7 +10,7 @@ struct QueueView: View {
                         .tint(playback.shuffleEnabled ? .pink : .secondary)
                         .accessibilityValue(playback.shuffleEnabled ? "已开启" : "已关闭")
                     Spacer()
-                    Button(playback.repeatMode.title, systemImage: playback.repeatMode == .one ? "repeat.1" : "repeat") { playback.cycleRepeat() }
+                    Button(LocalizedStringKey(playback.repeatMode.title), systemImage: playback.repeatMode == .one ? "repeat.1" : "repeat") { playback.cycleRepeat() }
                         .tint(playback.repeatMode == .off ? .secondary : .pink)
                 }.buttonStyle(.bordered)
             }
@@ -34,7 +34,7 @@ struct QueueView: View {
                 .onMove { playback.moveQueueEntries(from: $0, to: $1) }
             }
         }
-        .navigationTitle("播放队列").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("播放队列").navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }
         .overlay { if playback.queue.entries.isEmpty { ContentUnavailableView("队列为空", systemImage: "list.bullet") } }
     }

@@ -9,7 +9,19 @@ struct SearchView: View {
     @State private var artists: [Artist] = []
     @State private var playlists: [Playlist] = []
     @State private var searching = false
+    @State private var onlineSearch = false
     var body: some View {
+        VStack(spacing: 0) {
+            Picker("搜索范围", selection: $onlineSearch) {
+                Text("资料库").tag(false)
+                Text("YouTube").tag(true)
+            }.pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
+            if onlineSearch { OnlineSearchView() }
+            else { localSearch }
+        }.localizedNavigationTitle("搜索")
+    }
+
+    private var localSearch: some View {
         List {
             if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 ContentUnavailableView("搜索你的资料库", systemImage: "magnifyingglass", description: Text("歌曲、艺术家、专辑和播放列表"))
@@ -28,7 +40,7 @@ struct SearchView: View {
                 if !playlists.isEmpty { Section("播放列表") { ForEach(playlists) { NavigationLink($0.name, value: LibraryRoute.playlist($0.id)) } } }
             }
         }
-        .listStyle(.plain).navigationTitle("搜索")
+        .listStyle(.plain).localizedNavigationTitle("搜索")
         .searchable(text: $text, prompt: "歌曲、艺术家、专辑、播放列表")
         .task(id: text + "\(library.revision)") {
             searching = true

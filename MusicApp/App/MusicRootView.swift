@@ -8,15 +8,16 @@ struct MusicRootView: View {
     @State private var expanded = false
     @State private var importing = false
     @State private var settings = false
+    @AppStorage("appLanguage") private var language = "system"
 
     var body: some View {
         @Bindable var library = library
         @Bindable var playback = playback
         TabView {
-            Tab("首页", systemImage: "house.fill") { navigation { HomeView() } }
-            Tab("发现", systemImage: "square.grid.2x2.fill") { navigation { DiscoverView() } }
-            Tab("资料库", systemImage: "music.note.list") { navigation { LibraryView() } }
-            Tab("搜索", systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
+            Tab(AppLanguage.text("首页", language: language), systemImage: "house.fill") { navigation { HomeView() } }
+            Tab(AppLanguage.text("发现", language: language), systemImage: "square.grid.2x2.fill") { navigation { DiscoverView() } }
+            Tab(AppLanguage.text("资料库", language: language), systemImage: "music.note.list") { navigation { LibraryView() } }
+            Tab(AppLanguage.text("搜索", language: language), systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .modifier(PlayerAccessoryModifier(enabled: playback.currentSong != nil, expanded: $expanded, namespace: playerTransition))
@@ -24,7 +25,7 @@ struct MusicRootView: View {
             if reduceMotion { NowPlayingView() }
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
         }
-        .sheet(isPresented: $settings) { NavigationStack { SettingsView() } }
+        .sheet(isPresented: $settings) { NavigationStack { AccountView() } }
         .sheet(isPresented: $importing) {
             DocumentImportPicker(types: AudioImportService.contentTypes, multiple: true) { urls in
                 importing = false
@@ -63,7 +64,8 @@ struct MusicRootView: View {
                         Button("导入音乐", systemImage: "plus") { importing = true }
                             .accessibilityIdentifier("importMusic")
                             .disabled(library.importProgress != nil)
-                        Button("设置", systemImage: "person.crop.circle") { settings = true }
+                        Button("账户", systemImage: "person.crop.circle") { settings = true }
+                            .accessibilityIdentifier("accountSettings")
                     }
                 }
         }

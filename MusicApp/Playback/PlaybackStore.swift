@@ -26,6 +26,28 @@ import SwiftData
     @ObservationIgnored private var wantsPlayback = false
     @ObservationIgnored private var prepared = false
     @ObservationIgnored private var session: PlaybackSession
+    @ObservationIgnored private var cachedSongs: [UUID: Song] = [:]
+    @ObservationIgnored private var cachedURLs: [UUID: URL] = [:]
+
+    var isCachedSong: Bool { currentSong.map { cachedURLs[$0.id] != nil } ?? false }
+
+    func playCachedAudio(_ track: OnlineTrack, url: URL) async throws {
+        var metadata = try await MetadataExtractor.extract(url)
+        metadata.title = track.title; metadata.artist = track.artist
+        let song = Song(metadata: metadata, path: url.path, hash: "", size: Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0), artworkID: nil)
+        cachedSongs = [song.id: song]; cachedURLs = [song.id: url]
+        play([song])
+    }
+
+    func audioURL(for song: Song) -> URL { cachedURLs[song.id] ?? files.url(for: song.fileRelativePath) }
+
+    func forgetCachedAudio(_ videoID: String? = nil) {
+        let ids = cachedURLs.filter { videoID == nil || $0.value.deletingPathExtension().lastPathComponent == videoID }.map(\.key)
+        for id in ids {
+            removeSong(id)
+            cachedSongs.removeValue(forKey: id); cachedURLs.removeValue(forKey: id)
+        }
+    }
 
     init(library: LibraryStore, engine: any PlayerEngine = AVPlayerEngine(), systemIntegration: Bool = true) throws {
         self.library = library; files = library.files; self.engine = engine
@@ -132,7 +154,7 @@ import SwiftData
         saveSession()
     }
 
-    func song(for entry: QueueEntry) -> Song? { library.songs.first { $0.id == entry.songID } }
+    func song(for entry: QueueEntry) -> Song? { cachedSongs[entry.songID] ?? library.songs.first { $0.id == entry.songID } }
 
     func refreshMediaInfo() { remote.update(self) }
 
@@ -177,7 +199,7 @@ import SwiftData
         saveSession(); remote.update(self)
         loadTask = Task {
             do {
-                try await engine.prepare(files.url(for: song.fileRelativePath))
+                try await engine.prepare(audioURL(for: song))
                 try Task.checkCancellation()
                 if position > 0 { _ = await engine.seek(to: min(position, song.duration)) }
                 try Task.checkCancellation()
