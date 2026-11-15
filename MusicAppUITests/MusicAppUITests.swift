@@ -3,7 +3,7 @@ import XCTest
 @MainActor final class MusicAppUITests: XCTestCase {
     func testAccountMusicSettingsLanguageAndOnlineSearch() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN", "-appLanguage", "system"]
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
         app.buttons["accountSettings"].firstMatch.tap()
@@ -13,10 +13,15 @@ import XCTest
         XCTAssertTrue(app.buttons["appLanguage"].exists)
         app.buttons["appLanguage"].tap()
         app.buttons["English"].tap()
-        XCTAssertTrue(app.staticTexts["Language"].waitForExistence(timeout: 5))
+        let language = app.buttons["appLanguage"]
+        let english = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "Language"), object: language)
+        wait(for: [english], timeout: 5)
         captureScreen("Music settings in English")
+        language.tap()
+        app.buttons["简体中文"].tap()
+        let chinese = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "语言"), object: language)
+        wait(for: [chinese], timeout: 5)
         app.terminate()
-        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN", "-appLanguage", "system"]
         app.launch()
         app.tabBars.buttons["搜索"].tap()
         app.buttons["YouTube"].tap()

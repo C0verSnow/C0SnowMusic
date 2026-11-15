@@ -28,7 +28,7 @@ struct LibraryView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("资料库")
+        .localizedNavigationTitle("资料库")
     }
 }
 
@@ -39,13 +39,13 @@ struct LibraryRouteView: View {
         switch route {
         case .songs(let filter): SongListView(title: filter.rawValue, songs: filtered(filter))
         case .albums:
-            AlbumGridView(albums: library.albums).navigationTitle("专辑")
+            AlbumGridView(albums: library.albums).localizedNavigationTitle("专辑")
         case .artists:
-            List(library.artists) { artist in NavigationLink(artist.name, value: LibraryRoute.artist(artist.id)) }.navigationTitle("艺术家")
+            List(library.artists) { artist in NavigationLink(artist.name, value: LibraryRoute.artist(artist.id)) }.localizedNavigationTitle("艺术家")
         case .genres:
             List(Array(Set(library.songs.map(\.genre))).sorted(), id: \.self) { genre in
                 NavigationLink(genre, value: LibraryRoute.genre(genre))
-            }.navigationTitle("流派")
+            }.localizedNavigationTitle("流派")
         case .playlists: PlaylistsView()
         case .album(let id):
             if let album = library.albums.first(where: { $0.id == id }) { AlbumDetailView(album: album) }

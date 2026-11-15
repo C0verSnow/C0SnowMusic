@@ -34,7 +34,7 @@ struct QueueView: View {
                 .onMove { playback.moveQueueEntries(from: $0, to: $1) }
             }
         }
-        .navigationTitle("播放队列").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("播放队列").navigationBarTitleDisplayMode(.inline)
         .toolbar { EditButton() }
         .overlay { if playback.queue.entries.isEmpty { ContentUnavailableView("队列为空", systemImage: "list.bullet") } }
     }

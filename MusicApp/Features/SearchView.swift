@@ -18,7 +18,7 @@ struct SearchView: View {
             }.pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
             if onlineSearch { OnlineSearchView() }
             else { localSearch }
-        }.navigationTitle("搜索")
+        }.localizedNavigationTitle("搜索")
     }
 
     private var localSearch: some View {
@@ -40,7 +40,7 @@ struct SearchView: View {
                 if !playlists.isEmpty { Section("播放列表") { ForEach(playlists) { NavigationLink($0.name, value: LibraryRoute.playlist($0.id)) } } }
             }
         }
-        .listStyle(.plain).navigationTitle("搜索")
+        .listStyle(.plain).localizedNavigationTitle("搜索")
         .searchable(text: $text, prompt: "歌曲、艺术家、专辑、播放列表")
         .task(id: text + "\(library.revision)") {
             searching = true

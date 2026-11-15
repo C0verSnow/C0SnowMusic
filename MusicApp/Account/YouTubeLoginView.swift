@@ -9,7 +9,7 @@ struct YouTubeLoginView: View {
     var body: some View {
         @Bindable var account = account
         YouTubeLoginBrowser(data: account.websiteData, view: $webView)
-            .navigationTitle("登录 YouTube").navigationBarTitleDisplayMode(.inline)
+            .localizedNavigationTitle("登录 YouTube").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

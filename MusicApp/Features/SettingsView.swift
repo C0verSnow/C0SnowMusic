@@ -24,7 +24,7 @@ struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
             Section("上次导入") {
-                Text(library.importStatus.isEmpty ? "还没有导入记录。" : library.importStatus)
+                Text(library.importStatus.isEmpty ? AppLanguage.text("还没有导入记录。", language: language) : library.importStatus)
                 ForEach(Array(library.importFailures.enumerated()), id: \.offset) { _, failure in Text(failure).font(.footnote).foregroundStyle(.red) }
             }
             Section("本地存储") {
@@ -53,6 +53,6 @@ struct SettingsView: View {
                 Text("iOS 26 · SwiftUI · AVFoundation · SwiftData").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Music Settings").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("Music Settings").navigationBarTitleDisplayMode(.inline)
     }
 }

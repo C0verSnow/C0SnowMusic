@@ -55,10 +55,10 @@ private struct OnlineTrackRow: View {
         HStack(spacing: 12) {
             AsyncImage(url: track.coverURL) { image in image.resizable().scaledToFill() } placeholder: {
                 Image(systemName: "music.note").font(.title2).frame(maxWidth: .infinity, maxHeight: .infinity).background(.quaternary)
-            }.frame(width: 72, height: 64).clipShape(.rect(cornerRadius: 10)).accessibilityHidden(true)
+            }.frame(width: 52, height: 52).clipShape(.rect(cornerRadius: 4)).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
-                Text(track.title).font(.headline).lineLimit(2)
-                Text(track.artist).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(track.title).font(.body.weight(.medium)).lineLimit(2)
+                Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 if online.cached.contains(where: { $0.id == track.id }) {
                     Label("已缓存", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
                 }
@@ -71,8 +71,8 @@ private struct OnlineTrackRow: View {
                 Image(systemName: "ellipsis").frame(width: 44, height: 44)
             }.disabled(online.downloadingID != nil).accessibilityLabel("歌曲操作")
         }
-        .padding(10).background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 16))
-        .listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+        .padding(.vertical, 8)
+        .listRowSeparator(.visible).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
         .contentShape(.rect)
         .onTapGesture { if online.downloadingID == nil { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) } }
         .accessibilityElement(children: .contain)
@@ -111,6 +111,6 @@ struct OnlineCacheView: View {
                     }
                 }
             }
-        }.navigationTitle("音频缓存").task { await online.refresh() }
+        }.localizedNavigationTitle("音频缓存").task { await online.refresh() }
     }
 }

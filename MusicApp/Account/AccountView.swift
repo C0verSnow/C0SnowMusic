@@ -5,6 +5,7 @@ struct AccountView: View {
     @Environment(OnlineMusicStore.self) private var online
     @Environment(\.dismiss) private var dismiss
     @State private var login = false
+    @AppStorage("appLanguage") private var language = "system"
 
     var body: some View {
         @Bindable var account = account
@@ -13,8 +14,8 @@ struct AccountView: View {
                 HStack(spacing: 16) {
                     Image(systemName: "person.crop.circle.fill").font(.system(size: 48)).foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(account.isSignedIn ? "YouTube" : AppLanguage.text("未登录")).font(.title3.bold())
-                        Text(account.isSignedIn ? AppLanguage.text("YouTube 登录状态已保存") : AppLanguage.text("登录 YouTube 账户"))
+                        Text(account.isSignedIn ? "YouTube" : AppLanguage.text("未登录", language: language)).font(.title3.bold())
+                        Text(AppLanguage.text(account.isSignedIn ? "YouTube 登录状态已保存" : "登录 YouTube 账户", language: language))
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 12)
@@ -30,11 +31,11 @@ struct AccountView: View {
                     .accessibilityIdentifier("musicSettings")
             }
             Section {
-                Text("通过 Google 网页登录 YouTube。登录状态只保存在本机，用于 YouTube 搜索与下载；无需 Client ID。")
+                Text("通过 Google 网页登录 YouTube，搜索和下载会使用该账户。登录状态只保存在此设备。")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("账户").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("账户").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
         .sheet(isPresented: $login) { NavigationStack { YouTubeLoginView() } }
         .alert("登录状态", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {

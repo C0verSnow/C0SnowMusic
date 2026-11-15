@@ -81,7 +81,7 @@ struct MetadataEditor: View {
                 Text("编辑只修改本地资料库，不改写音频文件。").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("编辑歌曲信息").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("编辑歌曲信息").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {

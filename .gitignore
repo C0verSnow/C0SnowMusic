@@ -6,5 +6,4 @@ xcuserdata/
 build/
 MusicApp/Resources/Fixtures/
 Vendor/
-Config/Local.xcconfig
 __pycache__/

@@ -225,3 +225,4 @@
 "请先在网页中完成登录，再返回 YouTube。" = "Complete sign-in on the website, then return to YouTube.";
 "尚未确认 YouTube 已登录，请完成网页登录后重试。" = "YouTube sign-in is not confirmed. Complete web sign-in and retry.";
 "无法保存或清除 YouTube 登录状态，请重试。" = "Cannot save or clear your YouTube session. Please retry.";
+"通过 Google 网页登录 YouTube，搜索和下载会使用该账户。登录状态只保存在此设备。" = "Sign in to YouTube on Google’s website. Search and downloads will use this account. Your session stays on this device.";

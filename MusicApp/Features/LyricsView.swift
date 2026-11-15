@@ -81,7 +81,7 @@ struct LyricsView: View {
                 .sheet(isPresented: $onlineSearch) { NavigationStack { MusicLookupView(song: song) } }
             } else { ContentUnavailableView("尚未选择歌曲", systemImage: "music.note") }
         }
-        .navigationTitle("歌词").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("歌词").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) { Button("导入 LRC", systemImage: "plus") { importing = true } }
             ToolbarItemGroup(placement: .bottomBar) {

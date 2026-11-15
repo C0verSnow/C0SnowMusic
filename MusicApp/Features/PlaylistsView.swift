@@ -23,7 +23,7 @@ struct PlaylistsView: View {
                 for playlist in selected { library.deletePlaylist(playlist) }
             }
         }
-        .navigationTitle("播放列表")
+        .localizedNavigationTitle("播放列表")
         .alert("新建播放列表", isPresented: $creating) {
             TextField("播放列表名称", text: $name)
             Button("创建") { library.createPlaylist(name) }
@@ -45,7 +45,7 @@ struct AddToPlaylistView: View {
                 Button(playlist.name) { library.add(song, to: playlist); dismiss() }
             }
         }
-        .navigationTitle("添加到播放列表").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("添加到播放列表").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
         .alert("新建播放列表", isPresented: $creating) {
             TextField("播放列表名称", text: $name)
@@ -130,7 +130,7 @@ struct PlaylistSongPicker: View {
             }.disabled(included)
         }
         .searchable(text: $query, prompt: "搜索歌曲")
-        .navigationTitle("添加歌曲").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("添加歌曲").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
     }
 }
