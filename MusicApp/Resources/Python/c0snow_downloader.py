@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 import sys
 
+_configured = False
+
 
 def run(request, navigation_callback):
     directory = Path(request["directory"])
@@ -47,11 +49,15 @@ def run(request, navigation_callback):
 
 
 def _configure(navigation_callback):
+    global _configured
+    sys.stdout = sys.stderr = io.StringIO()
+    # Reloading plugins collides with existing challenge-provider registrations.
+    if _configured:
+        return
     import certifi
     from yt_dlp.plugins import load_all_plugins
 
     os.environ["SSL_CERT_FILE"] = certifi.where()
-    sys.stdout = sys.stderr = io.StringIO()
     load_all_plugins()
     from yt_dlp_plugins.extractor.ytjsc import AppleWebKitJCP
 
@@ -69,6 +75,7 @@ def _configure(navigation_callback):
         return view
 
     AppleWebKitJCP._get_webview_lazy = webview
+    _configured = True
 
 
 def _download(request, directory):
