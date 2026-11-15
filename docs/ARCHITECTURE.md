@@ -6,6 +6,9 @@
 MusicRootView（首页 / 发现 / 资料库 / 搜索）
   ├─ LibraryStore → SwiftData（LibrarySchemaV1 / LibraryMigrationPlan）
   │    └─ AudioImportService actor → SHA-256 / MetadataExtractor / ArtworkCache actor
+  ├─ YouTubeAccountStore → WKWebView / CookieStore → Keychain
+  ├─ OnlineMusicStore → m.youtube.com / OnDeviceDownloader（串行 Python C API）
+  │    └─ OnlineAudioCache actor → 500MB M4A 文件；手动保存仍走资料库导入
   └─ PlaybackStore → PlayerEngine → AVPlayerEngine（唯一 AVPlayer）
        ├─ QueueManager
        ├─ AudioSessionManager
@@ -46,10 +49,18 @@ Song、Album、Artist、Playlist、PlaylistItem 和 PlaybackSession 为持久化
 
 以上为代码覆盖范围，不能替代测试通过或真机验收。当前证据见 VERIFICATION.md。
 
+## 在线会话与本机下载
+
+账户页内的 Music Settings 承接原设置，语言保存在 UserDefaults；局部标题观察语言变化，不重建整棵 Tab 或播放状态。YouTube 网页会话参考 NeriPlayer 的设计独立实现，只有真实 YouTube 页面的登录信号和身份 Cookie 同时满足才写 Keychain。登录 WebView 的内存数据存储与 EJS 挑战 WebView 分开，搜索和 yt-dlp 只使用 YouTube 域会话。
+
+搜索从手机页面提取对象或转义字符串形式的 ytInitialData，自行转为视频卡片。下载通过 BeeWare 预编译 Python、固定版本 yt-dlp/EJS/WebKit 完全在手机内运行；只有完整且可播放、没有视频轨的 M4A 才进入缓存。缓存按完成时间从新到旧显示，容量不足先删最旧项。手动下载通过原导入事务保存独立文件，永不参与缓存淘汰。
+
+缓存播放仍使用唯一 PlaybackStore / AVPlayer；临时 Song 不写入 SwiftData。主动清缓存时同步移除对应播放队列和临时路径，避免按钮继续引用已删文件。永久资料库模型和数据库版本保持不变。详细配置与验收见 ONLINE_MUSIC.md。
+
 ## 官方 API 依据
 
 - [SwiftUI 新设计与系统底栏](https://developer.apple.com/videos/play/wwdc2025/323/)
 - [tabViewBottomAccessory](https://developer.apple.com/documentation/swiftui/view/tabviewbottomaccessory(content:))
 - [异步加载媒体信息](https://developer.apple.com/documentation/avfoundation/loading-media-data-asynchronously)
 
-参考源码的提交、依赖和许可核对见 THIRD_PARTY.md。工程未接入网络服务、WebView 或第三方音频框架。
+参考源码的提交、依赖和许可核对见 THIRD_PARTY.md。在线功能使用系统 WebKit 和本机 Python 下载引擎，不依赖自建服务器；音频播放与解码仍交给系统 AVFoundation。

@@ -48,7 +48,8 @@ jobs:
           set -o pipefail
           xcodebuild build-for-testing -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
-            -derivedDataPath DerivedData ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
+            -derivedDataPath DerivedData ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- 2>&1 | tee build/simulator-build.log
+          codesign -d --entitlements :- DerivedData/Build/Products/Debug-iphonesimulator/C0SnowMusic.app
       - name: Build unsigned iPhone Release application
         run: |
           set -o pipefail
@@ -94,7 +95,7 @@ jobs:
             -parallel-testing-enabled NO -resultBundlePath build/Tests.xcresult \
             -test-timeouts-enabled YES -default-test-execution-time-allowance 90 \
             -maximum-test-execution-time-allowance 120 \
-            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/test.log
+            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- 2>&1 | tee build/test.log
       - name: Export UI screenshots
         if: always()
         run: |
