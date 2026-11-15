@@ -49,3 +49,7 @@ iPhone 的 WKNavigationDelegate 不具有 Android WebView 的所有请求拦截�
 新增测试覆盖手机页面解析与去重、错误页识别、真实 M4A 缓存淘汰、重启清单恢复、手动导入副本保留、拒绝 HTML、Python/SSL/WebKit 执行、设置入口与语言切换。CI 的通过状态须以 PR checks 为准；测试不使用用户音乐。
 
 真实 Google/YouTube 网页登录需要在设备上完成认证后验收。真实 YouTube 下载会受平台页面/签名变化、地区、PO Token 和机器人验证影响；不声称支持所有视频，也不把合成文件测试当作真实网站下载成功。搜索目前只取第一页，没有 continuation 分页。WebKit 插件使用 yt-dlp 私有 provider 接口，升级时须一起验证固定版本组合。
+
+### DASH 音频容器
+
+YouTube 的 M4A DASH 文件在 iPhone 验收中出现双倍时长和空尾。参考 [yt-dlp FixupM4a](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/postprocessor/ffmpeg.py)，手机用 AVAssetExportSession 的 Passthrough 将下载文件重新封装成标准 M4A，并使用 yt-dlp 返回的源时长限定范围。此过程不重新压缩音频，不需要 ffmpeg 或服务器。远端 CI 使用 FFmpeg 生成的合成 DASH 音频验证实际时长、解码和跳转。

@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import WebKit
 
@@ -9,7 +10,7 @@ final class OnDeviceDownloader: @unchecked Sendable {
 
     func download(_ track: OnlineTrack, directory: URL, cookies: [WebCookie] = []) async throws -> URL {
         let cancel = directory.appending(path: "cancel")
-        return try await withTaskCancellationHandler {
+        let response: DownloadResponse = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 queue.async {
                     do {
@@ -19,11 +20,28 @@ final class OnDeviceDownloader: @unchecked Sendable {
                         let response = try self.execute(parameters)
                         if FileManager.default.fileExists(atPath: cancel.path) { throw CancellationError() }
                         if let error = response.error { throw DownloadError(message: error) }
-                        continuation.resume(returning: directory.appending(path: "audio.m4a"))
+                        continuation.resume(returning: response)
                     } catch { continuation.resume(throwing: error) }
                 }
             }
         } onCancel: { try? Data().write(to: cancel) }
+        guard let duration = response.duration, duration.isFinite, duration > 0 else { throw OnlineMusicError.invalidAudio }
+        return try await Self.normalizeAudio(directory.appending(path: "audio.m4a"), duration: duration)
+    }
+
+    static func normalizeAudio(_ source: URL, duration: Double) async throws -> URL {
+        // YouTube DASH headers can make AVFoundation count the duration twice.
+        // Like yt-dlp's FixupM4a, remux without re-encoding; use the source's
+        // declared duration to exclude the empty tail observed on iPhone.
+        let asset = AVURLAsset(url: source)
+        guard let export = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
+            throw OnlineMusicError.invalidAudio
+        }
+        export.timeRange = CMTimeRange(start: .zero, duration: CMTime(seconds: duration, preferredTimescale: 600))
+        let destination = source.deletingLastPathComponent().appending(path: "normalized.m4a")
+        try await export.export(to: destination, as: .m4a)
+        try Task.checkCancellation()
+        return destination
     }
 
     func verifyRuntime() async throws -> String {
@@ -82,6 +100,7 @@ final class OnDeviceDownloader: @unchecked Sendable {
 private struct DownloadResponse: Decodable {
     let error: String?
     let version: String?
+    let duration: Double?
 }
 
 private struct DownloadError: LocalizedError {

@@ -39,7 +39,7 @@ def run(request, navigation_callback):
                 assert (directory / "fixture.m4a").read_bytes() == source.read_bytes()
             result["version"] = __version__
         else:
-            _download(request, directory)
+            result["duration"] = _download(request, directory)
     except Exception as error:
         result["error"] = str(error)
         if request.get("action") == "verify":
@@ -114,6 +114,7 @@ def _download(request, directory):
                 discard=expires is None, comment=None, comment_url=None,
                 rest={"HttpOnly": None} if record["httpOnly"] else {},
             ))
-        downloader.download(["https://m.youtube.com/watch?v=" + request["video_id"]])
+        info = downloader.extract_info("https://m.youtube.com/watch?v=" + request["video_id"], download=True)
     if not (directory / "audio.m4a").is_file():
         raise DownloadError("No compatible M4A audio was downloaded")
+    return info["duration"]

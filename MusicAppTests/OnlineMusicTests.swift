@@ -1,4 +1,5 @@
 import XCTest
+import AVFoundation
 import SwiftData
 import WebKit
 @testable import C0SnowMusic
@@ -123,5 +124,23 @@ import WebKit
         XCTAssertEqual(version, "2026.10.26")
         let repeated = try await OnDeviceDownloader.shared.verifyRuntime()
         XCTAssertEqual(repeated, version, "Consecutive downloads must reuse registered plugins")
+    }
+
+    func testDASHAudioRemuxPreservesRealDurationAndPlayback() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture-DASH", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "audio.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let normalized = try await OnDeviceDownloader.normalizeAudio(source, duration: 3)
+        let metadata = try await MetadataExtractor.extract(normalized)
+        XCTAssertEqual(metadata.duration, 3, accuracy: 0.1)
+        let video = try await AVURLAsset(url: normalized).loadTracks(withMediaType: .video)
+        XCTAssertTrue(video.isEmpty)
+        let engine = AVPlayerEngine()
+        try await engine.prepare(normalized)
+        let sought = await engine.seek(to: 2.5)
+        XCTAssertTrue(sought)
     }
 }
