@@ -1,8 +1,45 @@
 import XCTest
 import SwiftData
+import WebKit
 @testable import C0SnowMusic
 
 @MainActor final class OnlineMusicTests: XCTestCase {
+    func testWebSessionRequiresLiveLoginAndRestoresKeychainCookies() async throws {
+        let identifier = "test-\(UUID())"
+        let account = YouTubeAccountStore(storageAccount: identifier)
+        addTeardownBlock { await account.signOut() }
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = account.websiteData
+        let view = WKWebView(frame: .zero, configuration: configuration)
+        view.loadHTMLString("<script>window.ytcfg={get:()=>false};</script>", baseURL: URL(string: "https://m.youtube.com/"))
+        var loaded = false
+        for _ in 0..<100 {
+            loaded = (try? await view.evaluateJavaScript("typeof window.ytcfg !== 'undefined'")) as? Bool ?? false
+            if loaded { break }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(loaded)
+        let cookie = try XCTUnwrap(HTTPCookie(properties: [
+            .name: "SID", .value: "synthetic-session", .domain: ".youtube.com", .path: "/", .secure: "TRUE",
+            HTTPCookiePropertyKey(rawValue: "HttpOnly"): "TRUE",
+        ]))
+        await account.websiteData.httpCookieStore.setCookie(cookie)
+        let cookieOnly = await account.capture(from: view)
+        XCTAssertFalse(cookieOnly, "A Cookie alone must not claim login success")
+        _ = try await view.evaluateJavaScript("window.ytcfg={get:()=>true};true")
+        let verified = await account.capture(from: view)
+        XCTAssertTrue(verified, account.error ?? "")
+        let restored = YouTubeAccountStore(storageAccount: identifier)
+        await restored.restore()
+        XCTAssertTrue(restored.isSignedIn)
+        XCTAssertEqual(restored.downloadCookies().first?.value, "synthetic-session")
+        XCTAssertEqual(restored.downloadCookies().first?.httpOnly, true)
+        await restored.signOut()
+        let signedOut = YouTubeAccountStore(storageAccount: identifier)
+        await signedOut.restore()
+        XCTAssertFalse(signedOut.isSignedIn)
+    }
+
     func testMobileSearchFiltersCardsAndPreservesEscapedTitles() throws {
         let html = #"""
         <script>var ytInitialData = {"contents":[
@@ -44,7 +81,16 @@ import SwiftData
         let reopened = try OnlineAudioCache(root: root.appending(path: "cache"))
         let restored = await reopened.all()
         XCTAssertEqual(restored.map(\.id), entries.map(\.id))
-        try await cache.clear()
+        let playback = try PlaybackStore(library: library, systemIntegration: false)
+        let online = OnlineMusicStore(cache: cache)
+        let current = try XCTUnwrap(entries.first)
+        let currentURL = await cache.url(for: current.id)
+        try await playback.playCachedAudio(current.track, url: XCTUnwrap(currentURL))
+        playback.pause()
+        await online.clearCache(playback: playback)
+        XCTAssertNil(online.error)
+        XCTAssertNil(playback.currentSong)
+        XCTAssertTrue(playback.queue.entries.isEmpty)
         let song = try XCTUnwrap(library.songs.first)
         XCTAssertEqual(try LibraryFiles.hash(library.files.url(for: song.fileRelativePath)), try LibraryFiles.hash(fixture))
     }

@@ -92,8 +92,7 @@ struct OnlineCacheView: View {
                 Text("超过上限先删除最旧缓存。下载到资料库的歌曲不计入缓存，也不会被自动清理。")
                     .font(.footnote).foregroundStyle(.secondary)
                 Button("清空音频缓存", role: .destructive) {
-                    if playback.isCachedSong { playback.pause() }
-                    Task { await online.clearCache() }
+                    Task { await online.clearCache(playback: playback) }
                 }.disabled(online.downloadingID != nil)
             }
             Section("从新到旧") {
@@ -105,8 +104,7 @@ struct OnlineCacheView: View {
                     }
                     .swipeActions {
                         Button("删除", role: .destructive) {
-                            if playback.isCachedSong { playback.pause() }
-                            Task { await online.remove(entry) }
+                            Task { await online.remove(entry, playback: playback) }
                         }.disabled(online.downloadingID != nil)
                     }
                 }

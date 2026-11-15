@@ -80,14 +80,15 @@ import SwiftUI
         searchTask?.cancel(); downloadTask?.cancel(); results = []; searching = false; error = nil
     }
 
-    func remove(_ entry: CachedAudio) async {
+    func remove(_ entry: CachedAudio, playback: PlaybackStore) async {
         do {
+            playback.forgetCachedAudio(entry.id)
             try await cache?.remove(entry.id); await refresh()
         } catch { self.error = error.localizedDescription }
     }
 
-    func clearCache() async {
-        do { try await cache?.clear(); await refresh() }
+    func clearCache(playback: PlaybackStore) async {
+        do { playback.forgetCachedAudio(); try await cache?.clear(); await refresh() }
         catch { self.error = error.localizedDescription }
     }
 

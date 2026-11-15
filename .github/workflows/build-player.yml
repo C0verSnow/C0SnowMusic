@@ -3,7 +3,7 @@ on:
   pull_request:
     paths-ignore: ['**/*.md', 'docs/**']
   push:
-    branches: [main, 'feature/issue-7-*', 'feature/issue-9-*']
+    branches: [main, 'feature/issue-7-*']
     tags: ['v*']
     paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
@@ -128,7 +128,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           cat > release/notes.md <<'EOF'
-          原生 iOS 26 音乐播放器。本版本包含账户页 Music Settings、语言选择、Google 登录接口、YouTube 卡片搜索与手机本机 yt-dlp 音频下载。
+          原生 iOS 26 音乐播放器。本版本包含账户页 Music Settings、语言选择、Google/YouTube 网页登录、YouTube 卡片搜索与手机本机 yt-dlp 音频下载。
 
           - IPA 内含手机本机 Python/yt-dlp/WebKit 运行时，不需要服务器。
           - 音频缓存上限 500 MB，按从新到旧显示；手动下载到资料库的副本不会被缓存清理删除。

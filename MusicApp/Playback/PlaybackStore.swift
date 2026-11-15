@@ -41,6 +41,14 @@ import SwiftData
 
     func audioURL(for song: Song) -> URL { cachedURLs[song.id] ?? files.url(for: song.fileRelativePath) }
 
+    func forgetCachedAudio(_ videoID: String? = nil) {
+        let ids = cachedURLs.filter { videoID == nil || $0.value.deletingPathExtension().lastPathComponent == videoID }.map(\.key)
+        for id in ids {
+            removeSong(id)
+            cachedSongs.removeValue(forKey: id); cachedURLs.removeValue(forKey: id)
+        }
+    }
+
     init(library: LibraryStore, engine: any PlayerEngine = AVPlayerEngine(), systemIntegration: Bool = true) throws {
         self.library = library; files = library.files; self.engine = engine
         if let saved = try library.context.fetch(FetchDescriptor<PlaybackSession>()).first { session = saved }

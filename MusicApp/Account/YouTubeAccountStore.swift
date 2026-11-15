@@ -33,6 +33,9 @@ struct WebCookie: Codable, Sendable, Equatable {
     var error: String?
     @ObservationIgnored let websiteData = WKWebsiteDataStore.nonPersistent()
     @ObservationIgnored private var cookies: [WebCookie] = []
+    @ObservationIgnored private let storageAccount: String
+
+    init(storageAccount: String = "web-session") { self.storageAccount = storageAccount }
 
     func restore() async {
         var query = keychainQuery
@@ -92,7 +95,7 @@ struct WebCookie: Codable, Sendable, Equatable {
 
     private static let authCookieNames: Set<String> = ["SID", "SAPISID", "__Secure-1PAPISID", "__Secure-3PAPISID", "__Secure-1PSID", "__Secure-3PSID"]
     private var keychainQuery: [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "org.c0versnow.C0SnowMusic.youtube", kSecAttrAccount as String: "web-session"]
+        [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "org.c0versnow.C0SnowMusic.youtube", kSecAttrAccount as String: storageAccount]
     }
 }
 
