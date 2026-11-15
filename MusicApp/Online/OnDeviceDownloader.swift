@@ -1,5 +1,4 @@
 import Foundation
-import Python
 import WebKit
 
 final class OnDeviceDownloader: @unchecked Sendable {

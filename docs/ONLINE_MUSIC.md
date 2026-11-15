@@ -28,6 +28,10 @@ Issue #9 在 `feature/issue-9-online-music` 实现。PR 等待用户 review，�
 
 二进制与 wheel 位于被 Git 忽略的 `Vendor/`；GitHub Actions 在编译前运行同一准备脚本。请保留发行包和 wheel 内的全部第三方许可。设计参考、候选取舍见 [调研](ONLINE_MUSIC_RESEARCH.md)，不复制 Palladium 的 GPL 实现。
 
+## IPA 发布
+
+推送以 `v` 开头的版本标签会运行已有完整 iOS CI，全部通过后自动将 `C0SnowMusic-unsigned.ipa` 上传到同名 GitHub Release。带连字符的标签（例如 `v1.1.0-beta.1`）标为预发布；常规 `v1.1.0` 为正式发布。Release 的 IPA 与该标签源码、测试提交一致。未签名 IPA 仍须用自己的 Apple 证书签名安装，不能把 ZIP 包直接当成已签名应用。
+
 ## Google 配置
 
 Google 官方 SDK 固定 `10.1.0`。在 Google Cloud 为 `org.c0versnow.C0SnowMusic`（或你自己的 Bundle ID）创建 iOS OAuth client；将 `Config/Local.example.xcconfig` 复制为被忽略的 `Config/Local.xcconfig`，填入两个公开应用标识。工程将其写入 `GIDClientID` 与 `CFBundleURLSchemes`。不填写 Client Secret，也不需要新建后端。

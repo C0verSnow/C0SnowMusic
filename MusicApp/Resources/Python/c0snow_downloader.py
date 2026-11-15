@@ -17,14 +17,19 @@ def run(request, navigation_callback):
             import ssl
             from yt_dlp.version import __version__
             from yt_dlp_plugins.extractor.ytjsc import AppleWebKitJCP
-            from yt_dlp_plugins.webkit_jsi.lib.easy import WKJSE_Factory, WKJSE_Webview
+            from yt_dlp import YoutubeDL
             from yt_dlp_plugins.webkit_jsi.lib.logging import DefaultLoggerImpl
 
             assert ssl.OPENSSL_VERSION
             assert AppleWebKitJCP.JS_RUNTIME_NAME
-            with WKJSE_Factory(DefaultLoggerImpl()) as send:
-                with WKJSE_Webview(send) as view:
-                    assert view.execute_js("1 + 1") == 2
+            with YoutubeDL({"quiet": True, "cachedir": False}) as downloader:
+                provider = AppleWebKitJCP(downloader.get_info_extractor("Youtube"), DefaultLoggerImpl(), {})
+                try:
+                    assert provider._lib_script.code and provider._core_script.code
+                    output = provider._run_js_runtime('console.log(JSON.stringify({answer: 1 + 1}));')
+                    assert json.loads(output) == {"answer": 2}
+                finally:
+                    provider.close()
             result["version"] = __version__
         else:
             _download(request, directory)
