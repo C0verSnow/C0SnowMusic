@@ -11,8 +11,8 @@ struct AccountView: View {
                 HStack(spacing: 16) {
                     Image(systemName: "person.crop.circle.fill").font(.system(size: 48)).foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(account.name ?? String(localized: "未登录")).font(.title3.bold())
-                        Text(account.email ?? String(localized: "登录 Google 账户")).font(.subheadline).foregroundStyle(.secondary)
+                        Text(account.name ?? AppLanguage.text("未登录")).font(.title3.bold())
+                        Text(account.email ?? AppLanguage.text("登录 Google 账户")).font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.padding(.vertical, 12)
                 if account.email == nil {

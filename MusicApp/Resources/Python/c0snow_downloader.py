@@ -30,11 +30,19 @@ def run(request, navigation_callback):
                     assert json.loads(output) == {"answer": 2}
                 finally:
                     provider.close()
+            if request.get("fixture"):
+                source = Path(request["fixture"])
+                with YoutubeDL({"enable_file_urls": True, "quiet": True, "outtmpl": str(directory / "fixture.m4a")}) as downloader:
+                    downloader.download([source.as_uri()])
+                assert (directory / "fixture.m4a").read_bytes() == source.read_bytes()
             result["version"] = __version__
         else:
             _download(request, directory)
     except Exception as error:
         result["error"] = str(error)
+        if request.get("action") == "verify":
+            import traceback
+            result["error"] = traceback.format_exc()
     (directory / "result.json").write_text(json.dumps(result), encoding="utf-8")
 
 

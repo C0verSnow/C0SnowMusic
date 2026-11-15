@@ -16,7 +16,7 @@ import UIKit
 
     func signIn() async {
         guard configured else {
-            error = String(localized: "此构建尚未配置 Google 登录，请联系应用提供者。")
+            error = AppLanguage.text("此构建尚未配置 Google 登录，请联系应用提供者。")
             return
         }
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first(where: { $0.activationState == .foregroundActive }),
@@ -26,7 +26,9 @@ import UIKit
         defer { isSigningIn = false }
         do { update(try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter).user) }
         catch {
-            if (error as NSError).code != GIDSignInErrorCode.canceled.rawValue { self.error = error.localizedDescription }
+            let failure = error as NSError
+            // GIDSignIn.h defines cancellation as -5 in this error domain.
+            if failure.domain != kGIDSignInErrorDomain || failure.code != -5 { self.error = error.localizedDescription }
         }
     }
 

@@ -2,8 +2,6 @@ import SwiftUI
 
 struct OnlineSearchView: View {
     @Environment(OnlineMusicStore.self) private var online
-    @Environment(LibraryStore.self) private var library
-    @Environment(PlaybackStore.self) private var playback
     @State private var query = ""
 
     var body: some View {

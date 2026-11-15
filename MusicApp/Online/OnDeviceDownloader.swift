@@ -33,7 +33,8 @@ final class OnDeviceDownloader: @unchecked Sendable {
                     let directory = URL.temporaryDirectory.appending(path: "RuntimeCheck-\(UUID())")
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     defer { try? FileManager.default.removeItem(at: directory) }
-                    let response = try self.execute(["directory": directory.path, "action": "verify"])
+                    let fixture = Bundle.main.url(forResource: "Fixture", withExtension: "m4a", subdirectory: "Fixtures")
+                    let response = try self.execute(["directory": directory.path, "action": "verify", "fixture": fixture?.path ?? ""])
                     if let error = response.error { throw DownloadError(message: error) }
                     continuation.resume(returning: response.version ?? "")
                 } catch { continuation.resume(throwing: error) }

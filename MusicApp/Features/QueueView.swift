@@ -10,7 +10,7 @@ struct QueueView: View {
                         .tint(playback.shuffleEnabled ? .pink : .secondary)
                         .accessibilityValue(playback.shuffleEnabled ? "已开启" : "已关闭")
                     Spacer()
-                    Button(playback.repeatMode.title, systemImage: playback.repeatMode == .one ? "repeat.1" : "repeat") { playback.cycleRepeat() }
+                    Button(LocalizedStringKey(playback.repeatMode.title), systemImage: playback.repeatMode == .one ? "repeat.1" : "repeat") { playback.cycleRepeat() }
                         .tint(playback.repeatMode == .off ? .secondary : .pink)
                 }.buttonStyle(.bordered)
             }

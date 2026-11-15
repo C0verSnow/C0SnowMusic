@@ -109,7 +109,7 @@ struct SongListView: View {
         .navigationTitle(title)
         .toolbar {
             Menu("排序", systemImage: "arrow.up.arrow.down") {
-                Picker("排序", selection: $sort) { ForEach(SongSort.allCases) { Text($0.rawValue).tag($0) } }
+                Picker("排序", selection: $sort) { ForEach(SongSort.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) } }
             }
         }
     }

@@ -12,11 +12,11 @@ enum OnlineMusicError: LocalizedError {
     case invalidResponse, searchLayoutChanged, runtimeUnavailable, invalidAudio, cacheFull
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: String(localized: "在线请求失败，请重试。")
-        case .searchLayoutChanged: String(localized: "YouTube 返回了验证页面或搜索结构已变化，请稍后重试。")
-        case .runtimeUnavailable: String(localized: "音频下载组件未安装，请使用包含下载组件的构建。")
-        case .invalidAudio: String(localized: "下载结果不是可播放的纯音频文件。")
-        case .cacheFull: String(localized: "音频超过 500MB 缓存上限。")
+        case .invalidResponse: AppLanguage.text("在线请求失败，请重试。")
+        case .searchLayoutChanged: AppLanguage.text("YouTube 返回了验证页面或搜索结构已变化，请稍后重试。")
+        case .runtimeUnavailable: AppLanguage.text("音频下载组件未安装，请使用包含下载组件的构建。")
+        case .invalidAudio: AppLanguage.text("下载结果不是可播放的纯音频文件。")
+        case .cacheFull: AppLanguage.text("音频超过 500MB 缓存上限。")
         }
     }
 }
@@ -39,6 +39,7 @@ struct YouTubeSearchClient: Sendable {
     static func parse(_ html: String) throws -> [OnlineTrack] {
         let data = try initialData(in: html)
         let root = try JSONSerialization.jsonObject(with: data)
+        guard (root as? [String: Any])?["contents"] != nil else { throw OnlineMusicError.searchLayoutChanged }
         var results: [OnlineTrack] = []
         var seen: Set<String> = []
         collect(root, results: &results, seen: &seen)
@@ -48,7 +49,10 @@ struct YouTubeSearchClient: Sendable {
     private static func initialData(in html: String) throws -> Data {
         let markers = ["var ytInitialData =", "ytInitialData =", "window[\"ytInitialData\"] =", "ytInitialData="]
         for marker in markers {
-            guard let range = html.range(of: marker), let start = html[range.upperBound...].firstIndex(of: "{") else { continue }
+            guard let range = html.range(of: marker),
+                  let start = html[range.upperBound...].firstIndex(where: { !$0.isWhitespace }) else { continue }
+            if html[start] == "'" || html[start] == "\"" { return try javascriptString(in: html, start: start) }
+            guard html[start] == "{" else { continue }
             var depth = 0; var quoted = false; var escaped = false
             for index in html[start...].indices {
                 let character = html[index]
@@ -69,11 +73,44 @@ struct YouTubeSearchClient: Sendable {
         throw OnlineMusicError.searchLayoutChanged
     }
 
+    private static func javascriptString(in html: String, start: String.Index) throws -> Data {
+        let quote = html[start]
+        var index = html.index(after: start)
+        var units: [UInt16] = []
+        while index < html.endIndex {
+            let character = html[index]
+            index = html.index(after: index)
+            if character == quote { return Data(String(decoding: units, as: UTF16.self).utf8) }
+            if character != "\\" { units += String(character).utf16; continue }
+            guard index < html.endIndex else { break }
+            let escape = html[index]
+            index = html.index(after: index)
+            if escape == "x" || escape == "u" {
+                let count = escape == "x" ? 2 : 4
+                guard let end = html.index(index, offsetBy: count, limitedBy: html.endIndex),
+                      let value = UInt16(html[index..<end], radix: 16) else { throw OnlineMusicError.searchLayoutChanged }
+                units.append(value); index = end
+            } else {
+                let value: String
+                switch escape {
+                case "n": value = "\n"
+                case "r": value = "\r"
+                case "t": value = "\t"
+                case "b": value = "\u{08}"
+                case "f": value = "\u{0c}"
+                default: value = String(escape)
+                }
+                units += value.utf16
+            }
+        }
+        throw OnlineMusicError.searchLayoutChanged
+    }
+
     private static func collect(_ node: Any, results: inout [OnlineTrack], seen: inout Set<String>) {
         if let nodes = node as? [Any] {
             for child in nodes { collect(child, results: &results, seen: &seen) }
         } else if let object = node as? [String: Any] {
-            if object["adSlotRenderer"] != nil || object["promotedSparklesWebRenderer"] != nil { return }
+            if object["adSlotRenderer"] != nil || object["promotedSparklesWebRenderer"] != nil || object["reelShelfRenderer"] != nil { return }
             for name in ["videoRenderer", "compactVideoRenderer", "videoWithContextRenderer"] {
                 if let video = object[name] as? [String: Any], let track = track(video), seen.insert(track.id).inserted {
                     results.append(track)
@@ -89,7 +126,7 @@ struct YouTubeSearchClient: Sendable {
                 let metadataRows = rows?["contentMetadataViewModel"] as? [String: Any]
                 let firstRow = (metadataRows?["metadataRows"] as? [[String: Any]])?.first
                 let part = (firstRow?["metadataParts"] as? [[String: Any]])?.first
-                let artist = (part?["text"] as? [String: Any])?["content"] as? String ?? String(localized: "未知艺术家")
+                let artist = (part?["text"] as? [String: Any])?["content"] as? String ?? AppLanguage.text("未知艺术家")
                 let image = (video["contentImage"] as? [String: Any])?["thumbnailViewModel"] as? [String: Any]
                 let sources = (image?["image"] as? [String: Any])?["sources"] as? [[String: Any]]
                 results.append(OnlineTrack(id: id, title: title, artist: artist, coverURL: thumbnail(sources)))
@@ -100,12 +137,12 @@ struct YouTubeSearchClient: Sendable {
     }
 
     private static func track(_ video: [String: Any]) -> OnlineTrack? {
-        guard let id = video["videoId"] as? String, validID(id) else { return nil }
-        let title = text(video["title"])
+        guard let id = video["videoId"] as? String, validID(id), video["shouldDisplayAsBigShortsSingleton"] as? Bool != true else { return nil }
+        let title = text(video["title"] ?? video["headline"])
         guard !title.isEmpty else { return nil }
         let artist = text(video["shortBylineText"] ?? video["ownerText"] ?? video["longBylineText"])
         let images = (video["thumbnail"] as? [String: Any])?["thumbnails"] as? [[String: Any]]
-        return OnlineTrack(id: id, title: title, artist: artist.isEmpty ? String(localized: "未知艺术家") : artist, coverURL: thumbnail(images))
+        return OnlineTrack(id: id, title: title, artist: artist.isEmpty ? AppLanguage.text("未知艺术家") : artist, coverURL: thumbnail(images))
     }
 
     private static func text(_ node: Any?) -> String {

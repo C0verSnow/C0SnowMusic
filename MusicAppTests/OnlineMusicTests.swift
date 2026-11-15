@@ -49,6 +49,15 @@ import SwiftData
         XCTAssertEqual(try LibraryFiles.hash(library.files.url(for: song.fileRelativePath)), try LibraryFiles.hash(fixture))
     }
 
+    func testActualMobilePageHexEncodedInitialData() throws {
+        let json = #"{"contents":[{"videoWithContextRenderer":{"videoId":"abcdefghijk","headline":{"runs":[{"text":"雪 and 🎵"}]},"shortBylineText":{"runs":[{"text":"Artist"}]}}}]}"#
+        let escaped = json.utf16.map { String(format: "\\u%04x", $0) }.joined()
+        let html = "<script>var ytInitialData = '" + escaped + "';</script>"
+        XCTAssertEqual(try YouTubeSearchClient.parse(html).first?.title, "雪 and 🎵")
+        let hex = json.utf16.map { $0 < 256 ? String(format: "\\x%02x", $0) : String(format: "\\u%04x", $0) }.joined()
+        XCTAssertEqual(try YouTubeSearchClient.parse("<script>ytInitialData = '" + hex + "';</script>").first?.artist, "Artist")
+    }
+
     func testCacheRejectsNonAudioWithoutCommitting() async throws {
         let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

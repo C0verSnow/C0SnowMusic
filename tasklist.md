@@ -72,12 +72,19 @@
 
 - [1794714693] 遇到的问题：首轮远端 CI 已成功取得依赖，但 Swift 无法 import Python，发行包的 modulemap 实际放在 Headers；通用解决步骤：先查发布包结构与编译日志，使用桥接头引入官方 C API，保留原始生成包，不手改 modulemap，再跑同一远端 CI。
 
+## 问题19及解决模板：网页结构要看实际响应
+
+- [1794715084] 遇到的问题：真实手机 YouTube 搜索页将 ytInitialData 编成带十六进制转义的字符串，视频标题放在 headline；通用解决步骤：先保存真实响应核对字段，再同时支持对象和转义字符串，用最小真实结构补回归，不能只拿自己编的 title 数据当作网站可用。
+
 ## 想做：
 
 - [1794673553] 完成 issue #7 剩余实机验收，按实际结果更新 PR #8 等待用户 review，不合并；未满足完整验收前不关闭 issue。
 - [1794674736] 其他真实格式按用户明确要求保留待验收；完整辅助功能、不同设备和其余边界场景留待后续实机矩阵。
 
 ## 做完：
+
+- [1794715084] 第二轮 CI 已通过 Python 桥接，发现 Google SDK 的 Objective-C 错误枚举没有同名 Swift 类型；按官方头文件的错误域与取消码修复。补齐真实移动页的转义解析和 headline、语言文案、EJS 脚本校验与合成 M4A 的真实 yt-dlp 传输回归。iPhone Mirror 已连接，等待本轮 IPA 进行真机验收。
+
 
 - [1794714454] issue #9 已完成首轮代码：账户页与 Music Settings、中文/English 选择、Google 官方 SDK 接口、m.youtube.com 卡片解析、手机本机 Python/yt-dlp 下载、500MB 音频缓存和手动下载保留；新增真实 M4A 与运行时集成测试。用户明确选择不用服务器，Google Client ID 后续按文档配置。已查 GitHub 并比较 Palladium、BeeWare、yt-dlp、WebKit 插件、YouTubeKit、Google SDK，来源与许可已记录。
 

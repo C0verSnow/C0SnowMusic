@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
-    @Environment(\.dismiss) private var dismiss
     @State private var excludeBackup = UserDefaults.standard.bool(forKey: "excludeMusicFromBackup")
     @State private var changingBackup = false
     @AppStorage("appLanguage") private var language = "system"
