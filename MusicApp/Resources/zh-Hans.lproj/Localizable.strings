@@ -211,3 +211,17 @@
 "%lld 首歌曲 · %@" = "%lld 首歌曲 · %@";
 "歌曲%@" = "歌曲%@";
 "（显示前 100 首）" = "（显示前 100 首）";
+"YouTube 网页登录" = "YouTube 网页登录";
+"登录 YouTube" = "登录 YouTube";
+"登录 YouTube 账户" = "登录 YouTube 账户";
+"YouTube 登录状态已保存" = "YouTube 登录状态已保存";
+"保存登录" = "保存登录";
+"返回 YouTube" = "返回 YouTube";
+"返回" = "返回";
+"刷新" = "刷新";
+"登录状态" = "登录状态";
+"通过 Google 网页登录 YouTube。登录状态只保存在本机，用于 YouTube 搜索与下载；无需 Client ID。" = "通过 Google 网页登录 YouTube。登录状态只保存在本机，用于 YouTube 搜索与下载；无需 Client ID。";
+"无法读取已保存的 YouTube 登录状态。" = "无法读取已保存的 YouTube 登录状态。";
+"请先在网页中完成登录，再返回 YouTube。" = "请先在网页中完成登录，再返回 YouTube。";
+"尚未确认 YouTube 已登录，请完成网页登录后重试。" = "尚未确认 YouTube 已登录，请完成网页登录后重试。";
+"无法保存或清除 YouTube 登录状态，请重试。" = "无法保存或清除 YouTube 登录状态，请重试。";

@@ -1,11 +1,11 @@
 # 在线音乐与账号
 
-Issue #9 在 `feature/issue-9-online-music` 实现。PR 等待用户 review，不自动合并。
+按 NeriPlayer 的网页会话用途实现登录，不需要 Google Client ID。Issue #9 在 `feature/issue-9-online-music` 实现。PR 等待用户 review，不自动合并。
 
 ## 操作
 
 1. 右上角头像打开账户页，点 Music Settings 进入原设置。语言选系统、简体中文或 English；界面直接切换，选择保存在设备上。
-2. 账户页可选 Google 登录、恢复和退出。本地音乐和公开在线功能不强制登录。
+2. 账户页可选 YouTube 网页登录、恢复和退出。本地音乐和公开在线功能不强制登录。
 3. 搜索 Tab 选择 YouTube，输入歌名/歌手并提交。只显示视频结果的封面、标题和作者；作者是 YouTube 上传者，缺少录音元数据时不能保证等于真实演唱者。频道、播放列表和广告不会作为歌曲卡片。
 4. 搜索成功后自动预下载第一首。点卡片播放，菜单可预下载或下载到资料库；同一时间一个下载，可取消。搜索不会批量下载整页结果，避免无意耗尽流量。
 5. 在线缓存复用现有 AVPlayer、锁屏控制、后台播放和队列。缓存歌曲先完整下载并验证纯音频，再开始播放。收藏、编辑元数据和歌词功能需先下载到资料库。临时缓存播放队列不在重启后自动恢复，可从缓存列表重新播放。
@@ -32,11 +32,15 @@ Issue #9 在 `feature/issue-9-online-music` 实现。PR 等待用户 review，�
 
 推送以 `v` 开头的版本标签会运行已有完整 iOS CI，全部通过后自动将 `C0SnowMusic-unsigned.ipa` 上传到同名 GitHub Release。带连字符的标签（例如 `v1.1.0-beta.1`）标为预发布；常规 `v1.1.0` 为正式发布。Release 的 IPA 与该标签源码、测试提交一致。未签名 IPA 仍须用自己的 Apple 证书签名安装，不能把 ZIP 包直接当成已签名应用。
 
-## Google 配置
+## Google / YouTube 网页登录
 
-Google 官方 SDK 固定 `10.1.0`。在 Google Cloud 为 `org.c0versnow.C0SnowMusic`（或你自己的 Bundle ID）创建 iOS OAuth client；将 `Config/Local.example.xcconfig` 复制为被忽略的 `Config/Local.xcconfig`，填入两个公开应用标识。工程将其写入 `GIDClientID` 与 `CFBundleURLSchemes`。不填写 Client Secret，也不需要新建后端。
+参考 NeriPlayer 的网页会话设计，自行使用系统 WKWebView 实现，不复制其 GPL 代码，也不接入独立的 Google OAuth 身份登录 SDK。网页直接打开 Google 的 YouTube ServiceLogin，用户在 Google 页面完成认证，然后返回 YouTube 并点击「保存登录」。
 
-启动恢复 Google 会话，回调先交 `GIDSignIn.handle`，未处理的文件 URL 继续导入。退出使用 SDK 清会话。客户端不自行保存 token。Google OAuth 代表账户身份，不是 YouTube 网页 cookie；不会借用其他开源应用的 Client ID。
+只有真实 YouTube 页面返回 `ytcfg.LOGGED_IN`，且浏览器 CookieStore 中存在 YouTube 身份 Cookie 时才保存。Cookie 加密保存在本机 Keychain，不同步 iCloud，不写入仓库或测试日志；登录 WebView 使用独立内存数据存储，与 EJS 挑战 WebView 隔离。重启从 Keychain 恢复；会话失效仍需重新登录，保存过不代表服务器永远接受。
+
+搜索将 YouTube 域 Cookie 附在 m.youtube.com 请求；下载把同一批 Cookie 转成 Python 原生 cookiejar，交给 yt-dlp。退出会清除 Keychain 与登录 WebView Cookie，并取消进行中的在线请求。已下载的本地音频不依赖账号。
+
+iPhone 的 WKNavigationDelegate 不具有 Android WebView 的所有请求拦截能力，因此不照搬 NeriPlayer 的 youtubei 请求头拦截和复杂回退。Google 可能拒绝内嵌浏览器，不能承诺所有账户可登录；拒绝时保留真实页面和提示，不伪造登录成功。系统 Safari 与 OAuth 会话不能直接导出网站 Cookie，因此不把「在 Safari 登录」当作本 App 已有会话。
 
 ## 验证与限制
 
@@ -44,4 +48,4 @@ Google 官方 SDK 固定 `10.1.0`。在 Google Cloud 为 `org.c0versnow.C0SnowMu
 
 新增测试覆盖手机页面解析与去重、错误页识别、真实 M4A 缓存淘汰、重启清单恢复、手动导入副本保留、拒绝 HTML、Python/SSL/WebKit 执行、设置入口与语言切换。CI 的通过状态须以 PR checks 为准；测试不使用用户音乐。
 
-真实 Google 登录需配置自己的 Client ID 后在设备验收。真实 YouTube 下载会受平台页面/签名变化、地区、PO Token 和机器人验证影响；不声称支持所有视频，也不把合成文件测试当作真实网站下载成功。搜索目前只取第一页，没有 continuation 分页。WebKit 插件使用 yt-dlp 私有 provider 接口，升级时须一起验证固定版本组合。
+真实 Google/YouTube 网页登录需要在设备上完成认证后验收。真实 YouTube 下载会受平台页面/签名变化、地区、PO Token 和机器人验证影响；不声称支持所有视频，也不把合成文件测试当作真实网站下载成功。搜索目前只取第一页，没有 continuation 分页。WebKit 插件使用 yt-dlp 私有 provider 接口，升级时须一起验证固定版本组合。

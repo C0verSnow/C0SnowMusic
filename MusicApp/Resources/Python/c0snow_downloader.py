@@ -72,6 +72,7 @@ def _configure(navigation_callback):
 
 
 def _download(request, directory):
+    from http.cookiejar import Cookie
     from yt_dlp import YoutubeDL
     from yt_dlp.utils import DownloadError
 
@@ -95,6 +96,17 @@ def _download(request, directory):
         "progress_hooks": [progress],
     }
     with YoutubeDL(options) as downloader:
+        for record in json.loads(request.get("cookies", "[]")):
+            expires = record.get("expires")
+            downloader.cookiejar.set_cookie(Cookie(
+                version=0, name=record["name"], value=record["value"],
+                port=None, port_specified=False, domain=record["domain"],
+                domain_specified=True, domain_initial_dot=record["domain"].startswith("."),
+                path=record["path"], path_specified=True, secure=record["secure"],
+                expires=int(expires) if expires is not None else None,
+                discard=expires is None, comment=None, comment_url=None,
+                rest={"HttpOnly": None} if record["httpOnly"] else {},
+            ))
         downloader.download(["https://m.youtube.com/watch?v=" + request["video_id"]])
     if not (directory / "audio.m4a").is_file():
         raise DownloadError("No compatible M4A audio was downloaded")

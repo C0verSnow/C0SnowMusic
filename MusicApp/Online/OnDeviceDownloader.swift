@@ -7,14 +7,15 @@ final class OnDeviceDownloader: @unchecked Sendable {
     private let queue = DispatchQueue(label: "org.c0versnow.youtube-python", qos: .userInitiated)
     private var initialized = false
 
-    func download(_ track: OnlineTrack, directory: URL) async throws -> URL {
+    func download(_ track: OnlineTrack, directory: URL, cookies: [WebCookie] = []) async throws -> URL {
         let cancel = directory.appending(path: "cancel")
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 queue.async {
                     do {
                         try self.initialize()
-                        let parameters = ["video_id": track.id, "directory": directory.path]
+                        let cookieData = try JSONEncoder().encode(cookies)
+                        let parameters = ["video_id": track.id, "directory": directory.path, "cookies": String(decoding: cookieData, as: UTF8.self)]
                         let response = try self.execute(parameters)
                         if FileManager.default.fileExists(atPath: cancel.path) { throw CancellationError() }
                         if let error = response.error { throw DownloadError(message: error) }

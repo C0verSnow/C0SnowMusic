@@ -12,14 +12,14 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 4. 选择 iOS 26 iPhone 或模拟器，运行。
 5. 点击右上角「+」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
 
-在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google 登录使用官方 Swift Package。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
+在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
 仓库约定禁止本地编译验证。自动编译与测试使用原有 `build-player.yml` 改造的 GitHub Actions；以上 Xcode 步骤供用户安装真机使用。CI 上传的 iPhone `.app` 未签名，不能直接安装；必须用自己的开发者签名构建或导出。
 
 ## 功能
 
 - 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
-- 右上角账户页包含 Google 登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
+- 右上角账户页包含 YouTube 网页登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
 - 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；首次结果自动预下载第一首，也可逐首操作。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
@@ -58,7 +58,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。下载全部在手机完成，不请求中转服务器。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
 
-Google 登录需要为本应用 Bundle ID 创建自己的 iOS OAuth client。复制 `Config/Local.example.xcconfig` 为 `Config/Local.xcconfig`，填入 Client ID 与反向 URL Scheme 后构建；不需要用户密码、Client Secret 或服务器。未配置的构建会明确提示，公开搜索、本机下载与本地播放仍可用。Google 身份登录不会自动提供 YouTube 网页 cookie。
+Google 登录按 [NeriPlayer](https://github.com/cwuom/NeriPlayer) 的网页会话思路独立实现：通过 Google 网页登录 YouTube，确认已登录后把 Cookie 存入本机 Keychain，供搜索和 yt-dlp 使用。不需要 Google Client ID 或服务器。Google 可能拒绝内嵌浏览器登录；以真机结果为准，不会把失败显示成成功。
 
 ## 应用图标
 

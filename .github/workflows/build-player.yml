@@ -48,7 +48,7 @@ jobs:
           set -o pipefail
           xcodebuild build-for-testing -project C0SnowMusic.xcodeproj -scheme C0SnowMusic \
             -destination "platform=iOS Simulator,id=$IOS_SIMULATOR_ID" \
-            -derivedDataPath DerivedData CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
+            -derivedDataPath DerivedData ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/simulator-build.log
       - name: Build unsigned iPhone Release application
         run: |
           set -o pipefail
@@ -132,7 +132,7 @@ jobs:
 
           - IPA 内含手机本机 Python/yt-dlp/WebKit 运行时，不需要服务器。
           - 音频缓存上限 500 MB，按从新到旧显示；手动下载到资料库的副本不会被缓存清理删除。
-          - 本 IPA 未签名，须用自己的 Apple 证书签名后安装。Google 登录需在构建时配置本应用的 iOS Client ID。
+          - 本 IPA 未签名，须用自己的 Apple 证书签名后安装。YouTube 网页登录无需 Google Client ID，Cookie 只保存在本机。
           - 仅在对应提交的模拟器测试和 iPhone Release 编译全部通过后发布。真实网站可用性仍受网络、地区和 YouTube 验证影响。
           EOF
           release_flags=()

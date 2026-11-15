@@ -211,3 +211,17 @@
 "%lld 首歌曲 · %@" = "%lld songs · %@";
 "歌曲%@" = "Songs%@";
 "（显示前 100 首）" = " (first 100 shown)";
+"YouTube 网页登录" = "YouTube web sign-in";
+"登录 YouTube" = "Sign in to YouTube";
+"登录 YouTube 账户" = "Sign in to your YouTube account";
+"YouTube 登录状态已保存" = "YouTube session saved";
+"保存登录" = "Save session";
+"返回 YouTube" = "Return to YouTube";
+"返回" = "Back";
+"刷新" = "Refresh";
+"登录状态" = "Sign-in status";
+"通过 Google 网页登录 YouTube。登录状态只保存在本机，用于 YouTube 搜索与下载；无需 Client ID。" = "Sign in to YouTube on Google’s website. Your session stays on this device and is used for YouTube search and downloads. No Client ID is required.";
+"无法读取已保存的 YouTube 登录状态。" = "Cannot read the saved YouTube session.";
+"请先在网页中完成登录，再返回 YouTube。" = "Complete sign-in on the website, then return to YouTube.";
+"尚未确认 YouTube 已登录，请完成网页登录后重试。" = "YouTube sign-in is not confirmed. Complete web sign-in and retry.";
+"无法保存或清除 YouTube 登录状态，请重试。" = "Cannot save or clear your YouTube session. Please retry.";

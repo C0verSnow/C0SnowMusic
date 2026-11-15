@@ -4,7 +4,7 @@
 
 ## 本次选择
 
-用户已明确要求“全部在手机运行，不用服务器”。因此选择在 iOS 应用内嵌入 Python，调用真正的 yt-dlp；下载完整音频后，继续交给现有 AVPlayer。Google 登录使用 Google 官方 iOS SDK。SwiftUI、缓存管理和搜索卡片仍自行实现。
+用户已明确要求“全部在手机运行，不用服务器”。因此选择在 iOS 应用内嵌入 Python，调用真正的 yt-dlp；下载完整音频后，继续交给现有 AVPlayer。SwiftUI、缓存管理和搜索卡片仍自行实现。用户随后指定 NeriPlayer 作为登录参考；其实际功能是保存 YouTube 网页账户会话，不能用本应用的 Google OAuth 身份登录冒充。具体结论见下方补充章节。
 
 这会新增有明确用途的第三方运行时。原先“完全没有第三方运行时”与“手机内运行 yt-dlp”无法同时满足：yt-dlp 是 Python 项目，YouTube 签名挑战还需要 JavaScript 执行能力。这是架构约束，不是需要用户部署服务器。依据 [yt-dlp 官方依赖说明](https://github.com/yt-dlp/yt-dlp#dependencies)、[CPython 官方 iOS 文档](https://docs.python.org/3.13/using/ios.html)。
 
@@ -54,9 +54,9 @@ CPython 的 [iOS 嵌入文档](https://docs.python.org/3.13/using/ios.html#addin
 
 [官方 YouTube 提取器说明](https://github.com/yt-dlp/yt-dlp/wiki/Extractors#youtube) 提醒 PO Token、账户和地区限制会影响可用格式。Google OAuth 登录不会自动解决这些限制；错误应保留可读原因，允许用户重试。
 
-## Google 手机登录
+## Google 手机登录：官方 OAuth 备选
 
-采用 [Google 官方安装配置](https://developers.google.com/identity/sign-in/ios/start-integrating)、[登录接入](https://developers.google.com/identity/sign-in/ios/sign-in) 和 [迁移说明](https://developers.google.com/identity/sign-in/ios/quick-migration-guide)。当前稳定版是 10.1.0；部分入门页仍写 9.0.0，依赖版本以官方 GitHub release 和 Package.swift 为准。
+此前按本应用身份登录调研了 [Google 官方安装配置](https://developers.google.com/identity/sign-in/ios/start-integrating)、[登录接入](https://developers.google.com/identity/sign-in/ios/sign-in) 和 [迁移说明](https://developers.google.com/identity/sign-in/ios/quick-migration-guide)。这条路线只适合本应用 OAuth / 官方 API 授权，不是 NeriPlayer 的 YouTube 网页会话方案。当前稳定版是 10.1.0；部分入门页仍写 9.0.0，依赖版本以官方 GitHub release 和 Package.swift 为准。
 
 - `Info.plist` 使用 `GIDClientID`，`CFBundleURLTypes` 注册该 iOS client ID 的 reversed scheme，如 `com.googleusercontent.apps.123-example`。Client ID 必须在 Google Cloud 按本应用 bundle ID 创建；它是应用身份标识，不是用户 Google 密码，也不能借其他开源项目的 ID。
 - SwiftUI 在 `.onOpenURL` 里调用 `GIDSignIn.sharedInstance.handle(url)`；启动时调用 `restorePreviousSignIn` 恢复；点击登录时用当前 presenting controller 调 `signIn(withPresenting:)`。
@@ -64,6 +64,42 @@ CPython 的 [iOS 嵌入文档](https://docs.python.org/3.13/using/ios.html#addin
 - 登录通过系统认证会话处理。AppAuth 的 [官方说明](https://github.com/openid/AppAuth-iOS#specification) 支持 ASWebAuthenticationSession 和 PKCE；[RFC 8252](https://www.rfc-editor.org/rfc/rfc8252) 要求 native public client 使用 PKCE。不要用嵌入 WKWebView 收集 Google 密码。
 
 Google OAuth 结果是身份、token 和获准的 API scope，不是任意 HTTP 客户端的 YouTube cookie 登录。不要把 SDK token 当作 m.youtube.com 的 cookie，也不要声称登录后就能下载所有受限音频。若以后需要登录后的网页账户态，应另行说明浏览器 cookie 会话的用途与边界。
+
+## 补充：NeriPlayer 的实际登录与 iPhone 可移植范围
+
+Unix Timestamp：1794715435。用户指定参考 [cwuom/NeriPlayer](https://github.com/cwuom/NeriPlayer)。本次读取固定提交 [bcc057a15ee6d8ff1f4c3c6de7115a177756b91c](https://github.com/cwuom/NeriPlayer/commit/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c)，避免后续重构改变文件含义。仓库 4,193 stars，GPL-3.0，最近推送 2026-11-13；[Issue #307](https://github.com/cwuom/NeriPlayer/issues/307) 有作者明确解释 Cookie 加密和内置浏览器登录，[Issue #448](https://github.com/cwuom/NeriPlayer/issues/448) 有作者回应网络风控问题。它符合活跃、许可证明确、有维护者回应的参考条件。以下只借鉴设计，不复制 GPL Kotlin 实现。
+
+### 它登录的是 YouTube 网页，不是本应用 OAuth
+
+入口是 [YouTubeWebLoginActivity.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/app/src/main/java/moe/ouom/neriplayer/activity/auth/YouTubeWebLoginActivity.kt)：
+
+1. Android `WebView` 打开 `https://accounts.google.com/ServiceLogin?service=youtube&continue=https%3A%2F%2Fmusic.youtube.com%2F`，开启 JS、DOM storage 和 Cookie。该入口没有本应用的 `client_id` / OAuth redirect，也不调用 GoogleSignIn SDK。
+2. 使用移动 WebView UA，剥除 `; wv`、`Version/4.0` 标志。源码注释说明这是为缓解 Google 的“不安全浏览器”拒登；播放请求另用固定桌面 Web UA，登录和播放 UA 分开。这只是项目当前做法，不能据此承诺 iOS 改 UA 也能稳定登录。
+3. `CookieManager` 读取 Google、YouTube 和 YouTube Music 域 Cookie；`shouldInterceptRequest` 观察 YouTube 请求的 `Cookie`、`Authorization`、`X-Goog-AuthUser`、origin、UA。`evaluateJavascript` 从 `ytcfg` 读取 `LOGGED_IN`、`SESSION_INDEX`、`DELEGATED_SESSION_ID`、`USER_SESSION_ID`。
+4. 保存前先用原生 HTTP 携带候选 Cookie 请求 YouTube Music / YouTube 首页，再解析真实登录标记。仅有 Cookie 名称或成功打开登录页不算登录成功，见 [YouTubeWebLoginVerifier.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/platform/src/main/java/moe/ouom/neriplayer/platform/youtube/auth/YouTubeWebLoginVerifier.kt)。
+5. 账户包存到 `EncryptedSharedPreferences`，由 Android `MasterKey` 保护，见 [YouTubeAuthRepository.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/platform/src/main/java/moe/ouom/neriplayer/platform/youtube/auth/YouTubeAuthRepository.kt)。这不是把密码写进播放器配置。
+
+Cookie 读取、写回和域处理在 [YouTubeWebCookieStore.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/platform/src/main/java/moe/ouom/neriplayer/platform/youtube/auth/web/YouTubeWebCookieStore.kt)；保留的会话 Cookie 名称在 [YouTubeCookieSupport.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/platform/src/main/java/moe/ouom/neriplayer/platform/youtube/api/auth/YouTubeCookieSupport.kt)。其中包括 SAPISID / APISID、SID 家族和对应 `__Secure-*` Cookie。
+
+### 会话如何用于 API 和下载
+
+[YouTubeRequestSupport.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/platform/src/main/java/moe/ouom/neriplayer/platform/youtube/api/transport/YouTubeRequestSupport.kt) 为页面请求加 Cookie、UA，为 Innertube 请求加 `X-Goog-AuthUser`，并按当前时间、origin 和 SID Cookie 重新计算 SHA-1 的 `SAPISIDHASH` / `SAPISID1PHASH` / `SAPISID3PHASH`。这是网页会话签名，不是 OAuth Bearer token。
+
+媒体下载不是把登录 Cookie 无差别发送给所有地址：同一源码专门剥除 googlevideo 媒体请求中的登录 Cookie / Authorization 等头，改用对应媒体 UA、origin、referer。[AudioDownloadSourceResolver.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/download/runtime/src/main/java/moe/ouom/neriplayer/core/player/download/source/AudioDownloadSourceResolver.kt) 从自己的 YouTube 播放仓库取得直链或 HLS，检查缺少 PO Token 的 WEB_REMIX 地址并尝试降级；[AudioDownloadFileTransfer.kt](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/modules/download/runtime/src/main/java/moe/ouom/neriplayer/core/player/download/transfer/AudioDownloadFileTransfer.kt) 以 OkHttp 完成下载、范围读取和完整性检查。其 [Gradle 依赖](https://github.com/cwuom/NeriPlayer/blob/bcc057a15ee6d8ff1f4c3c6de7115a177756b91c/gradle/libs.versions.toml) 包含 NewPipeExtractor、AndroidX JavaScriptEngine、Media3 和 OkHttp；不能误称这个链路本身就是 Python yt-dlp。
+
+作者在 [Issue #257](https://github.com/cwuom/NeriPlayer/issues/257) 明确反馈网络、账户和 IP 会影响结果，能播放不代表能完整下载；用户在后续版本曾复测恢复。因此这里只借鉴“真实会话验证”和“登录、解析、下载分层”，不照搬大规模回退体系。
+
+### iPhone 能做哪些，哪些不能直接照搬
+
+技术上能实现同类本机会话入口：`WKWebView` 展示网站，使用同一 `WKWebsiteDataStore` 的 [WKHTTPCookieStore](https://developer.apple.com/documentation/webkit/wkhttpcookiestore) 获取和观察本 WebView 的 Cookie；允许用户保存后，把必要会话材料存入 Keychain，再供本机 URLSession / Python cookiejar 使用。`HttpOnly` 不应靠 `document.cookie` 抓取；使用 WebKit 原生 cookie store。iOS 26 用 `getAllCookies` / `allCookies` 后按域筛选；不能误用文档主线里才标 iOS 27 的按 URL 取 Cookie 新接口。
+
+但 Android `shouldInterceptRequest` 不是 iOS `WKNavigationDelegate` 的等价功能。后者不能当作捕获全部 HTTPS 子资源 / XHR 请求头的网络代理；移植应从 CookieStore 和 YouTube 页面的少量登录标记入手，通过独立请求验证。现有 yt-dlp 负责 YouTube 自己的 API 会话签名，不需要为下载再重写 NeriPlayer 全套 Innertube 协议。
+
+系统浏览器方案也有明确限制：[ASWebAuthenticationSession](https://developer.apple.com/documentation/authenticationservices/aswebauthenticationsession) 返回服务端重定向的 callback URL；没有把 Google / YouTube 全部 Cookie 导出给调用应用的接口。[SFSafariViewController](https://developer.apple.com/documentation/safariservices/sfsafariviewcontroller) 也隔离网页交互，不能拿来读取 Cookie。用户在 Safari 登录后，不应声称本机 yt-dlp 自动获得其 Safari 登录会话。
+
+Google 对嵌入浏览器有实际限制：[OAuth 政策](https://developers.google.com/identity/protocols/oauth2/policies) 禁止把 OAuth 授权请求放在开发者可控制的 embedded user-agent；[错误说明](https://developers.google.com/identity/protocols/oauth2/javascript-implicit-flow#disallowed_useragent) 明确提到 WKWebView 可得到 `disallowed_useragent`。NeriPlayer 用的是 Google 自家 ServiceLogin 网页入口，不能将第三方 OAuth 的规则机械等同于“该入口必定无法打开”；同样不能把 Android 的 UA 技巧当作 iPhone 可稳定通过 Google 检查的证明。
+
+建议本项目将用户入口命名为“YouTube 网页登录”，无需要求用户创建本应用 Client ID。先独立实现 WKWebView 会话、CookieStore、Keychain、注销清理和真实 YouTube 页面验证，并将被网站拒登的原因如实显示。若当前 iPhone / Google 账户拒绝内嵌登录，保留用户主动导入自己的 Netscape Cookie 文件这一可行回退；不要把打开 Safari 或 Google OAuth SDK 显示为网页会话已取得。是否能在目标 iPhone 真正登录，需要真机验证，本轮只完成源码与官方 API 核对。
 
 ## m.youtube.com 搜索卡片
 

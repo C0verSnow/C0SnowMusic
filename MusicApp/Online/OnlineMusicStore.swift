@@ -23,7 +23,7 @@ import SwiftUI
         cached = await cache?.all() ?? []
     }
 
-    func search(_ query: String) {
+    func search(_ query: String, cookies: [WebCookie] = []) {
         searchTask?.cancel()
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         results = []; error = nil
@@ -31,10 +31,10 @@ import SwiftUI
         searching = true
         searchTask = Task {
             do {
-                let matches = try await YouTubeSearchClient().search(query)
+                let matches = try await YouTubeSearchClient().search(query, cookies: cookies)
                 try Task.checkCancellation()
                 results = matches; searching = false
-                if let first = matches.first, downloadingID == nil { prepare(first) }
+                if let first = matches.first, downloadingID == nil { prepare(first, cookies: cookies) }
             } catch is CancellationError { }
             catch {
                 guard !Task.isCancelled else { return }
@@ -43,7 +43,7 @@ import SwiftUI
         }
     }
 
-    func prepare(_ track: OnlineTrack, play: Bool = false, saveTo library: LibraryStore? = nil, playback: PlaybackStore? = nil) {
+    func prepare(_ track: OnlineTrack, play: Bool = false, saveTo library: LibraryStore? = nil, playback: PlaybackStore? = nil, cookies: [WebCookie] = []) {
         guard downloadTask == nil else { return }
         downloadingID = track.id; error = nil
         downloadTask = Task {
@@ -56,7 +56,7 @@ import SwiftUI
                     let directory = URL.cachesDirectory.appending(path: "OnlineStaging/\(UUID())")
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     defer { try? FileManager.default.removeItem(at: directory) }
-                    let downloaded = try await OnDeviceDownloader.shared.download(track, directory: directory)
+                    let downloaded = try await OnDeviceDownloader.shared.download(track, directory: directory, cookies: cookies)
                     try Task.checkCancellation()
                     url = try await cache.insert(downloaded, track: track)
                 }
@@ -75,6 +75,10 @@ import SwiftUI
     }
 
     func cancelDownload() { downloadTask?.cancel() }
+
+    func resetSession() {
+        searchTask?.cancel(); downloadTask?.cancel(); results = []; searching = false; error = nil
+    }
 
     func remove(_ entry: CachedAudio) async {
         do {

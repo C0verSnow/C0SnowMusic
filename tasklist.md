@@ -122,6 +122,9 @@
 
 ## 在做：
 
+- [1794715646] 用户指定 NeriPlayer 后核对真实源码：它用网页 Cookie 会话，不是 Google SDK。已改为 iPhone WKWebView 登录、页面登录信号校验、Keychain 保存、搜索与 yt-dlp cookiejar 共用；移除 Google SDK 和 Client ID 配置。真机镜像已打开，等待本次构建安装验收。
+
+
 - [1794714693] PR #10 已建立草稿，首次远端编译发现 Python 模块导入问题，已改桥接头待重跑。用户追加要求 Release 带 IPA、标签以 v 开头；已加入完整 CI 通过后发布的 v* 流程，准备 v1.1.0-beta.1，不合并 PR。
 
 

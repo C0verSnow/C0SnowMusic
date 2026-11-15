@@ -2,6 +2,7 @@ import SwiftUI
 
 struct OnlineSearchView: View {
     @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
     @State private var query = ""
 
     var body: some View {
@@ -10,7 +11,7 @@ struct OnlineSearchView: View {
             if online.searching { ProgressView("正在搜索 YouTube…") }
             if let message = online.error {
                 Text(message).foregroundStyle(.red)
-                Button("重试搜索") { online.search(query) }
+                Button("重试搜索") { online.search(query, cookies: account.downloadCookies()) }
             }
             if online.results.isEmpty, !online.searching {
                 ContentUnavailableView("搜索 YouTube", systemImage: "network", description: Text("输入歌名或歌手，提交后联网搜索。"))
@@ -28,7 +29,7 @@ struct OnlineSearchView: View {
         }
         .listStyle(.plain)
         .searchable(text: $query, prompt: "YouTube 歌名、歌手")
-        .onSubmit(of: .search) { online.search(query) }
+        .onSubmit(of: .search) { online.search(query, cookies: account.downloadCookies()) }
         .task { await online.refresh() }
         .safeAreaInset(edge: .bottom) {
             if online.downloadingID != nil {
@@ -46,6 +47,7 @@ struct OnlineSearchView: View {
 private struct OnlineTrackRow: View {
     let track: OnlineTrack
     @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
     @Environment(LibraryStore.self) private var library
     @Environment(PlaybackStore.self) private var playback
 
@@ -62,9 +64,9 @@ private struct OnlineTrackRow: View {
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
             Menu {
-                Button("播放", systemImage: "play.fill") { online.prepare(track, play: true, playback: playback) }
-                Button("预下载", systemImage: "arrow.down.circle") { online.prepare(track) }
-                Button("下载到资料库", systemImage: "square.and.arrow.down") { online.prepare(track, saveTo: library) }
+                Button("播放", systemImage: "play.fill") { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) }
+                Button("预下载", systemImage: "arrow.down.circle") { online.prepare(track, cookies: account.downloadCookies()) }
+                Button("下载到资料库", systemImage: "square.and.arrow.down") { online.prepare(track, saveTo: library, cookies: account.downloadCookies()) }
             } label: {
                 Image(systemName: "ellipsis").frame(width: 44, height: 44)
             }.disabled(online.downloadingID != nil).accessibilityLabel("歌曲操作")
@@ -72,14 +74,15 @@ private struct OnlineTrackRow: View {
         .padding(10).background(Color.primary.opacity(0.05), in: .rect(cornerRadius: 16))
         .listRowSeparator(.hidden).listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
         .contentShape(.rect)
-        .onTapGesture { if online.downloadingID == nil { online.prepare(track, play: true, playback: playback) } }
+        .onTapGesture { if online.downloadingID == nil { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) } }
         .accessibilityElement(children: .contain)
-        .accessibilityAction(named: Text("播放")) { online.prepare(track, play: true, playback: playback) }
+        .accessibilityAction(named: Text("播放")) { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) }
     }
 }
 
 struct OnlineCacheView: View {
     @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
     @Environment(PlaybackStore.self) private var playback
     var body: some View {
         List {
