@@ -2,13 +2,17 @@
 
 ## Issue #9 在线功能证据
 
-- 本地未编译、构建或运行编译型测试，只做源码、Python AST、shell 语法、plist 和差异检查。新增自动化全部使用已有 GitHub Actions。
-- `938e49e` 的 [CI 43675373041](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43675373041) 已通过模拟器与 iPhone Release 编译、图标检查、IPA 打包，以及 26 项单元/集成：真实 M4A 缓存淘汰、手动副本保留、移动页转义/标题解析、Python/SSL/EJS/WebKit、真实 yt-dlp 合成文件传输。该轮 3 项 UI 未通过，语言断言和偏好已修复，最终源码结果另行更新，不能把这一轮写成全绿。
-- 同一提交的 1.1.0/build 6 已通过 iPhone Mirror、Chrome 下载、心动签覆盖安装；原歌曲、封面和资料库保留。
-- 真机确认账户页进入 Music Settings；系统英文、切换简体中文可用。用户在 App 自己的 Google 网页中完成认证并保存，账户页显示已保存 YouTube 会话。
-- 真机真实搜索 `BaW_jenozKc` 返回封面、标题、作者卡片，自动预下载得到 162KB M4A，播放器时间实际推进。手动下载后清空音频缓存，永久资料库中的同一音频仍能播放。
-- 强退后重开，语言、手动音频与 YouTube 会话保留，启动暂停，不再要求输入账号。没有读取 Safari、Chrome 或 YouTube App 的私有 Cookie。
-- 真机发现清缓存后 Mini Player 留有旧文件引用；后续代码已同步清理临时队列，并在实际清缓存入口增加回归。最终 IPA 的复验结果待下方更新。
+- 最终产品代码 `b8bf67887449c6f7bada48f17e147d174f19f6e4` 的 [CI 43680765143](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43680765143) 全通过：28 项单元/集成、3 项 UI，模拟器与 iPhone Release 编译、图标检查和 IPA 打包均通过。覆盖真实 Keychain 存取/注销、连续两次 Python/SSL/EJS/WebKit 执行、真实 yt-dlp 合成音频传输、移动页面转义解析、DASH 重新封装时长/解码/跳转、缓存淘汰与手动副本保留、设置/语言 UI。
+- 本地没有编译、构建或运行编译型测试，只做源码、Python AST、shell 语法、plist、差异和 CI 产物静态检查。已在 GitHub 检索并比较 NeriPlayer、Palladium、BeeWare、yt-dlp 等项目，来源与许可见 ONLINE_MUSIC_RESEARCH.md 和 THIRD_PARTY.md。
+- [v1.1.0-beta.1 Release](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1) 已发布，标签指向上述产品提交，附带 24,696,065 字节的 `C0SnowMusic-unsigned.ipa`；GitHub 附件状态为 uploaded，服务器提供的 SHA-256 与本地核对一致。
+- 最终 IPA 直接下载自上述 CI，SHA-256 为 `0a912f8d768cf007163a87c6603c9c0d7b9aa481bddffa2a42a40e1a48b03609`。1.1.0/build 6 已通过 iPhone Mirror、Chrome 和心动签覆盖安装，沿用现有证书与 Bundle ID；原来的 Die For You、封面和资料库保留。
+- 真机确认账户页进入 Music Settings，系统英文、简体中文/English 切换正常，账户导航标题立即更新。用户亲自在 App 内 Google 页面认证并保存；强退重开和覆盖安装后均恢复 YouTube 会话，无须 Client ID，没有读取 Safari、Chrome 或 YouTube App 的私有 Cookie。
+- 真实搜索 `BaW_jenozKc` 返回封面、标题和作者，自动预下载 162KB 纯 M4A 并播放。手动保存后清空缓存，永久副本仍可播放。随后复验清缓存时 Mini Player 同步消失，缓存归零；只移除了本次创建的测试视频及应用内副本，原歌曲保留。
+- 按用户要求搜索 The Weeknd 的 One Of The Girls。最终版本在同一进程连续完成两个官方音源下载，第二首为 The Weeknd 官方频道的 Official Audio；真实播放器显示 4:04，时间推进正常。拖到末尾后结束并暂停回零，再跳至 1:58 后播放至 2:05，未出现旧版 8:08 空尾。验收结束已暂停。
+- 本轮真机发现并修复了清缓存残留播放器引用、连续加载插件失败和 DASH 双倍时长；均补入真实实现的远端回归。先前失败或取消的 CI 不算作最终通过证据。
+- 真实网站仍会受到网络、地区和 YouTube 验证限制，不代表全部账户、全部视频和全部地区都可用。用户音乐、登录 Cookie、证书与手机私人画面未上传到仓库。
+
+- issue #9 已按原要求关闭；[PR #10](https://github.com/C0verSnow/C0SnowMusic/pull/10) 已转为待审核，未合并。后续仅更新文档，不改变标签对应的产品代码；临时下载服务已关闭。
 
 ## 本地播放器历史证据（issue #7）
 

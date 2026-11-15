@@ -1,5 +1,9 @@
 # C0SnowMusic
 
+[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/C0SnowMusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1)
+
+IPA 未签名，须用自己的 Apple 证书签名安装。
+
 iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不上传音乐；可选 Google 登录、YouTube 卡片搜索和手机本机音频下载。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
