@@ -1,0 +1,4 @@
+// Copy Local.example.xcconfig to Local.xcconfig to configure your own Google app.
+GOOGLE_CLIENT_ID =
+GOOGLE_REVERSED_CLIENT_ID = org.c0versnow.C0SnowMusic.google-unconfigured
+#include? "Local.xcconfig"

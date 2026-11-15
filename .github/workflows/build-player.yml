@@ -3,7 +3,7 @@ on:
   pull_request:
     paths-ignore: ['**/*.md', 'docs/**']
   push:
-    branches: [main, 'feature/issue-7-*']
+    branches: [main, 'feature/issue-7-*', 'feature/issue-9-*']
     paths-ignore: ['**/*.md', 'docs/**']
   workflow_dispatch:
 concurrency:
@@ -20,6 +20,8 @@ jobs:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+      - name: Fetch pinned precompiled on-device downloader runtime
+        run: python3 scripts/prepare_online_runtime.py
       - name: Check iOS SDK and select simulator
         run: |
           xcodebuild -version

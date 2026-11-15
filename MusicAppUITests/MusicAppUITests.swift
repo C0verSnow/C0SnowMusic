@@ -1,6 +1,29 @@
 import XCTest
 
 @MainActor final class MusicAppUITests: XCTestCase {
+    func testAccountMusicSettingsLanguageAndOnlineSearch() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN", "-appLanguage", "system"]
+        app.launch()
+        XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["accountSettings"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["googleSignIn"].waitForExistence(timeout: 5))
+        app.buttons["musicSettings"].tap()
+        XCTAssertTrue(app.navigationBars["Music Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["appLanguage"].exists)
+        app.buttons["appLanguage"].tap()
+        app.buttons["English"].tap()
+        XCTAssertTrue(app.staticTexts["Language"].waitForExistence(timeout: 5))
+        captureScreen("Music settings in English")
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN", "-appLanguage", "system"]
+        app.launch()
+        app.tabBars.buttons["搜索"].tap()
+        app.buttons["YouTube"].tap()
+        XCTAssertTrue(app.searchFields["YouTube 歌名、歌手"].waitForExistence(timeout: 5))
+        captureScreen("YouTube search entry")
+    }
+
     func testEmptyLibraryTabsAndImportEntry() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]

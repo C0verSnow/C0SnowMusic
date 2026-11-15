@@ -24,7 +24,7 @@ struct MusicRootView: View {
             if reduceMotion { NowPlayingView() }
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
         }
-        .sheet(isPresented: $settings) { NavigationStack { SettingsView() } }
+        .sheet(isPresented: $settings) { NavigationStack { AccountView() } }
         .sheet(isPresented: $importing) {
             DocumentImportPicker(types: AudioImportService.contentTypes, multiple: true) { urls in
                 importing = false
@@ -63,7 +63,8 @@ struct MusicRootView: View {
                         Button("导入音乐", systemImage: "plus") { importing = true }
                             .accessibilityIdentifier("importMusic")
                             .disabled(library.importProgress != nil)
-                        Button("设置", systemImage: "person.crop.circle") { settings = true }
+                        Button("账户", systemImage: "person.crop.circle") { settings = true }
+                            .accessibilityIdentifier("accountSettings")
                     }
                 }
         }
