@@ -179,8 +179,15 @@ import WebKit
         let artworkID = try XCTUnwrap(song.artworkID)
         let artwork = await ArtworkCache.shared.load(id: artworkID, files: library.files, thumbnail: false)
         XCTAssertNotNil(artwork)
-        let reopened = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
+        // Older cloud cache sidecars used an empty album even after manual lyrics/cover selection.
+        song.albumTitle = ""
+        try playback.setCachedLyrics(song.lyrics, for: song)
+        let reopened = try PlaybackStore(library: library, systemIntegration: false, lookupClient: lookup)
         try await reopened.playCachedAudio(track, url: cached)
+        for _ in 0..<100 {
+            if !reopened.isEnriching { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
         reopened.pause()
         XCTAssertEqual(reopened.currentSong?.albumTitle, "Automatic album")
         XCTAssertEqual(reopened.currentSong?.lyrics, song.lyrics)

@@ -42,6 +42,7 @@ import SwiftData
         if let album = track.albumTitle { metadata.album = album }
         let saved = (try? Data(contentsOf: url.appendingPathExtension("json"))).flatMap { try? JSONDecoder().decode(CachedSongDetails.self, from: $0) }
         if let saved { metadata.title = saved.title; metadata.artist = saved.artist; metadata.album = saved.album; metadata.lyrics = saved.lyrics }
+        if metadata.album.isEmpty { metadata.album = "未知专辑" }
         let song = Song(id: saved?.id ?? UUID(), metadata: metadata, path: url.path, hash: "", size: Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0), artworkID: saved?.artworkID)
         cachedSongs = [song.id: song]; cachedURLs = [song.id: url]
         try saveCachedDetails(song)

@@ -43,7 +43,7 @@
 
 - [x] 用上述哈希的 IPA 经 Chrome 下载、心动签沿用现有证书和 Bundle ID 覆盖安装，原 2 首歌与封面保留。
 - [ ] 覆盖安装后会话已保留；刷新账户取得真实头像、名字、handle 和已连接状态。强退重启的持久化仍待复验。
-- [ ] 原有 4 首 YouTube 收藏已同步到 D1；在 App 为 Die For You（源 ID `QLCpqdqeoII`）增加 YouTube 收藏后，回读 D1 得到 5 首，原 4 首保留。取消收藏及保留音频仍待复验。
+- [x] 原有 4 首 YouTube 收藏已同步到 D1；在 App 为 Die For You（源 ID `QLCpqdqeoII`）增加 YouTube 收藏后，回读 D1 得到 5 首。随后从 App 取消收藏，D1 恢复原 4 首，原收藏 ID 集合完全一致；音频仍 ready/available，HEAD 200、4,207,300 字节，哈希未变。脱敏证据见 `docs/evidence/issue-11-favorites-roundtrip.json`。
 - [ ] Music Settings 已用既有 `.env` 设备密钥成功连接音乐仓库。同一来源复试成功，手机取得 4,207,300 字节 M4A 并上传 Telegram，D1 显示 ready/available。随后经 Worker 完整下载返回 HTTP 200，实际字节数与 SHA-256 `4240d9013a3c5a1fae35c6eb3c5476c7f5bce271a6820b36ab5c288e7c281481` 均与 D1 一致；用户清空缓存后，手机从仓库重新下载并出现已缓存标记，开始播放；旧版完整播放已通过。
 - [x] 按 Issue 最新评论，从归零缓存重新取 Die For You / The Weeknd（QLCpqdqeoII），连续播放到自然结束，界面回零并暂停，时长 4:20。用户确认正常出声、无卡顿；滑条跳转仍需新版复验。
 
