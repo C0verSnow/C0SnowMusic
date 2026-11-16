@@ -91,7 +91,10 @@ import SwiftUI
                     let existing = Set(library.songs.map(\.id))
                     let imported = try await library.importOne(url)
                     if imported, let song = library.songs.first(where: { !existing.contains($0.id) }) {
-                        library.edit(song, title: track.title, artist: track.artist, album: song.albumTitle, genre: song.genre)
+                        library.edit(song, title: track.title, artist: track.artist, album: track.albumTitle ?? song.albumTitle, genre: song.genre)
+                        if song.artworkID == nil, let cover = track.coverURL, let data = try? await MusicLookupClient.shared.artwork(at: cover) {
+                            try await library.setDownloadedCover(song, data: data)
+                        }
                     }
                 }
                 if play, let playback {

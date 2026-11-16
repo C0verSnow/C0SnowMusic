@@ -171,6 +171,11 @@ actor MusicLookupClient {
         throw MusicLookupError.noCover
     }
 
+    func artwork(at url: URL) async throws -> Data {
+        guard url.scheme == "https" else { throw MusicLookupError.invalidResponse }
+        return try await fetch(url)
+    }
+
     private func fetch(_ url: URL) async throws -> Data {
         let host = url.host() ?? ""
         if let retry = retryDates[host], retry > .now { throw MusicLookupError.retryLater(Int(ceil(retry.timeIntervalSinceNow))) }

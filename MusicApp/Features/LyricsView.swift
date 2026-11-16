@@ -99,7 +99,8 @@ struct LyricsView: View {
                 Task {
                     do {
                         let lyrics = try await library.importer.readLyrics(url)
-                        library.transaction { song.lyrics = lyrics }
+                        if playback.isCachedSong { try playback.setCachedLyrics(lyrics, for: song) }
+                        else { library.transaction { song.lyrics = lyrics } }
                     } catch { library.error = error.localizedDescription }
                 }
             } onCancel: { importing = false }

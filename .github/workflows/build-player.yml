@@ -26,7 +26,18 @@ jobs:
           python3 scripts/make_audio_fixtures.py
       - name: Test Worker HTTP API with real SQLite and audio bytes
         working-directory: worker
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-results.log
+      - name: Upload API evidence and synthetic audio for deployed verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-api-evidence
+          path: |
+            worker/test-results.log
+            MusicApp/Resources/Fixtures/Fixture.mp3
+          if-no-files-found: warn
   ios:
     runs-on: macos-15
     timeout-minutes: 45

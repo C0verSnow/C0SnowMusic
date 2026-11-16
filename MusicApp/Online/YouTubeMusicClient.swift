@@ -50,13 +50,13 @@ struct YouTubeMusicClient: Sendable {
     }
 
     func likedTracks(cookies: [WebCookie]) async throws -> [OnlineTrack] {
-        var page = try await browse("FEmusic_liked_videos", cookies: cookies)
+        var page = try await browse("VLLM", cookies: cookies)
         var tracks = page.tracks
         var seen: Set<String> = []
         while let token = page.continuation {
             guard seen.insert(token).inserted else { throw OnlineMusicError.searchLayoutChanged }
             try Task.checkCancellation()
-            page = try await browse("FEmusic_liked_videos", continuation: token, cookies: cookies)
+            page = try await browse("VLLM", continuation: token, cookies: cookies)
             tracks += page.tracks
         }
         var ids: Set<String> = []

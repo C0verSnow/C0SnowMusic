@@ -68,6 +68,7 @@ actor OnlineAudioCache {
         guard let entry = entries.first(where: { $0.id == id }) else { return }
         let url = root.appending(path: entry.filename)
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+        if FileManager.default.fileExists(atPath: url.appendingPathExtension("json").path) { try FileManager.default.removeItem(at: url.appendingPathExtension("json")) }
         entries.removeAll { $0.id == id }
         try save()
     }

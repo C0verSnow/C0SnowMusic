@@ -143,4 +143,33 @@ import WebKit
         let sought = await engine.seek(to: 2.5)
         XCTAssertTrue(sought)
     }
+
+    func testOnlineLyricsAndMetadataSurviveReopeningCachedAudio() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = try OnlineAudioCache(root: root.appending(path: "cache"))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "input.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let track = OnlineTrack(id: "abcdefghijk", title: "Online title", artist: "Online artist", coverURL: nil, albumTitle: "Online album")
+        let cached = try await cache.insert(source, track: track)
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root.appending(path: "library")))
+        let playback = try PlaybackStore(library: library, systemIntegration: false)
+        try await playback.playCachedAudio(track, url: cached)
+        playback.pause()
+        let song = try XCTUnwrap(playback.currentSong)
+        let identity = song.id
+        try playback.setCachedLyrics("[00:00.00]Saved online lyrics", for: song)
+        let reopened = try PlaybackStore(library: library, systemIntegration: false)
+        try await reopened.playCachedAudio(track, url: cached)
+        reopened.pause()
+        XCTAssertEqual(reopened.currentSong?.id, identity)
+        XCTAssertEqual(reopened.currentSong?.lyrics, "[00:00.00]Saved online lyrics")
+        XCTAssertEqual(reopened.currentSong?.albumTitle, "Online album")
+        XCTAssertTrue(library.songs.isEmpty, "Cache metadata must not create library records")
+        try await cache.remove(track.id)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cached.appendingPathExtension("json").path))
+    }
 }

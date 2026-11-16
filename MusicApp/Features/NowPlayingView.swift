@@ -60,7 +60,6 @@ struct NowPlayingView: View {
                         SystemVolumeView().frame(height: 44).accessibilityLabel("系统音量")
                         HStack {
                             Button("歌词", systemImage: "quote.bubble") { panel = .lyrics }.accessibilityIdentifier("showLyrics")
-                                .disabled(playback.isCachedSong)
                             Spacer()
                             AirPlayView().frame(width: 44, height: 44).accessibilityLabel("选择音频输出设备")
                             Spacer()

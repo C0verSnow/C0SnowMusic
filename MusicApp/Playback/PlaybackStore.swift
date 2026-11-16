@@ -34,9 +34,39 @@ import SwiftData
     func playCachedAudio(_ track: OnlineTrack, url: URL) async throws {
         var metadata = try await MetadataExtractor.extract(url)
         metadata.title = track.title; metadata.artist = track.artist
-        let song = Song(metadata: metadata, path: url.path, hash: "", size: Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0), artworkID: nil)
+        if let album = track.albumTitle { metadata.album = album }
+        let saved = (try? Data(contentsOf: url.appendingPathExtension("json"))).flatMap { try? JSONDecoder().decode(CachedSongDetails.self, from: $0) }
+        if let saved { metadata.title = saved.title; metadata.artist = saved.artist; metadata.album = saved.album; metadata.lyrics = saved.lyrics }
+        let song = Song(id: saved?.id ?? UUID(), metadata: metadata, path: url.path, hash: "", size: Int64(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0), artworkID: saved?.artworkID)
+        if song.artworkID == nil, let cover = track.coverURL {
+            // Cover failure must not discard playable audio.
+            if let data = try? await MusicLookupClient.shared.artwork(at: cover),
+               (try? await ArtworkCache.shared.save(data, id: "online-\(track.id)", files: files)) == true { song.artworkID = "online-\(track.id)" }
+        }
         cachedSongs = [song.id: song]; cachedURLs = [song.id: url]
+        try saveCachedDetails(song)
         play([song])
+    }
+
+    func applyCachedMatch(_ match: LyricsMatch, to song: Song) throws {
+        song.title = match.trackName; song.artist = match.artistName
+        if let text = match.text { song.lyrics = text }
+        try saveCachedDetails(song); refreshMediaInfo()
+    }
+
+    func setCachedLyrics(_ lyrics: String, for song: Song) throws {
+        song.lyrics = lyrics; try saveCachedDetails(song)
+    }
+
+    func setCachedCover(_ data: Data, for song: Song) async throws {
+        let id = song.artworkID ?? "online-\(song.id)"
+        guard try await ArtworkCache.shared.save(data, id: id, files: files) else { throw MusicLookupError.invalidResponse }
+        song.artworkID = id; try saveCachedDetails(song); refreshMediaInfo()
+    }
+
+    private func saveCachedDetails(_ song: Song) throws {
+        guard let url = cachedURLs[song.id] else { return }
+        try JSONEncoder().encode(CachedSongDetails(id: song.id, title: song.title, artist: song.artist, album: song.albumTitle, lyrics: song.lyrics, artworkID: song.artworkID)).write(to: url.appendingPathExtension("json"), options: .atomic)
     }
 
     func audioURL(for song: Song) -> URL { cachedURLs[song.id] ?? files.url(for: song.fileRelativePath) }
@@ -231,4 +261,13 @@ import SwiftData
         // Restoration never activates the audio session or starts sound.
         remote.update(self)
     }
+}
+
+private struct CachedSongDetails: Codable {
+    let id: UUID
+    let title: String
+    let artist: String
+    let album: String
+    let lyrics: String
+    let artworkID: String?
 }
