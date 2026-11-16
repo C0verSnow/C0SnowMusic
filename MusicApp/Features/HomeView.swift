@@ -2,9 +2,27 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 28) {
+                HStack(spacing: 12) {
+                    AccountAvatar().frame(width: 42, height: 42)
+                    Text(account.profile?.name ?? AppLanguage.text("只属于你的声音")).font(.title2.bold())
+                    Spacer()
+                    Button("刷新推荐", systemImage: "arrow.clockwise") {
+                        Task { await online.loadHome(cookies: account.downloadCookies()); await cloud.refresh() }
+                    }.labelStyle(.iconOnly).disabled(online.loadingHome)
+                }.padding(.horizontal)
+                if online.loadingHome { ProgressView() }
+                if let error = online.error { Text(error).font(.footnote).foregroundStyle(.red).padding(.horizontal) }
+                if !online.history.isEmpty {
+                    OnlineHomeShelf(title: "再次聆听", items: online.history)
+                }
+                ForEach(online.home) { section in OnlineHomeShelf(title: section.title, items: section.items) }
+                if !cloud.trending.isEmpty { OnlineHomeShelf(title: "社区热门", items: cloud.trending) }
                 if library.songs.isEmpty { EmptyLibraryView().frame(minHeight: 360) }
                 else {
                     VStack(alignment: .leading, spacing: 8) {
@@ -42,6 +60,11 @@ struct HomeView: View {
                 }
             }.padding(.vertical)
         }.localizedNavigationTitle("首页")
+            .task {
+                if !ProcessInfo.processInfo.arguments.contains("--ui-testing"), online.home.isEmpty {
+                    await online.loadHome(cookies: account.downloadCookies()); await cloud.refresh()
+                }
+            }
     }
     private var recentAlbums: [Album] {
         let ids = library.songs.sorted { $0.dateAdded > $1.dateAdded }.compactMap(\.albumID)
@@ -50,6 +73,17 @@ struct HomeView: View {
             guard seen.insert(id).inserted else { return nil }
             return library.albums.first { $0.id == id }
         }.prefix(12).map { $0 }
+    }
+}
+
+private struct OnlineHomeShelf: View {
+    let title: String
+    let items: [OnlineTrack]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(AppLanguage.text(title)).font(.title2.bold())
+            ForEach(items.prefix(6)) { OnlineTrackRow(track: $0) }
+        }.padding(.horizontal)
     }
 }
 

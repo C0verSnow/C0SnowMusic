@@ -1,0 +1,6 @@
+TELEGRAM_BOT_TOKEN=configure-a-dedicated-storage-bot
+TELEGRAM_STORAGE_CHAT_ID=-1000000000000
+TELEGRAM_WEBHOOK_SECRET=replace-with-random-webhook-secret
+API_KEYS={"replace-with-random-device-key":"owner"}
+SEND_CHAT_IDS={"owner":"123456789"}
+ADMIN_KEY=replace-with-a-separate-admin-key

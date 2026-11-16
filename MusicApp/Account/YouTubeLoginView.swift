@@ -15,7 +15,7 @@ struct YouTubeLoginView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存登录") {
                         guard let webView else { return }
-                        Task { if await account.capture(from: webView) { dismiss() } }
+                        Task { if await account.capture(from: webView) { await account.refreshProfile(); dismiss() } }
                     }.disabled(account.checking)
                 }
                 ToolbarItemGroup(placement: .bottomBar) {

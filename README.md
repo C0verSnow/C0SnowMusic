@@ -14,7 +14,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 2. 打开 `C0SnowMusic.xcodeproj`，选择共享 Scheme `C0SnowMusic`。
 3. 在 Signing & Capabilities 中选择自己的 Team；必要时把 Bundle Identifier 改成自己的唯一标识。
 4. 选择 iOS 26 iPhone 或模拟器，运行。
-5. 点击右上角「+」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
+5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
 
 在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
@@ -24,7 +24,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 - 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
 - 右上角账户页包含 YouTube 网页登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
-- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；首次结果自动预下载第一首，也可逐首操作。
+- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
 - 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。
@@ -57,6 +57,10 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 下载后歌词和封面留在本地，关闭、重启或断网仍可使用。只有主动搜索/下载时才向服务发送歌名、艺术家、专辑和时长；不会上传音频。429/503 的 Retry-After 会阻止过早请求，网络失败可以重试。
 
 歌词查询参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，仍使用原生 Swift URLSession，不经过音频下载用的 Python。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
+
+## YouTube Music 与 Telegram 音乐仓库
+
+Issue #11 新流程、D1 数据模型、专用 Bot 配置、收藏同步、20 MB 交付范围和故障恢复见 [音乐仓库说明](docs/TELEGRAM_MUSIC.md) 与 [接口调研](docs/TELEGRAM_MUSIC_RESEARCH.md)。首页使用 YouTube Music 真实分区，账户显示真实头像和验证状态；连接仓库后先查索引，缺失时手机获取 M4A 并上传 Telegram，取消收藏保留音频。
 
 ## 在线搜索、下载和 Google 登录
 

@@ -11,6 +11,7 @@ struct LibraryView: View {
     var body: some View {
         List {
             Section {
+                NavigationLink { OnlineLibraryView() } label: { Label("在线资料库", systemImage: "network") }
                 NavigationLink(value: LibraryRoute.playlists) { Label("播放列表", systemImage: "music.note.list") }
                 NavigationLink(value: LibraryRoute.artists) { Label("艺术家", systemImage: "music.mic") }
                 NavigationLink(value: LibraryRoute.albums) { Label("专辑", systemImage: "square.stack") }

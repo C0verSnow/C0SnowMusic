@@ -19,4 +19,12 @@ function run(args) {
     var destination = $.CGImageDestinationCreateWithURL(destinationURL, $('public.png'), 1, null);
     $.CGImageDestinationAddImage(destination, result, null);
     if (!$.CGImageDestinationFinalize(destination)) { throw new Error('Cannot write app icon'); }
+    var logoDirectory = root + '/MusicApp/Resources/Assets.xcassets/AppLogo.imageset';
+    $.NSFileManager.defaultManager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(logoDirectory, true, $(), $());
+    var logoURL = $.NSURL.fileURLWithPath(logoDirectory + '/AppLogo.png');
+    var logo = $.CGImageDestinationCreateWithURL(logoURL, $('public.png'), 1, null);
+    $.CGImageDestinationAddImage(logo, result, null);
+    if (!$.CGImageDestinationFinalize(logo)) { throw new Error('Cannot write placeholder logo'); }
+    $(JSON.stringify({images: [{filename: 'AppLogo.png', idiom: 'universal'}], info: {author: 'xcode', version: 1}}, null, 2) + '\n')
+        .writeToFileAtomicallyEncodingError(logoDirectory + '/Contents.json', true, $.NSUTF8StringEncoding, $());
 }

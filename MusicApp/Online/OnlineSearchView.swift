@@ -8,53 +8,100 @@ struct OnlineSearchView: View {
     var body: some View {
         @Bindable var online = online
         List {
+            Section {
+                Picker("搜索分类", selection: $online.filter) {
+                    ForEach(MusicSearchFilter.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
+                }
+                Button("重置搜索") { query = ""; online.resetSearch() }
+            }
             if online.searching { ProgressView("正在搜索 YouTube…") }
             if let message = online.error {
                 Text(message).foregroundStyle(.red)
-                Button("重试搜索") { online.search(query, cookies: account.downloadCookies()) }
+                Button("重试搜索") { submit() }
             }
             if online.results.isEmpty, !online.searching {
-                ContentUnavailableView("搜索 YouTube", systemImage: "network", description: Text("输入歌名或歌手，提交后联网搜索。"))
+                if query.isEmpty, !online.searchHistory.isEmpty {
+                    Section("搜索历史") {
+                        ForEach(online.searchHistory, id: \.self) { value in
+                            Button(value) { query = value; submit() }
+                        }
+                        Button("清除搜索历史", role: .destructive) { online.clearSearchHistory() }
+                    }
+                } else {
+                    ContentUnavailableView("搜索 YouTube", systemImage: "network", description: Text("输入歌名或歌手，提交后联网搜索。"))
+                }
             }
-            ForEach(online.results) { track in
-                OnlineTrackRow(track: track)
+            ForEach(online.sections) { section in
+                Section(section.title) { ForEach(section.items) { OnlineTrackRow(track: $0) } }
+            }
+            if online.continuation != nil {
+                Button("加载更多") { online.search(query, cookies: account.downloadCookies(), more: true) }.disabled(online.searching)
             }
             if !online.cached.isEmpty {
                 Section("音频缓存 · 从新到旧") {
-                    ForEach(online.cached) { entry in
-                        OnlineTrackRow(track: entry.track)
-                    }
+                    ForEach(online.cached) { OnlineTrackRow(track: $0.track) }
                 }
             }
         }
         .listStyle(.plain)
         .searchable(text: $query, prompt: "YouTube 歌名、歌手")
-        .onSubmit(of: .search) { online.search(query, cookies: account.downloadCookies()) }
+        .onSubmit(of: .search) { submit() }
+        .onChange(of: online.filter) { _, _ in if !query.isEmpty { submit() } }
         .task { await online.refresh() }
         .safeAreaInset(edge: .bottom) {
             if online.downloadingID != nil {
                 HStack {
                     ProgressView()
-                    Text("正在预下载音频…").font(.caption)
+                    Text("正在准备音频…").font(.caption)
                     Spacer()
                     Button("取消") { online.cancelDownload() }
                 }.padding().background(.bar)
             }
         }
     }
+    private func submit() { online.search(query, cookies: account.downloadCookies()) }
 }
 
-private struct OnlineTrackRow: View {
+struct OnlineTrackRow: View {
     let track: OnlineTrack
     @Environment(OnlineMusicStore.self) private var online
     @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
     @Environment(LibraryStore.self) private var library
     @Environment(PlaybackStore.self) private var playback
 
     var body: some View {
         HStack(spacing: 12) {
+            if track.isPlayable {
+                Button { prepare(play: true) } label: { label }.buttonStyle(.plain)
+                    .disabled(online.downloadingID != nil)
+                    .accessibilityLabel("播放 \(track.title)，\(track.artist)")
+                Menu {
+                    Button("播放", systemImage: "play.fill") { prepare(play: true) }
+                    Button("预下载", systemImage: "arrow.down.circle") { prepare() }
+                    Button("下载到资料库", systemImage: "square.and.arrow.down") { prepare(save: true) }
+                    if account.isSignedIn, track.kind != .telegram {
+                        let liked = online.liked.contains { $0.id == track.id }
+                        Button(liked ? "取消 YouTube 收藏" : "收藏到 YouTube", systemImage: liked ? "heart.slash" : "heart") {
+                            Task { await online.setLiked(track, liked: !liked, cookies: account.downloadCookies(), cloud: cloud) }
+                        }.disabled(online.syncing)
+                    }
+                    if let album = track.albumTitle { Text(album) }
+                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                    .disabled(online.downloadingID != nil).accessibilityLabel("歌曲操作")
+            } else if let browseID = track.browseID {
+                NavigationLink { MusicCollectionView(browseID: browseID, title: track.title) } label: { label }
+            }
+        }
+        .padding(.vertical, 8)
+        .listRowSeparator(.visible).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
+        .accessibilityElement(children: .contain)
+    }
+
+    private var label: some View {
+        HStack(spacing: 12) {
             AsyncImage(url: track.coverURL) { image in image.resizable().scaledToFill() } placeholder: {
-                Image(systemName: "music.note").font(.title2).frame(maxWidth: .infinity, maxHeight: .infinity).background(.quaternary)
+                Image("AppLogo").resizable().scaledToFill()
             }.frame(width: 52, height: 52).clipShape(.rect(cornerRadius: 4)).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 5) {
                 Text(track.title).font(.body.weight(.medium)).lineLimit(2)
@@ -63,20 +110,11 @@ private struct OnlineTrackRow: View {
                     Label("已缓存", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            Menu {
-                Button("播放", systemImage: "play.fill") { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) }
-                Button("预下载", systemImage: "arrow.down.circle") { online.prepare(track, cookies: account.downloadCookies()) }
-                Button("下载到资料库", systemImage: "square.and.arrow.down") { online.prepare(track, saveTo: library, cookies: account.downloadCookies()) }
-            } label: {
-                Image(systemName: "ellipsis").frame(width: 44, height: 44)
-            }.disabled(online.downloadingID != nil).accessibilityLabel("歌曲操作")
-        }
-        .padding(.vertical, 8)
-        .listRowSeparator(.visible).listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 12))
-        .contentShape(.rect)
-        .onTapGesture { if online.downloadingID == nil { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) } }
-        .accessibilityElement(children: .contain)
-        .accessibilityAction(named: Text("播放")) { online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies()) }
+        }.contentShape(.rect)
+    }
+
+    private func prepare(play: Bool = false, save: Bool = false) {
+        online.prepare(track, play: play, saveTo: save ? library : nil, playback: playback, cookies: account.downloadCookies(), cloud: cloud)
     }
 }
 

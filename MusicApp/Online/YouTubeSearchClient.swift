@@ -5,8 +5,15 @@ struct OnlineTrack: Codable, Identifiable, Sendable, Equatable {
     let title: String
     let artist: String
     let coverURL: URL?
+    var kind: MusicItemKind? = nil
+    var browseID: String? = nil
+    var albumTitle: String? = nil
+    var duration: Double? = nil
+    var isPlayable: Bool { kind == .telegram || (YouTubeSearchClient.validID(id) && (kind == nil || kind == .song || kind == .video)) }
     var watchURL: URL { URL(string: "https://m.youtube.com/watch?v=\(id)")! }
 }
+
+enum MusicItemKind: String, Codable, Sendable { case song, video, album, artist, playlist, telegram }
 
 enum OnlineMusicError: LocalizedError {
     case invalidResponse, searchLayoutChanged, runtimeUnavailable, invalidAudio, cacheFull
@@ -48,7 +55,7 @@ struct YouTubeSearchClient: Sendable {
         return results
     }
 
-    private static func initialData(in html: String) throws -> Data {
+    static func initialData(in html: String) throws -> Data {
         let markers = ["var ytInitialData =", "ytInitialData =", "window[\"ytInitialData\"] =", "ytInitialData="]
         for marker in markers {
             guard let range = html.range(of: marker),
