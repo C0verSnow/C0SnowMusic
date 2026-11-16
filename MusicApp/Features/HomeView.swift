@@ -5,67 +5,59 @@ struct HomeView: View {
     @Environment(OnlineMusicStore.self) private var online
     @Environment(YouTubeAccountStore.self) private var account
     @Environment(CloudMusicStore.self) private var cloud
+
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 28) {
-                HStack(spacing: 12) {
-                    AccountAvatar().frame(width: 42, height: 42)
-                    Text(account.profile?.name ?? AppLanguage.text("只属于你的声音")).font(.title2.bold())
-                    Spacer()
-                    Button("刷新推荐", systemImage: "arrow.clockwise") {
-                        Task { await online.loadHome(cookies: account.downloadCookies()); await cloud.refresh() }
-                    }.labelStyle(.iconOnly).disabled(online.loadingHome)
-                }.padding(.horizontal)
-                if online.loadingHome { ProgressView() }
-                if let error = online.error { Text(error).font(.footnote).foregroundStyle(.red).padding(.horizontal) }
-                if !online.history.isEmpty {
-                    OnlineHomeShelf(title: "再次聆听", items: online.history)
-                }
-                ForEach(online.home) { section in OnlineHomeShelf(title: section.title, items: section.items) }
-                if !cloud.trending.isEmpty { OnlineHomeShelf(title: "社区热门", items: cloud.trending) }
-                if library.songs.isEmpty { EmptyLibraryView().frame(minHeight: 360) }
-                else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("只属于你的声音").font(.largeTitle.bold())
-                        Text("\(library.songs.count) 首歌曲，随时随地聆听。").foregroundStyle(.secondary)
-                    }.padding(.horizontal)
-                    NavigationLink(value: LibraryRoute.songs(.favorites)) {
-                        HStack {
-                            Image(systemName: "star.fill").font(.largeTitle).frame(width: 64, height: 64).background(.pink.opacity(0.1), in: .rect(cornerRadius: 16))
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("收藏歌曲").font(.title2.bold())
-                                Text("\(library.songs.filter(\.isFavorite).count) 首喜爱的音乐").foregroundStyle(.secondary)
+            LazyVStack(alignment: .leading, spacing: 32) {
+                if !online.history.isEmpty { OnlineHomeShelf(title: "Listen Again", items: online.history) }
+                if !library.albums.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        NavigationLink(value: LibraryRoute.albums) {
+                            HStack {
+                                Text("Recently Added").font(.title2.bold())
+                                Image(systemName: "chevron.right").font(.headline).foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                        }.padding().background(.pink.opacity(0.05), in: .rect(cornerRadius: 22))
-                    }.buttonStyle(.plain).padding(.horizontal)
-                    if !library.albums.isEmpty {
-                        Text("最近加入的专辑").font(.title2.bold()).padding(.horizontal)
+                        }.buttonStyle(.plain).padding(.horizontal, 20)
                         ScrollView(.horizontal) {
                             LazyHStack(alignment: .top, spacing: 16) {
                                 ForEach(recentAlbums) { album in
-                                    NavigationLink(value: LibraryRoute.album(album.id)) { AlbumCard(album: album).frame(width: 166) }.buttonStyle(.plain)
+                                    NavigationLink(value: LibraryRoute.album(album.id)) {
+                                        AlbumCard(album: album).frame(width: 170)
+                                    }.buttonStyle(.plain)
                                 }
-                            }.padding(.horizontal)
+                            }.padding(.horizontal, 20)
                         }.scrollIndicators(.hidden)
                     }
-                    VStack(alignment: .leading, spacing: 12) {
-                        NavigationLink("继续聆听", value: LibraryRoute.songs(.history)).font(.title2.bold())
-                        ForEach(library.songs.filter { $0.lastPlayedAt != nil }.sorted { ($0.lastPlayedAt ?? .distantPast) > ($1.lastPlayedAt ?? .distantPast) }.prefix(6)) { song in SongRow(song: song) }
-                        if !library.songs.contains(where: { $0.lastPlayedAt != nil }) {
-                            Text("播放过的歌曲会出现在这里。").foregroundStyle(.secondary)
-                        }
-                    }.padding(.horizontal)
                 }
-            }.padding(.vertical)
-        }.localizedNavigationTitle("首页")
-            .task {
-                if !ProcessInfo.processInfo.arguments.contains("--ui-testing"), online.home.isEmpty {
-                    await online.loadHome(cookies: account.downloadCookies()); await cloud.refresh()
+                ForEach(online.home) { section in
+                    OnlineHomeShelf(title: section.title, items: section.items)
                 }
-            }
+                if !cloud.trending.isEmpty { OnlineHomeShelf(title: "Trending", items: cloud.trending) }
+                if online.home.isEmpty && online.history.isEmpty && library.songs.isEmpty && cloud.trending.isEmpty {
+                    EmptyLibraryView().frame(minHeight: 340)
+                }
+                if !library.songs.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        NavigationLink(value: LibraryRoute.songs(.favorites)) {
+                            Label("Favorite Songs", systemImage: "star.fill").font(.title2.bold())
+                        }.buttonStyle(.plain)
+                        ForEach(library.songs.filter(\.isFavorite).prefix(4)) { SongRow(song: $0) }
+                    }.padding(.horizontal, 20)
+                }
+            }.padding(.vertical, 20)
+        }
+        .navigationTitle("Home")
+        .refreshable { await refresh() }
+        .task {
+            if !ProcessInfo.processInfo.arguments.contains("--ui-testing"), online.home.isEmpty { await refresh() }
+        }
     }
+
+    private func refresh() async {
+        await online.loadHome(cookies: account.downloadCookies())
+        await cloud.refresh()
+    }
+
     private var recentAlbums: [Album] {
         let ids = library.songs.sorted { $0.dateAdded > $1.dateAdded }.compactMap(\.albumID)
         var seen: Set<UUID> = []
@@ -80,10 +72,40 @@ private struct OnlineHomeShelf: View {
     let title: String
     let items: [OnlineTrack]
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(AppLanguage.text(title)).font(.title2.bold())
-            ForEach(items.prefix(6)) { OnlineTrackRow(track: $0) }
-        }.padding(.horizontal)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title).font(.title2.bold()).padding(.horizontal, 20)
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: 16) {
+                    ForEach(items) { track in OnlineMusicCard(track: track).frame(width: 170) }
+                }.padding(.horizontal, 20)
+            }.scrollIndicators(.hidden)
+        }
+    }
+}
+
+struct OnlineMusicCard: View {
+    let track: OnlineTrack
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
+    @Environment(PlaybackStore.self) private var playback
+    var body: some View {
+        Group {
+            if track.isPlayable {
+                Button {
+                    online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies(), cloud: cloud)
+                } label: { card }.disabled(online.downloadingID != nil)
+            } else if let id = track.browseID {
+                NavigationLink { MusicCollectionView(browseID: id, title: track.title) } label: { card }
+            }
+        }.buttonStyle(.plain)
+    }
+    private var card: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            OnlineArtworkView(track: track).aspectRatio(1, contentMode: .fit)
+            Text(track.title).font(.subheadline.weight(.medium)).lineLimit(2)
+            Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+        }.accessibilityElement(children: .combine)
     }
 }
 
@@ -92,22 +114,17 @@ struct DiscoverView: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("重新发现你的音乐").font(.title.bold())
-                    Text("按专辑、艺术家和流派探索本地收藏。").foregroundStyle(.secondary)
-                }.padding(.vertical, 12)
-            }.listRowSeparator(.hidden)
-            Section("浏览收藏") {
-                NavigationLink(value: LibraryRoute.albums) { Label("全部专辑", systemImage: "square.stack.fill") }
-                NavigationLink(value: LibraryRoute.artists) { Label("所有艺术家", systemImage: "music.mic") }
-                NavigationLink(value: LibraryRoute.songs(.recent)) { Label("最近添加", systemImage: "clock.badge.plus") }
-            }
-            Section("流派") {
-                ForEach(Array(Set(library.songs.map(\.genre))).sorted(), id: \.self) { genre in
-                    NavigationLink(genre, value: LibraryRoute.genre(genre))
+                NavigationLink(value: LibraryRoute.albums) { Label("All Albums", systemImage: "square.stack.fill") }
+                NavigationLink(value: LibraryRoute.artists) { Label("All Artists", systemImage: "music.mic") }
+                NavigationLink(value: LibraryRoute.songs(.all)) { Label("All Songs", systemImage: "music.note") }
+            }.font(.title3)
+            if !library.genres.isEmpty {
+                Section("Genres") {
+                    ForEach(library.genres, id: \.self) { genre in
+                        NavigationLink(value: LibraryRoute.genre(genre)) { Label(genre, systemImage: "guitars") }
+                    }
                 }
-                if library.songs.isEmpty { Text("导入音乐后，流派会出现在这里。").foregroundStyle(.secondary) }
             }
-        }.listStyle(.plain).localizedNavigationTitle("发现")
+        }.listStyle(.plain).navigationTitle("Discover")
     }
 }

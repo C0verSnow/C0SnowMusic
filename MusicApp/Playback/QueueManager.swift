@@ -3,7 +3,7 @@ import Foundation
 enum RepeatMode: String, CaseIterable, Codable, Identifiable {
     case off, all, one
     var id: String { rawValue }
-    var title: String { switch self { case .off: "关闭循环"; case .all: "列表循环"; case .one: "单曲循环" } }
+    var title: String { switch self { case .off: "Repeat off"; case .all: "Repeat all"; case .one: "Repeat one" } }
 }
 
 struct QueueEntry: Identifiable, Equatable {

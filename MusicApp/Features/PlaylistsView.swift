@@ -2,19 +2,20 @@ import SwiftUI
 import PhotosUI
 
 struct PlaylistsView: View {
+    @Environment(OnlineMusicStore.self) private var online
     @Environment(LibraryStore.self) private var library
     @State private var creating = false
     @State private var name = ""
     var body: some View {
         List {
-            Button("新建播放列表", systemImage: "plus") { name = ""; creating = true }
+            Button("New playlist", systemImage: "plus") { name = ""; creating = true }
             ForEach(library.playlists) { playlist in
                 NavigationLink(value: LibraryRoute.playlist(playlist.id)) {
                     HStack(spacing: 12) {
                         ArtworkView(id: playlist.artworkID).frame(width: 60, height: 60)
                         VStack(alignment: .leading) {
                             Text(playlist.name)
-                            Text("\(library.playlistSongs(playlist).count) 首歌曲").font(.caption).foregroundStyle(.secondary)
+                            Text("\(library.playlistSongs(playlist).count) songs").font(.caption).foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -22,12 +23,13 @@ struct PlaylistsView: View {
                 let selected = offsets.map { library.playlists[$0] }
                 for playlist in selected { library.deletePlaylist(playlist) }
             }
+            ForEach(online.playlists) { OnlineTrackRow(track: $0) }
         }
-        .localizedNavigationTitle("播放列表")
-        .alert("新建播放列表", isPresented: $creating) {
-            TextField("播放列表名称", text: $name)
-            Button("创建") { library.createPlaylist(name) }
-            Button("取消", role: .cancel) { }
+        .localizedNavigationTitle("Playlists")
+        .alert("New playlist", isPresented: $creating) {
+            TextField("Playlist name", text: $name)
+            Button("Create") { library.createPlaylist(name) }
+            Button("Cancel", role: .cancel) { }
         }
     }
 }
@@ -40,17 +42,17 @@ struct AddToPlaylistView: View {
     @State private var name = ""
     var body: some View {
         List {
-            Button("新建播放列表", systemImage: "plus") { creating = true }
+            Button("New playlist", systemImage: "plus") { creating = true }
             ForEach(library.playlists) { playlist in
                 Button(playlist.name) { library.add(song, to: playlist); dismiss() }
             }
         }
-        .localizedNavigationTitle("添加到播放列表").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
-        .alert("新建播放列表", isPresented: $creating) {
-            TextField("播放列表名称", text: $name)
-            Button("创建") { library.createPlaylist(name) }
-            Button("取消", role: .cancel) { }
+        .localizedNavigationTitle("Add to playlist").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
+        .alert("New playlist", isPresented: $creating) {
+            TextField("Playlist name", text: $name)
+            Button("Create") { library.createPlaylist(name) }
+            Button("Cancel", role: .cancel) { }
         }
     }
 }
@@ -72,14 +74,14 @@ struct PlaylistDetailView: View {
                 VStack(spacing: 12) {
                     ArtworkView(id: playlist.artworkID, thumbnail: false).aspectRatio(1, contentMode: .fit).frame(maxWidth: 240)
                     Text(playlist.name).font(.title.bold()).multilineTextAlignment(.center)
-                    PhotosPicker(selection: $cover, matching: .images) { Label("更换封面", systemImage: "photo") }
+                    PhotosPicker(selection: $cover, matching: .images) { Label("Change artwork", systemImage: "photo") }
                     HStack {
-                        Button("播放", systemImage: "play.fill") { playback.play(entries.map(\.song)) }
+                        Button("Play", systemImage: "play.fill") { playback.play(entries.map(\.song)) }
                         Spacer()
-                        Button("随机播放", systemImage: "shuffle") { playback.play(entries.map(\.song).shuffled(), shuffled: true) }
+                        Button("Shuffle", systemImage: "shuffle") { playback.play(entries.map(\.song).shuffled(), shuffled: true) }
                     }.buttonStyle(.bordered).disabled(entries.isEmpty)
                 }.padding(.vertical).frame(maxWidth: .infinity).listRowSeparator(.hidden)
-                Button("添加歌曲", systemImage: "plus") { adding = true }
+                Button("Add songs", systemImage: "plus") { adding = true }
             }
             ForEach(Array(entries.enumerated()), id: \.element.item.id) { index, entry in
                 SongRow(song: entry.song, play: { playback.play(entries.map(\.song), startingAt: index) })
@@ -90,18 +92,18 @@ struct PlaylistDetailView: View {
         .listStyle(.plain).navigationBarTitleDisplayMode(.inline)
         .toolbar {
             EditButton()
-            Menu("播放列表操作", systemImage: "ellipsis.circle") {
-                Button("修改名称", systemImage: "pencil") { name = playlist.name; renaming = true }
-                Button("删除播放列表", systemImage: "trash", role: .destructive) { deleting = true }
+            Menu("Playlist actions", systemImage: "ellipsis.circle") {
+                Button("Change name", systemImage: "pencil") { name = playlist.name; renaming = true }
+                Button("Delete playlist", systemImage: "trash", role: .destructive) { deleting = true }
             }
         }
-        .alert("修改名称", isPresented: $renaming) {
-            TextField("名称", text: $name)
-            Button("保存") { library.rename(playlist, name: name) }
-            Button("取消", role: .cancel) { }
+        .alert("Change name", isPresented: $renaming) {
+            TextField("Name", text: $name)
+            Button("Save") { library.rename(playlist, name: name) }
+            Button("Cancel", role: .cancel) { }
         }
-        .confirmationDialog("删除播放列表？歌曲仍保留在资料库。", isPresented: $deleting) {
-            Button("删除播放列表", role: .destructive) { library.deletePlaylist(playlist); dismiss() }
+        .confirmationDialog("Delete this playlist? Songs will stay in your library.", isPresented: $deleting) {
+            Button("Delete playlist", role: .destructive) { library.deletePlaylist(playlist); dismiss() }
         }
         .sheet(isPresented: $adding) { NavigationStack { PlaylistSongPicker(playlist: playlist) } }
         .task(id: cover) {
@@ -129,8 +131,8 @@ struct PlaylistSongPicker: View {
                 }
             }.disabled(included)
         }
-        .searchable(text: $query, prompt: "搜索歌曲")
-        .localizedNavigationTitle("添加歌曲").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+        .searchable(text: $query, prompt: "Search songs")
+        .localizedNavigationTitle("Add songs").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
     }
 }

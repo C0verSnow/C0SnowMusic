@@ -6,60 +6,27 @@ struct CloudLibrarySettingsView: View {
     @State private var apiKey = ""
     var body: some View {
         Form {
-            Section("音乐仓库") {
-                TextField("HTTPS 地址", text: $endpoint).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
-                SecureField("设备密钥", text: $apiKey).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button("连接") {
+            Section("Music warehouse") {
+                TextField("HTTPS endpoint", text: $endpoint).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                SecureField("Device key", text: $apiKey).textInputAutocapitalization(.never).autocorrectionDisabled()
+                Button("Connect") {
                     Task {
                         await cloud.connect(endpoint: endpoint, apiKey: apiKey)
                         if cloud.connected { apiKey = "" }
                     }
                 }.disabled(cloud.busy)
-                if cloud.busy { ProgressView() }
+                if cloud.busy { Text("Connecting…").foregroundStyle(.secondary) }
                 if cloud.connected {
-                    Label("已连接音乐仓库", systemImage: "checkmark.circle")
-                    Button("断开连接", role: .destructive) { cloud.disconnect(); apiKey = "" }
+                    Label("Connected to music warehouse", systemImage: "checkmark.circle")
+                    Button("Disconnect", role: .destructive) { cloud.disconnect(); apiKey = "" }
                 }
-                if let error = cloud.error { Text(error).foregroundStyle(.red) }
+                if cloud.error != nil { Text("Couldn't connect. Check the address and device key, then try again.").foregroundStyle(.secondary) }
             }
             Section {
-                Text("连接后先查找仓库音频，没有时在手机获取音频并上传。Telegram 保存文件，数据库保存索引。取消收藏只移除关系，不删除音频。")
-                Text("标准 Telegram 云端播放支持最大 20 MB 的 MP3/M4A。设备密钥保存在此设备的 Keychain。")
+                Text("Connect your music storage to keep downloaded music available across your devices. Removing a favorite keeps the audio in storage.")
+                Text("Supports MP3 and M4A files up to 20 MB. Your device key is stored securely on this device.")
             }.font(.footnote).foregroundStyle(.secondary)
-        }.localizedNavigationTitle("音乐仓库").onAppear { endpoint = cloud.endpoint }
-    }
-}
-
-struct OnlineLibraryView: View {
-    @Environment(OnlineMusicStore.self) private var online
-    @Environment(YouTubeAccountStore.self) private var account
-    @Environment(CloudMusicStore.self) private var cloud
-    var body: some View {
-        List {
-            Section {
-                if account.isSignedIn {
-                    Button("同步 YouTube 收藏", systemImage: "arrow.triangle.2.circlepath") {
-                        Task { await online.syncFavorites(cookies: account.downloadCookies(), cloud: cloud) }
-                    }.disabled(online.syncing)
-                }
-                if online.syncing { ProgressView("正在同步收藏…") }
-                if !account.isSignedIn { Text("登录 YouTube 后可同步收藏。") }
-                if let error = online.error ?? cloud.error { Text(error).foregroundStyle(.red) }
-            }
-            Section("YouTube 收藏") { ForEach(online.liked) { OnlineTrackRow(track: $0) } }
-            if cloud.connected {
-                Section("仓库收藏") { ForEach(cloud.favorites) { OnlineTrackRow(track: $0.onlineTrack) } }
-            }
-            Section("YouTube Music 资料库") {
-                NavigationLink("播放列表") { MusicCollectionView(browseID: "FEmusic_liked_playlists", title: "播放列表") }
-                NavigationLink("专辑") { MusicCollectionView(browseID: "FEmusic_liked_albums", title: "专辑") }
-                NavigationLink("艺术家") { MusicCollectionView(browseID: "FEmusic_library_corpus_artists", title: "艺术家") }
-            }
-        }.localizedNavigationTitle("在线资料库")
-            .task(id: "\(account.isSignedIn)-\(cloud.connected)") {
-                if account.isSignedIn { await online.syncFavorites(cookies: account.downloadCookies(), cloud: cloud) }
-                else { await cloud.refresh() }
-            }
+        }.localizedNavigationTitle("Music warehouse").onAppear { endpoint = cloud.endpoint }
     }
 }
 
@@ -73,13 +40,18 @@ struct MusicCollectionView: View {
     @State private var error: String?
     var body: some View {
         List {
-            if busy { ProgressView() }
-            if let error { Text(error).foregroundStyle(.red); Button("重试") { Task { await load(more: false) } } }
+            if busy && sections.isEmpty { MusicPlaceholderRows() }
+            if error != nil, sections.isEmpty {
+                ContentUnavailableView("Couldn't Load This Collection", systemImage: "music.note.list", description: Text("Check your connection and try again."))
+                Button("Try Again") { Task { await load(more: false) } }
+            }
             ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                 Section(section.title) { ForEach(section.items) { OnlineTrackRow(track: $0) } }
             }
-            if continuation != nil { Button("加载更多") { Task { await load(more: true) } }.disabled(busy) }
-        }.navigationTitle(title).task { await load(more: false) }
+            if sections.isEmpty && !busy && error == nil { ContentUnavailableView("No Music Yet", systemImage: "music.note.list") }
+            if continuation != nil { Button("Load more") { Task { await load(more: true) } }.disabled(busy) }
+        }.listStyle(.plain).navigationTitle(title).task { await load(more: false) }
+            .refreshable { await load(more: false) }
     }
     private func load(more: Bool) async {
         busy = true; error = nil

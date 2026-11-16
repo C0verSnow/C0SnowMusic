@@ -5,37 +5,31 @@ struct SettingsView: View {
     @State private var excludeBackup = UserDefaults.standard.bool(forKey: "excludeMusicFromBackup")
     @State private var changingBackup = false
     @State private var importing = false
-    @AppStorage("appLanguage") private var language = "system"
     var body: some View {
         @Bindable var library = library
         Form {
-            Section("通用") {
-                Picker("语言", selection: $language) {
-                    Text("跟随系统").tag("system")
-                    Text("简体中文").tag("zh-Hans")
-                    Text("English").tag("en")
-                }.accessibilityIdentifier("appLanguage")
-                NavigationLink { OnlineCacheView() } label: { Label("音频缓存", systemImage: "externaldrive") }
-                NavigationLink { CloudLibrarySettingsView() } label: { Label("音乐仓库", systemImage: "cloud") }
+            Section("General") {
+                NavigationLink { OnlineCacheView() } label: { Label("Audio cache", systemImage: "externaldrive") }
+                NavigationLink { CloudLibrarySettingsView() } label: { Label("Music warehouse", systemImage: "cloud") }
             }
-            Section("导入设置") {
-                Button("从文件导入", systemImage: "folder") { importing = true }
+            Section("Import settings") {
+                Button("Import from Files", systemImage: "folder") { importing = true }
                     .accessibilityIdentifier("importMusic")
                     .disabled(library.importProgress != nil)
-                Picker("重复文件", selection: $library.duplicatePolicy) {
+                Picker("Duplicate files", selection: $library.duplicatePolicy) {
                     ForEach(DuplicatePolicy.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
                 }
-                Text("通过文件内容的 SHA-256 检测完全相同的文件。不同编码的同一首歌曲可分别导入。")
+                Text("Choose whether to skip identical files or keep another copy.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-            Section("上次导入") {
-                Text(library.importStatus.isEmpty ? AppLanguage.text("还没有导入记录。", language: language) : library.importStatus)
+            Section("Last import") {
+                Text(library.importStatus.isEmpty ? "No imports yet." : library.importStatus)
                 ForEach(Array(library.importFailures.enumerated()), id: \.offset) { _, failure in Text(failure).font(.footnote).foregroundStyle(.red) }
             }
-            Section("本地存储") {
-                LabeledContent("歌曲", value: "\(library.songs.count)")
-                LabeledContent("音频文件", value: ByteCountFormatter.string(fromByteCount: library.songs.reduce(0) { $0 + $1.fileSize }, countStyle: .file))
-                Toggle("音乐文件不参与设备备份", isOn: Binding(get: { excludeBackup }, set: { new in
+            Section("Local storage") {
+                LabeledContent("Songs", value: "\(library.songs.count)")
+                LabeledContent("Audio files", value: ByteCountFormatter.string(fromByteCount: library.songs.reduce(0) { $0 + $1.fileSize }, countStyle: .file))
+                Toggle("Exclude music files from device backup", isOn: Binding(get: { excludeBackup }, set: { new in
                     changingBackup = true
                     Task {
                         do { try await library.importer.setBackupExcluded(new); excludeBackup = new }
@@ -43,19 +37,19 @@ struct SettingsView: View {
                         changingBackup = false
                     }
                 })).disabled(changingBackup)
-                Text("默认保留设备备份。开启后，重新安装应用或更换设备时需要自行恢复原始音乐文件。")
+                Text("Device backup is enabled by default. If excluded, you must restore your original music after reinstalling or changing devices.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button("重新导入仅移除记录的文件") { library.restoreRemovedFiles() }.disabled(library.importProgress != nil)
+                Button("Reimport files whose records were removed") { library.restoreRemovedFiles() }.disabled(library.importProgress != nil)
             }
-            Section("音频格式") {
-                Text("可选择 MP3、FLAC、M4A、AAC、ALAC、WAV、AIFF 文件。")
-                Text("导入会检查文件内容、音轨和首段 PCM 解码。系统无法解码的文件会报错，请转换成 ALAC、M4A 或 WAV。具体编码、位深和采样率的兼容性以设备实际播放为准。")
+            Section("Audio formats") {
+                Text("Choose MP3, FLAC, M4A, AAC, ALAC, WAV, or AIFF files.")
+                Text("Some audio formats may need to be converted before they can play on your device.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-            Section("关于 C0SnowMusic") {
-                Text("原生本地音乐播放器").font(.headline)
-                Text("本地音乐离线使用。连接音乐仓库后，在线下载的音频会保存到 Telegram；本地导入的音乐不会自动上传。")
-                Text("iOS 26 · SwiftUI · AVFoundation · SwiftData").font(.footnote).foregroundStyle(.secondary)
+            Section("About c0vermusic") {
+                Text("Native local music player").font(.headline)
+                Text("Local music works offline. Connecting a warehouse saves online downloads to Telegram. Imported local music is not uploaded automatically.")
+                Text("Version 1.2.0").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .localizedNavigationTitle("Music Settings").navigationBarTitleDisplayMode(.inline)

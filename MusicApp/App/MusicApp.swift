@@ -7,7 +7,6 @@ import SwiftData
     @State private var account = YouTubeAccountStore()
     @State private var online = OnlineMusicStore()
     @State private var cloud = CloudMusicStore()
-    @AppStorage("appLanguage") private var language = "system"
 
     var body: some Scene {
         WindowGroup {
@@ -19,16 +18,16 @@ import SwiftData
                         .environment(account)
                         .environment(online)
                         .environment(cloud)
-                } else if let error = runtime.error {
+                } else if runtime.error != nil {
                     ContentUnavailableView {
-                        Label("无法打开音乐库", systemImage: "externaldrive.badge.exclamationmark")
-                    } description: { Text(error) } actions: {
-                        Button("重试") { runtime.open() }
+                        Label("Unable to open library", systemImage: "externaldrive.badge.exclamationmark")
+                    } description: { Text("Your music couldn't be opened. Try again in a moment.") } actions: {
+                        Button("Retry") { runtime.open() }
                     }
-                } else { ProgressView("正在打开音乐库…") }
+                } else { ProgressView("Opening library…") }
             }
             .tint(.pink)
-            .environment(\.locale, language == "system" ? .autoupdatingCurrent : Locale(identifier: language))
+            .environment(\.locale, Locale(identifier: "en"))
             .task { if runtime.library == nil { runtime.open() }; await runtime.importTestFixturesIfRequested() }
             .task {
                 cloud.restore()

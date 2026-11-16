@@ -19,6 +19,34 @@ import UIKit
         try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: ext, subdirectory: "Fixtures"))
     }
 
+    func testLegacyPlaceholdersBecomeEnglishWithoutChangingMusicOrGroups() async throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.files.root) }
+        try await library.importOne(fixture("Test Tone", ext: "wav"))
+        let song = try XCTUnwrap(library.songs.first)
+        let artistID = song.artistID
+        let albumID = song.albumID
+        let hash = song.fileHash
+        library.transaction {
+            song.title = "中文歌名"; song.lyrics = "原始歌词"
+            song.artist = "未知艺术家"; song.albumArtist = "未知艺术家"; song.albumTitle = "未知专辑"; song.genre = "未分类"
+            library.artists.first?.name = "未知艺术家"
+            library.albums.first?.title = "未知专辑"
+            library.albums.first?.artist = "未知艺术家"
+        }
+        let reopened = try LibraryStore(context: library.context, files: library.files)
+        let restored = try XCTUnwrap(reopened.songs.first)
+        XCTAssertEqual(restored.artist, "Unknown artist")
+        XCTAssertEqual(restored.albumTitle, "Unknown album")
+        XCTAssertEqual(restored.genre, "Uncategorized")
+        XCTAssertTrue(reopened.genres.isEmpty)
+        XCTAssertEqual(restored.artistID, artistID)
+        XCTAssertEqual(restored.albumID, albumID)
+        XCTAssertEqual(restored.fileHash, hash)
+        XCTAssertEqual(restored.title, "中文歌名")
+        XCTAssertEqual(restored.lyrics, "原始歌词")
+    }
+
     func testImportEveryTargetFormatAndHighResolutionPCM() async throws {
         let library = try makeLibrary()
         defer { try? FileManager.default.removeItem(at: library.files.root) }
@@ -81,7 +109,7 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         let song = try XCTUnwrap(library.songs.first)
         XCTAssertEqual(song.title, "Test Tone")
-        XCTAssertEqual(song.artist, "未知艺术家")
+        XCTAssertEqual(song.artist, "Unknown artist")
         XCTAssertNil(song.artworkID)
     }
 
@@ -199,7 +227,7 @@ import UIKit
         XCTAssertEqual(song.title, "Correct title")
         XCTAssertEqual(song.artist, "Correct artist")
         XCTAssertEqual(song.albumArtist, "Correct artist")
-        XCTAssertEqual(song.albumTitle, "未知专辑")
+        XCTAssertEqual(song.albumTitle, "Unknown album")
         XCTAssertFalse(library.artists.contains { $0.id == originalArtistID })
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         let cover = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).jpegData(withCompressionQuality: 0.9) { context in

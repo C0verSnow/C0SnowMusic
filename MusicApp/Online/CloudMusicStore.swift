@@ -45,7 +45,7 @@ struct CloudConnection: Codable, Sendable {
         var value: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &value)
         guard status != errSecItemNotFound else { return }
-        guard status == errSecSuccess, let data = value as? Data else { error = AppLanguage.text("无法读取音乐仓库配置。"); return }
+        guard status == errSecSuccess, let data = value as? Data else { error = AppLanguage.text("Cannot read music warehouse settings."); return }
         do {
             let saved = try JSONDecoder().decode(CloudConnection.self, from: data)
             connection = saved; endpoint = saved.endpoint.absoluteString; connected = true
@@ -56,7 +56,7 @@ struct CloudConnection: Codable, Sendable {
         busy = true; error = nil
         defer { busy = false }
         do {
-            guard let url = URL(string: endpoint.trimmingCharacters(in: .whitespacesAndNewlines)), url.scheme == "https", url.host != nil, url.user == nil, url.password == nil, url.query == nil, url.fragment == nil, ["", "/"].contains(url.path), !apiKey.isEmpty else { throw CloudMusicError(message: "请输入 HTTPS 仓库地址和设备密钥。") }
+            guard let url = URL(string: endpoint.trimmingCharacters(in: .whitespacesAndNewlines)), url.scheme == "https", url.host != nil, url.user == nil, url.password == nil, url.query == nil, url.fragment == nil, ["", "/"].contains(url.path), !apiKey.isEmpty else { throw CloudMusicError(message: "Enter an HTTPS warehouse endpoint and device key.") }
             let next = CloudConnection(endpoint: url, apiKey: apiKey)
             _ = try await request("/api/tracks?limit=1", connection: next)
             let data = try JSONEncoder().encode(next)
@@ -65,8 +65,8 @@ struct CloudConnection: Codable, Sendable {
                 var entry = keychainQuery
                 entry[kSecValueData as String] = data
                 entry[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-                guard SecItemAdd(entry as CFDictionary, nil) == errSecSuccess else { throw CloudMusicError(message: "无法保存音乐仓库配置。") }
-            } else if status != errSecSuccess { throw CloudMusicError(message: "无法保存音乐仓库配置。") }
+                guard SecItemAdd(entry as CFDictionary, nil) == errSecSuccess else { throw CloudMusicError(message: "Cannot save music warehouse settings.") }
+            } else if status != errSecSuccess { throw CloudMusicError(message: "Cannot save music warehouse settings.") }
             connection = next; self.endpoint = url.absoluteString; connected = true
             favorites = []; trending = []
             await refresh()
@@ -75,7 +75,7 @@ struct CloudConnection: Codable, Sendable {
 
     func disconnect() {
         let status = SecItemDelete(keychainQuery as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { error = AppLanguage.text("无法清除音乐仓库配置。"); return }
+        guard status == errSecSuccess || status == errSecItemNotFound else { error = AppLanguage.text("Cannot clear music warehouse settings."); return }
         connection = nil; endpoint = ""; connected = false; favorites = []; trending = []; error = nil
     }
 
@@ -110,7 +110,7 @@ struct CloudConnection: Codable, Sendable {
     func download(_ track: OnlineTrack, directory: URL) async throws -> URL? {
         guard let saved = try await existing(track) else { return nil }
         guard let audio = saved.files.first(where: \.available) else {
-            if !saved.files.isEmpty { throw CloudMusicError(message: "仓库音频尚不可用，请检查文件状态或大小限制。") }
+            if !saved.files.isEmpty { throw CloudMusicError(message: "Warehouse audio is not available. Check file status or size limits.") }
             return nil
         }
         let data = try await request("/api/tracks/\(saved.id)/content")
@@ -121,7 +121,7 @@ struct CloudConnection: Codable, Sendable {
 
     func upload(_ track: OnlineTrack, file: URL) async throws {
         let size = try file.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard size > 0, size <= 20_000_000 else { throw CloudMusicError(message: "Telegram 云端播放上限为 20 MB，文件未上传。") }
+        guard size > 0, size <= 20_000_000 else { throw CloudMusicError(message: "Telegram cloud delivery is limited to 20 MB. The file was not uploaded.") }
         let bytes = try Data(contentsOf: file)
         let hash = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
         let boundary = UUID().uuidString
@@ -158,7 +158,7 @@ struct CloudConnection: Codable, Sendable {
     }
 
     private func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", connection supplied: CloudConnection? = nil) async throws -> Data {
-        guard let settings = supplied ?? connection else { throw CloudMusicError(message: "请先连接音乐仓库。") }
+        guard let settings = supplied ?? connection else { throw CloudMusicError(message: "Connect a music warehouse first.") }
         let url = URL(string: path, relativeTo: settings.endpoint)!.absoluteURL
         var request = URLRequest(url: url)
         request.httpMethod = method; request.httpBody = body; request.timeoutInterval = 180

@@ -53,7 +53,7 @@ struct WebCookie: Codable, Sendable, Equatable {
         let status = SecItemCopyMatching(query as CFDictionary, &item)
         guard status != errSecItemNotFound else { return }
         guard status == errSecSuccess, let data = item as? Data else {
-            error = AppLanguage.text("无法读取已保存的 YouTube 登录状态。")
+            error = AppLanguage.text("Cannot read the saved YouTube session.")
             return
         }
         do {
@@ -67,7 +67,7 @@ struct WebCookie: Codable, Sendable, Equatable {
 
     func capture(from view: WKWebView) async -> Bool {
         guard let host = view.url?.host, host == "youtube.com" || host.hasSuffix(".youtube.com") else {
-            error = AppLanguage.text("请先在网页中完成登录，再返回 YouTube。")
+            error = AppLanguage.text("Complete sign-in on the website, then return to YouTube.")
             return false
         }
         checking = true
@@ -78,7 +78,7 @@ struct WebCookie: Codable, Sendable, Equatable {
                 .filter { $0.domain == "youtube.com" || $0.domain.hasSuffix(".youtube.com") || $0.domain == "google.com" || $0.domain.hasSuffix(".google.com") }
                 .map(WebCookie.init).filter(\.isCurrent)
             guard loggedIn, snapshot.contains(where: { $0.isYouTube && Self.authCookieNames.contains($0.name) }) else {
-                error = AppLanguage.text("尚未确认 YouTube 已登录，请完成网页登录后重试。")
+                error = AppLanguage.text("YouTube sign-in is not confirmed. Complete web sign-in and retry.")
                 return false
             }
             let data = try JSONEncoder().encode(SavedWebSession(cookies: snapshot, profile: nil))
@@ -127,5 +127,5 @@ private struct SavedWebSession: Codable {
 }
 
 private struct SessionStorageError: LocalizedError {
-    var errorDescription: String? { AppLanguage.text("无法保存或清除 YouTube 登录状态，请重试。") }
+    var errorDescription: String? { AppLanguage.text("Cannot save or clear your YouTube session. Please retry.") }
 }

@@ -3,20 +3,20 @@ import SwiftUI
 struct MusicRootView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(PlaybackStore.self) private var playback
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var playerTransition
     @State private var expanded = false
     @State private var settings = false
-    @AppStorage("appLanguage") private var language = "system"
 
     var body: some View {
-        @Bindable var library = library
-        @Bindable var playback = playback
         TabView {
-            Tab(AppLanguage.text("首页", language: language), systemImage: "house.fill") { navigation { HomeView() } }
-            Tab(AppLanguage.text("发现", language: language), systemImage: "square.grid.2x2.fill") { navigation { DiscoverView() } }
-            Tab(AppLanguage.text("资料库", language: language), systemImage: "music.note.list") { navigation { LibraryView() } }
-            Tab(AppLanguage.text("搜索", language: language), systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
+            Tab("Home", systemImage: "house.fill") { navigation { HomeView() } }
+            Tab("Discover", systemImage: "square.grid.2x2.fill") { navigation { DiscoverView() } }
+            Tab("Library", systemImage: "music.note.list") { navigation { LibraryView() } }
+            Tab("Search", systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
         .modifier(PlayerAccessoryModifier(enabled: playback.currentSong != nil, expanded: $expanded, namespace: playerTransition))
@@ -31,7 +31,7 @@ struct MusicRootView: View {
                     HStack {
                         Text(library.importStatus).font(.caption).lineLimit(2)
                         Spacer()
-                        Button("取消") { library.cancelImport() }
+                        Button("Cancel") { library.cancelImport() }
                     }
                     ProgressView(value: progress)
                 }
@@ -39,12 +39,21 @@ struct MusicRootView: View {
                 .accessibilityElement(children: .contain)
             }
         }
-        .alert("音乐库操作失败", isPresented: Binding(get: { library.error != nil }, set: { if !$0 { library.error = nil } })) {
-            Button("好") { library.error = nil }
-        } message: { Text(library.error ?? "") }
-        .alert("播放失败", isPresented: Binding(get: { playback.playbackError != nil }, set: { if !$0 { playback.playbackError = nil } })) {
-            Button("好") { playback.playbackError = nil }
-        } message: { Text(playback.playbackError ?? "") }
+        .alert("Couldn't Import Music", isPresented: Binding(get: { library.error != nil }, set: { if !$0 { library.error = nil } })) {
+            Button("OK") { library.error = nil }
+        } message: { Text("Some changes couldn't be saved. Check Music Settings for import details, then try again.") }
+        .alert("Couldn't Play This Song", isPresented: Binding(get: { playback.playbackError != nil }, set: { if !$0 { playback.playbackError = nil } })) {
+            Button("OK") { playback.playbackError = nil }
+        } message: { Text("Try playing the song again. If it was removed, add it to your library again.") }
+        .alert("Couldn't Complete This Action", isPresented: Binding(get: { online.error != nil }, set: { if !$0 { online.error = nil } })) {
+            Button("OK") { online.error = nil }
+        } message: { Text("Check your connection and try again. Your saved music is still available.") }
+        .task(id: "\(account.isSignedIn)-\(cloud.connected)") {
+            await online.refresh()
+            guard !ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return }
+            if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
+            else if cloud.connected { await cloud.refresh() }
+        }
         .onChange(of: playback.currentSong?.id) { _, id in if id == nil { expanded = false } }
     }
 
@@ -53,10 +62,9 @@ struct MusicRootView: View {
             content()
                 .navigationDestination(for: LibraryRoute.self) { LibraryRouteView(route: $0) }
                 .toolbar {
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button { settings = true } label: {
-                            AccountAvatar().frame(width: 28, height: 28)
-                        }.accessibilityLabel("账户")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { settings = true } label: { AccountAvatar().frame(width: 30, height: 30) }
+                            .accessibilityLabel("c0vermusic Account")
                             .accessibilityIdentifier("accountSettings")
                     }
                 }
@@ -81,4 +89,5 @@ private struct PlayerAccessoryModifier: ViewModifier {
         MiniPlayerView(expanded: $expanded)
             .matchedTransitionSource(id: "player", in: namespace)
     }
+
 }

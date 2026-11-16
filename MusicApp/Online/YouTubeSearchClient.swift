@@ -10,6 +10,15 @@ struct OnlineTrack: Codable, Identifiable, Sendable, Equatable {
     var albumTitle: String? = nil
     var duration: Double? = nil
     var isPlayable: Bool { kind == .telegram || (YouTubeSearchClient.validID(id) && (kind == nil || kind == .song || kind == .video)) }
+    var fallbackCoverURL: URL? {
+        guard kind != .telegram, YouTubeSearchClient.validID(id) else { return nil }
+        return URL(string: "https://i.ytimg.com/vi/\(id)/hqdefault.jpg")
+    }
+    var artworkURLs: [URL] {
+        var urls = [coverURL, fallbackCoverURL].compactMap { $0 }
+        if urls.count == 2 && urls[0] == urls[1] { urls.removeLast() }
+        return urls
+    }
     var watchURL: URL { URL(string: "https://m.youtube.com/watch?v=\(id)")! }
 }
 
@@ -19,11 +28,11 @@ enum OnlineMusicError: LocalizedError {
     case invalidResponse, searchLayoutChanged, runtimeUnavailable, invalidAudio, cacheFull
     var errorDescription: String? {
         switch self {
-        case .invalidResponse: AppLanguage.text("在线请求失败，请重试。")
-        case .searchLayoutChanged: AppLanguage.text("YouTube 返回了验证页面或搜索结构已变化，请稍后重试。")
-        case .runtimeUnavailable: AppLanguage.text("音频下载组件未安装，请使用包含下载组件的构建。")
-        case .invalidAudio: AppLanguage.text("下载结果不是可播放的纯音频文件。")
-        case .cacheFull: AppLanguage.text("音频超过 500MB 缓存上限。")
+        case .invalidResponse: AppLanguage.text("The online request failed. Please retry.")
+        case .searchLayoutChanged: AppLanguage.text("YouTube returned a verification page or changed its search layout. Please try again later.")
+        case .runtimeUnavailable: AppLanguage.text("The audio downloader is missing. Install a build that includes it.")
+        case .invalidAudio: AppLanguage.text("The downloaded file is not playable audio-only media.")
+        case .cacheFull: AppLanguage.text("This audio exceeds the 500 MB cache limit.")
         }
     }
 }
@@ -135,7 +144,7 @@ struct YouTubeSearchClient: Sendable {
                 let metadataRows = rows?["contentMetadataViewModel"] as? [String: Any]
                 let firstRow = (metadataRows?["metadataRows"] as? [[String: Any]])?.first
                 let part = (firstRow?["metadataParts"] as? [[String: Any]])?.first
-                let artist = (part?["text"] as? [String: Any])?["content"] as? String ?? AppLanguage.text("未知艺术家")
+                let artist = (part?["text"] as? [String: Any])?["content"] as? String ?? AppLanguage.text("Unknown artist")
                 let image = (video["contentImage"] as? [String: Any])?["thumbnailViewModel"] as? [String: Any]
                 let sources = (image?["image"] as? [String: Any])?["sources"] as? [[String: Any]]
                 results.append(OnlineTrack(id: id, title: title, artist: artist, coverURL: thumbnail(sources)))
@@ -151,7 +160,7 @@ struct YouTubeSearchClient: Sendable {
         guard !title.isEmpty else { return nil }
         let artist = text(video["shortBylineText"] ?? video["ownerText"] ?? video["longBylineText"])
         let images = (video["thumbnail"] as? [String: Any])?["thumbnails"] as? [[String: Any]]
-        return OnlineTrack(id: id, title: title, artist: artist.isEmpty ? AppLanguage.text("未知艺术家") : artist, coverURL: thumbnail(images))
+        return OnlineTrack(id: id, title: title, artist: artist.isEmpty ? AppLanguage.text("Unknown artist") : artist, coverURL: thumbnail(images))
     }
 
     private static func text(_ node: Any?) -> String {

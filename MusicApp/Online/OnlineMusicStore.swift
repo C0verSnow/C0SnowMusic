@@ -7,6 +7,13 @@ import SwiftUI
     var sections: [MusicSection] = []
     var home: [MusicSection] = []
     var liked: [OnlineTrack] = []
+    var librarySongs: [OnlineTrack] = []
+    var playlists: [OnlineTrack] = []
+    var albums: [OnlineTrack] = []
+    var artists: [OnlineTrack] = []
+    var libraryError: String?
+    var homeError: String?
+    var loadingLibrary = false
     var history: [OnlineTrack] = (UserDefaults.standard.data(forKey: "onlineListenAgain").flatMap { try? JSONDecoder().decode([OnlineTrack].self, from: $0) }) ?? []
     var searchHistory: [String] = UserDefaults.standard.stringArray(forKey: "musicSearchHistory") ?? []
     var filter: MusicSearchFilter = .all
@@ -17,6 +24,8 @@ import SwiftUI
     var searching = false
     var downloadingID: String?
     var error: String?
+    var searchError: String?
+    var backgroundError: String?
     @ObservationIgnored private var cache: OnlineAudioCache?
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
@@ -37,7 +46,7 @@ import SwiftUI
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let token = more ? continuation : nil
         if !more { results = []; sections = []; continuation = nil }
-        error = nil
+        searchError = nil
         guard !query.isEmpty else { searching = false; return }
         searchHistory.removeAll { $0 == query }; searchHistory.insert(query, at: 0)
         searchHistory = Array(searchHistory.prefix(20))
@@ -53,7 +62,7 @@ import SwiftUI
             } catch is CancellationError { }
             catch {
                 guard !Task.isCancelled else { return }
-                searching = false; self.error = error.localizedDescription
+                searching = false; searchError = error.localizedDescription
             }
         }
     }
@@ -80,7 +89,6 @@ import SwiftUI
                     else {
                         guard track.kind != .telegram else { throw OnlineMusicError.invalidAudio }
                         downloaded = try await OnDeviceDownloader.shared.download(track, directory: directory, cookies: cookies)
-                        if let cloud, cloud.connected { try await cloud.upload(track, file: downloaded) }
                     }
                     try Task.checkCancellation()
                     url = try await cache.insert(downloaded, track: track)
@@ -91,8 +99,14 @@ import SwiftUI
                     let imported = try await library.importOne(url)
                     if imported, let song = library.songs.first(where: { !existing.contains($0.id) }) {
                         library.edit(song, title: track.title, artist: track.artist, album: track.albumTitle ?? song.albumTitle, genre: song.genre)
-                        if song.artworkID == nil, let cover = track.coverURL, let data = try? await MusicLookupClient.shared.artwork(at: cover) {
-                            try await library.setDownloadedCover(song, data: data)
+                        if song.artworkID == nil {
+                            for cover in track.artworkURLs {
+                                do {
+                                    let data = try await MusicLookupClient.shared.artwork(at: cover)
+                                    try await library.setDownloadedCover(song, data: data)
+                                    break
+                                } catch { continue }
+                            }
                         }
                     }
                 }
@@ -106,11 +120,11 @@ import SwiftUI
                     // A slow or unavailable warehouse must not block cached playback.
                     Task {
                         do {
-                            if let cachedURL, try await cloud.existing(track)?.files.contains(where: \.available) != true {
-                                try await cloud.upload(track, file: cachedURL)
+                            if try await cloud.existing(track)?.files.contains(where: \.available) != true {
+                                try await cloud.upload(track, file: url)
                             }
                             if play { await cloud.recordPlay(track) }
-                        } catch { self.error = error.localizedDescription }
+                        } catch { backgroundError = error.localizedDescription }
                     }
                 }
             } catch is CancellationError { }
@@ -121,22 +135,60 @@ import SwiftUI
     func cancelDownload() { downloadTask?.cancel() }
 
     func resetSession() {
-        searchTask?.cancel(); downloadTask?.cancel(); results = []; sections = []; home = []; liked = []; history = []; continuation = nil; searching = false; error = nil
+        searchTask?.cancel(); downloadTask?.cancel(); results = []; sections = []; home = []; liked = []; librarySongs = []; playlists = []; albums = []; artists = []; libraryError = nil; homeError = nil; history = []; continuation = nil; searching = false; error = nil; searchError = nil
         UserDefaults.standard.removeObject(forKey: "onlineListenAgain")
     }
 
     func resetSearch() {
-        searchTask?.cancel(); results = []; sections = []; continuation = nil; searching = false; error = nil
+        searchTask?.cancel(); results = []; sections = []; continuation = nil; searching = false; searchError = nil
     }
 
     func clearSearchHistory() { searchHistory = []; UserDefaults.standard.removeObject(forKey: "musicSearchHistory") }
 
     func loadHome(cookies: [WebCookie]) async {
         guard !loadingHome else { return }
-        loadingHome = true
+        loadingHome = true; homeError = nil
         defer { loadingHome = false }
         do { home = try await YouTubeMusicClient().browse("FEmusic_home", cookies: cookies).sections }
-        catch { self.error = error.localizedDescription }
+        catch { homeError = error.localizedDescription }
+    }
+
+    func loadLibrary(cookies: [WebCookie], cloud: CloudMusicStore, client: YouTubeMusicClient = YouTubeMusicClient()) async {
+        guard !loadingLibrary else { return }
+        loadingLibrary = true; libraryError = nil
+        defer { loadingLibrary = false }
+        // A failed category retains its previous contents; categories refresh independently.
+        for id in ["VLLM", "FEmusic_liked_videos", "FEmusic_liked_playlists", "FEmusic_liked_albums", "FEmusic_library_corpus_track_artists", "FEmusic_library_corpus_artists"] {
+            do {
+                let items = try await client.collectionItems(id, cookies: cookies)
+                try Task.checkCancellation()
+                switch id {
+                case "VLLM":
+                    liked = items.filter(\.isPlayable)
+                    if cloud.connected { try await cloud.syncYouTubeFavorites(liked) }
+                case "FEmusic_liked_videos": librarySongs = items.filter(\.isPlayable)
+                case "FEmusic_liked_playlists": playlists = items.filter { $0.kind == .playlist }
+                case "FEmusic_liked_albums": albums = items.filter { $0.kind == .album }
+                case "FEmusic_library_corpus_track_artists": artists = items.filter { $0.kind == .artist }
+                default:
+                    var seen = Set(artists.map(\.id))
+                    artists += items.filter { $0.kind == .artist && seen.insert($0.id).inserted }
+                }
+            } catch is CancellationError { return }
+            catch { libraryError = error.localizedDescription }
+        }
+        if cloud.connected { await cloud.refresh() }
+    }
+
+    func songs(for filter: SongFilter, cloud: CloudMusicStore) -> [OnlineTrack] {
+        let items: [OnlineTrack]
+        switch filter {
+        case .history: items = history
+        case .favorites: items = liked + cloud.favorites.map(\.onlineTrack)
+        case .all, .recent: items = librarySongs + liked + cloud.favorites.map(\.onlineTrack) + cached.map(\.track)
+        }
+        var seen: Set<String> = []
+        return items.filter { seen.insert($0.id).inserted }
     }
 
     func syncFavorites(cookies: [WebCookie], cloud: CloudMusicStore) async {

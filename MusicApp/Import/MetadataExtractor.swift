@@ -4,8 +4,8 @@ import Foundation
 
 struct AudioMetadata: Sendable {
     var title = ""
-    var artist = "未知艺术家"
-    var album = "未知专辑"
+    var artist = "Unknown artist"
+    var album = "Unknown album"
     var albumArtist = ""
     var duration: Double = 0
     var format = ""
@@ -14,7 +14,7 @@ struct AudioMetadata: Sendable {
     var bitDepth: Int?
     var track = 0
     var disc = 0
-    var genre = "未分类"
+    var genre = "Uncategorized"
     var year: Int?
     var lyrics = ""
     var artwork: Data?
@@ -84,5 +84,17 @@ enum MetadataExtractor {
         if let flac = try? FLACMetadata.read(url) { flac.apply(to: &result) }
         if result.albumArtist.isEmpty { result.albumArtist = result.artist }
         return result
+    }
+}
+
+// Translate only placeholders written by older builds, never song titles or lyrics.
+enum LegacyMetadata {
+    static func english(_ value: String) -> String {
+        switch value {
+        case "未知艺术家": "Unknown artist"
+        case "未知专辑": "Unknown album"
+        case "未分类": "Uncategorized"
+        default: value
+        }
     }
 }

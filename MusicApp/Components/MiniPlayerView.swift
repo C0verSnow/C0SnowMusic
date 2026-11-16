@@ -19,18 +19,16 @@ struct MiniPlayerView: View {
                         }.contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("打开播放器：\(song.title)，\(song.artist)")
+                    .accessibilityLabel("Open player: \(song.title), \(song.artist)")
                     .accessibilityIdentifier("miniPlayer")
-                    if playback.isLoading { ProgressView().frame(width: 44, height: 44) }
-                    else {
-                        Button(playback.isPlaying ? "暂停" : "播放", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
-                            .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                    Group {
+                        Button(playback.isPlaying ? "Pause" : "Play", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
+                            .labelStyle(.iconOnly).frame(width: 44, height: 44).disabled(playback.isLoading)
                     }
                     if placement != .inline {
-                        Button("下一首", systemImage: "forward.fill") { playback.next() }.labelStyle(.iconOnly).frame(width: 44, height: 44)
+                        Button("Next", systemImage: "forward.fill") { playback.next() }.labelStyle(.iconOnly).frame(width: 44, height: 44)
                     }
                 }
-                ProgressView(value: playback.currentTime, total: max(playback.duration, 1)).tint(.primary).accessibilityLabel("播放进度")
             }
             .padding(.horizontal, 12).padding(.vertical, 4)
         }

@@ -71,6 +71,30 @@ final class YouTubeMusicTests: XCTestCase {
         XCTAssertEqual(page.tracks.first?.albumTitle, "Album")
     }
 
+    func testLibraryGridsAndContinuationPreserveCollectionTypes() throws {
+        let first = try YouTubeMusicClient.parse(Data(#"""
+        {"contents":{"gridRenderer":{"items":[
+          {"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"Saved playlist"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"VLsaved"}}}},
+          {"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"Saved album"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"MPREb_saved"}}}},
+          {"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"Saved artist"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"UC_saved"}}}}
+        ],"continuations":[{"nextContinuationData":{"continuation":"next-grid"}}]}}}
+        """#.utf8))
+        XCTAssertEqual(first.sections.flatMap(\.items).map(\.kind), [.playlist, .album, .artist])
+        XCTAssertEqual(first.continuation, "next-grid")
+        let next = try YouTubeMusicClient.parse(Data(#"{"continuationContents":{"gridContinuation":{"items":[{"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"Second playlist"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"VLsecond"}}}}]}}}"#.utf8))
+        XCTAssertEqual(next.sections.flatMap(\.items).map(\.id), ["VLsecond"])
+    }
+
+    func testCompleteLibraryCollectionRequestsEveryPageAndDeduplicates() async throws {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [LibraryCollectionProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let items = try await YouTubeMusicClient(session: session).collectionItems("FEmusic_liked_playlists", cookies: [])
+        XCTAssertEqual(items.map(\.id), ["VLfirst", "VLsecond"])
+        XCTAssertEqual(items.map(\.kind), [.playlist, .playlist])
+    }
+
     func testOldAudioCacheMetadataStillDecodes() throws {
         let original = Data(#"{"id":"abcdefghijk","title":"Existing song","artist":"Existing artist"}"#.utf8)
         let track = try JSONDecoder().decode(OnlineTrack.self, from: original)
@@ -88,4 +112,24 @@ final class YouTubeMusicTests: XCTestCase {
         let hostCookie = WebCookie(try XCTUnwrap(HTTPCookie(properties: [.name: "SID", .value: "test", .domain: "m.youtube.com", .path: "/"])))
         XCTAssertFalse(hostCookie.matches(URL(string: "https://music.youtube.com/")!))
     }
+}
+
+private final class LibraryCollectionProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let payload: String
+        if request.httpMethod != "POST" {
+            payload = #"<script>ytcfg.set({"INNERTUBE_CONTEXT":{"client":{"clientVersion":"test"}}});</script>"#
+        } else if url.query?.contains("continuation=next-grid") == true {
+            payload = #"{"continuationContents":{"gridContinuation":{"items":[{"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"First"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"VLfirst"}}}},{"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"Second"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"VLsecond"}}}}]}}}"#
+        } else {
+            payload = #"{"contents":{"gridRenderer":{"items":[{"musicTwoRowItemRenderer":{"title":{"runs":[{"text":"First"}]},"navigationEndpoint":{"browseEndpoint":{"browseId":"VLfirst"}}}}],"continuations":[{"nextContinuationData":{"continuation":"next-grid"}}]}}}"#
+        }
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(payload.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
 }
