@@ -56,6 +56,21 @@ final class YouTubeMusicTests: XCTestCase {
         XCTAssertTrue(page.tracks.contains { $0.id == "HgLfYfJtc8M" })
     }
 
+    func testPlaylistAlbumInThirdColumnIsKept() throws {
+        let page = try YouTubeMusicClient.parse(Data(#"""
+        {"contents":{"musicPlaylistShelfRenderer":{"contents":[{"musicResponsiveListItemRenderer":{
+          "playlistItemData":{"videoId":"abcdefghijk"},
+          "flexColumns":[
+            {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Song"}]}}},
+            {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Artist","navigationEndpoint":{"browseEndpoint":{"browseId":"UC_artist"}}}]}}},
+            {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"Album","navigationEndpoint":{"browseEndpoint":{"browseId":"MPREb_album"}}}]}}}
+          ]
+        }}]}}}
+        """#.utf8))
+        XCTAssertEqual(page.tracks.first?.artist, "Artist")
+        XCTAssertEqual(page.tracks.first?.albumTitle, "Album")
+    }
+
     func testOldAudioCacheMetadataStillDecodes() throws {
         let original = Data(#"{"id":"abcdefghijk","title":"Existing song","artist":"Existing artist"}"#.utf8)
         let track = try JSONDecoder().decode(OnlineTrack.self, from: original)

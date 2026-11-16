@@ -114,3 +114,9 @@ Worker 直接转发 `upstream.body` 可以保持流式传输；不要先 `arrayB
 - 超过 20 MB 的文件显示明确交付限制；没有大文件服务时不得标为云播放就绪。
 
 上述是待执行的远端 CI / 真机验收。本文只完成主源研究和静态阅读；没有发起真实 YouTube 点赞、Telegram 发消息、上传音频或部署服务。
+
+## 2026-11-16 自动补齐补充
+
+用户要求点歌后自动加载封面、歌词和专辑，准确匹配自动应用，有歧义再选择。GitHub 继续检索 MetroList 的 `LrcLibLyricsProvider`、`LyricsClient` 与回归位置，仅核对功能职责，没有复制 GPL 实现；本项目复用自己的 MusicLookupClient、LRCLIB 匹配规则和 CAA 下载链路。
+
+参考：[LRCLIB 官方接口文档](https://lrclib.net/docs)、[MetroList 歌词提供器职责](https://github.com/MetrolistGroup/Metrolist/blob/5b2fc2b88748ef0aec94320a8d853bba5dc125ef/shared/src/commonMain/kotlin/com/metrolist/shared/api/lyrics/LrcLibLyricsProvider.kt)。自动选择的“歌名、艺术家、时长相差不超过 2 秒，专辑唯一”是本项目的保守应用策略。播放器先播放，网络补齐后台执行；仍由本项目 Swift 实现落地，不新增服务或重复部署。

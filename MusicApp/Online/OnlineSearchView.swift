@@ -45,7 +45,11 @@ struct OnlineSearchView: View {
         }
         .listStyle(.plain)
         .searchable(text: $query, prompt: "YouTube 歌名、歌手")
-        .onSubmit(of: .search) { submit() }
+        .task(id: query) {
+            do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
+            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { online.resetSearch() }
+            else { submit() }
+        }
         .onChange(of: online.filter) { _, _ in if !query.isEmpty { submit() } }
         .task { await online.refresh() }
         .safeAreaInset(edge: .bottom) {

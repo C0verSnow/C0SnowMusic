@@ -1,5 +1,60 @@
 # 测试与验收
 
+## Issue #11 搜索、账户与 Telegram 音乐仓库证据
+
+### 恢复时已通过的 CI 与 IPA（自动补齐改动前）
+
+- 产品提交 `caa95d0c4febdb3c252bf6c6ecd998c6656bb000` 的 [CI 43797997679](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679) 已通过：36 项单元/集成测试、3 项 UI 测试零失败；模拟器编译、未签名 iPhone Release 编译、图标检查和 IPA 打包全部通过；Worker 的 10 项真实 SQLite、HTTP 与音频测试通过。`release` job 因本次不是发布标签而跳过，不影响 Release 编译或 IPA 产物。
+- [IPA 产物 14195840405](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14195840405) 的 ZIP 已完整下载并通过 CRC 检查。归档 SHA-256 为 `2efe5f91dd246507e35345e9b806b295e9461cd5f6058ca44f9cf953d7f84c67`，与 GitHub 产物摘要和 CI 上传日志一致。
+- 提取后的 `C0SnowMusic-unsigned.ipa` 为 24,994,905 字节，SHA-256 为 `9a71d5f9f7aa17ec6a2867a6185666016503a0f943f2eca194cb47f92c59df2f`；版本为 1.1.0/build 6，Bundle ID 为 `org.c0versnow.C0SnowMusic`，最低系统 26.0。`Info.plist` 的 AppIcon 与 `Assets.car` 均已静态核对。此构建沿用旧版版本号，必须靠上述产物哈希区分，不能只凭手机显示 1.1.0 就判定安装正确。
+- [iOS 测试证据](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14195234761) 包含构建/测试日志、xcresult 与 UI 截图；[Worker 测试证据](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14194699823) 包含测试日志与合成 MP3。
+- 本地没有编译、构建、配置 CMake 或执行会触发编译的测试。本轮只读取 CI、核对 ZIP/IPA、plist 与差异。前轮已在 GitHub 比较 MetroList、TeleMusic、ytmusicapi 和 YouTube.js，来源与许可证见 [调研文档](TELEGRAM_MUSIC_RESEARCH.md)，没有复制 GPL 代码；本轮恢复阶段没有新增功能方案检索。
+
+### 已部署服务的 14 项真实检查
+
+以下为暂停前 2026-11-16 UTC（纽约 11 月 15 日晚）保存的实际结果，任务记录时间为 Unix Timestamp 1794799701。本轮从原始脱敏 JSON 与验收脚本核对补入，没有重跑上传、向用户发送音频或重新部署。服务为 `https://c0snow-music-api.f1515xcn.workers.dev`，部署版本为 `4a5d0351-4cba-4970-8734-46b176d53770`，两份 D1 迁移已应用。
+
+样本来自远端 CI 的合成 MP3，共 24,641 字节，SHA-256 为 `916ae9bd40370fe6403f1763935d084d1f86cee42fa97275f8d280a6d00d16c0`。两条歌曲为 `yt_c0snowtest1`、`yt_c0snowtest2`，均标明合成测试音；它们复用一份 Telegram 文件。没有使用用户音乐。
+
+| 编号 | 实际检查 | 结果与判定 |
+| --- | --- | --- |
+| 1 | 使用无效设备密钥请求目录 | 通过，HTTP 401 |
+| 2 | 第一条歌曲上传真实 MP3 | 通过，HTTP 200/201 |
+| 3 | 第二条歌曲上传相同 MP3 | 通过，HTTP 200/201 |
+| 4 | 两条歌曲按内容去重 | 通过，文件内部 ID 相同，SHA-256 与原文件一致 |
+| 5 | 下载完整音频 | 通过，HTTP 200，完整 SHA-256 与原文件一致 |
+| 6 | Range `bytes=10-99` | 通过，HTTP 206、90 字节及 Content-Range 与原文件相符 |
+| 7 | 后缀 Range `bytes=-32` | 通过，HTTP 206、末尾 32 字节及 Content-Range 相符 |
+| 8 | HEAD 音频请求 | 通过，HTTP 200、Content-Length 为 24641、无响应体 |
+| 9 | 超出文件的 Range | 通过，HTTP 416 |
+| 10 | 增加 App 云端收藏关系 | 通过，HTTP 200 |
+| 11 | 取消 App 云端收藏关系 | 通过，HTTP 200 |
+| 12 | 取消收藏后保留可下载音频 | 通过，音频 HEAD 仍为 HTTP 200 |
+| 13 | 使用保存的 Telegram file_id 向授权用户发送 | 通过，HTTP 200，前轮验收已产生一份私聊测试音 |
+| 14 | 核对真实 Bot Webhook | 通过，URL 正确且 pending_update_count 为 0 |
+
+这些线上检查证明已部署 Worker/D1/Telegram 链路可用。第 10、11 项是仓库收藏接口，不能代替 YouTube 账户实际收藏写入验收。429、回执不明、人工核对、失效音频、大文件限制、完整收藏事务和用户隔离由远端自动化覆盖，不算作上述 14 项线上检查。
+
+### 自动补齐补充（1.1.1/build 7，等待远端验证）
+
+用户在本轮真机试听后要求自动加载封面、歌词和专辑，并减少同类手动步骤。新增后台精确补齐、专辑保存与显示、第三列专辑解析、输入自动搜索、进入资料库自动同步、账户失效状态自动刷新和仓库连接后自动刷新。新增回归覆盖精确/歧义版本选择、真实缓存/图片解码和重开后的专辑歌词封面持久化；只有外部 HTTP 边界用合成响应，音频和存储走真实实现。本地未执行编译型测试；上述改动尚未由最终远端 CI 和新版真机验收确认，不能套用下面旧 IPA 的结果。
+
+### 本次真机验收（先前 caa95d0 IPA）
+
+- [x] 用上述哈希的 IPA 经 Chrome 下载、心动签沿用现有证书和 Bundle ID 覆盖安装，原 2 首歌与封面保留。
+- [ ] 覆盖安装后会话已保留；刷新账户取得真实头像、名字、handle 和已连接状态。强退重启的持久化仍待复验。
+- [ ] 原有 4 首 YouTube 收藏已同步到 D1；在 App 为 Die For You（源 ID `QLCpqdqeoII`）增加 YouTube 收藏后，回读 D1 得到 5 首，原 4 首保留。取消收藏及保留音频仍待复验。
+- [ ] Music Settings 已用既有 `.env` 设备密钥成功连接音乐仓库。同一来源复试成功，手机取得 4,207,300 字节 M4A 并上传 Telegram，D1 显示 ready/available。随后经 Worker 完整下载返回 HTTP 200，实际字节数与 SHA-256 `4240d9013a3c5a1fae35c6eb3c5476c7f5bce271a6820b36ab5c288e7c281481` 均与 D1 一致；用户清空缓存后，手机从仓库重新下载并出现已缓存标记，开始播放；旧版完整播放已通过。
+- [x] 按 Issue 最新评论，从归零缓存重新取 Die For You / The Weeknd（QLCpqdqeoII），连续播放到自然结束，界面回零并暂停，时长 4:20。用户确认正常出声、无卡顿；滑条跳转仍需新版复验。
+
+辅助功能权限与镜像解锁已完成。首次获取 Die For You 音频在手机报 `SSL: UNEXPECTED_EOF_WHILE_READING`，两次内置重试后失败，尚未上传音频；手动复试同一来源成功，没有为此修改代码或重新部署。初次失败仍保留，不宣称所有网络条件都可用。旧版 issue #9 的真机通过记录保留在下方，不能冒充本次结果。
+
+手动匹配补充：旧版 LRCLIB 精确找到 Die For You / The Weeknd / Starboy / 4:20；选择后同步歌词与 CAA 封面保存成功，真机显示 Starboy 封面。专辑输入仍为空，已确认旧版没有保存匹配专辑，现由 1.1.1 补充修复并改成自动加载。
+
+### 本期限制
+
+标准云端交付上限为 20,000,000 字节。更大文件交付和真正远程边播边下尚未实现，继续作为后续功能。当前 App 先完整下载并验证音频，再用本地 AVPlayer 播放；Worker 的 Range 正确不等于 App 已远程即播。其他部署与恢复说明见 [音乐仓库设计](TELEGRAM_MUSIC.md)。
+
 ## Issue #9 在线功能证据
 
 - 最终产品代码 `b8bf67887449c6f7bada48f17e147d174f19f6e4` 的 [CI 43680765143](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43680765143) 全通过：28 项单元/集成、3 项 UI，模拟器与 iPhone Release 编译、图标检查和 IPA 打包均通过。覆盖真实 Keychain 存取/注销、连续两次 Python/SSL/EJS/WebKit 执行、真实 yt-dlp 合成音频传输、移动页面转义解析、DASH 重新封装时长/解码/跳转、缓存淘汰与手动副本保留、设置/语言 UI。

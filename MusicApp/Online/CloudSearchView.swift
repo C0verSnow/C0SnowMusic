@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CloudSearchView: View {
     @Environment(CloudMusicStore.self) private var cloud
+    @Environment(OnlineMusicStore.self) private var online
     @State private var query = ""
     @State private var results: [CloudTrack] = []
     @State private var error: String?
@@ -12,9 +13,19 @@ struct CloudSearchView: View {
                 NavigationLink { CloudLibrarySettingsView() } label: { Label("连接音乐仓库", systemImage: "cloud") }
             } else {
                 if busy { ProgressView() }
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error = error ?? online.error { Text(error).foregroundStyle(.red) }
                 ForEach(results) { OnlineTrackRow(track: $0.onlineTrack) }
                 if results.isEmpty, !busy, error == nil { ContentUnavailableView.search(text: query) }
+            }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if online.downloadingID != nil {
+                HStack {
+                    ProgressView()
+                    Text("正在准备音频…").font(.caption)
+                    Spacer()
+                    Button("取消") { online.cancelDownload() }
+                }.padding().background(.bar)
             }
         }
         .searchable(text: $query, prompt: "仓库歌名、歌手")

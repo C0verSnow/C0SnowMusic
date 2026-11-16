@@ -1,0 +1,24 @@
+{
+  "endpoint": "https://c0snow-music-api.f1515xcn.workers.dev",
+  "checks": [
+    "unauthorized request is rejected",
+    "real Telegram upload c0snowtest1",
+    "real Telegram upload c0snowtest2",
+    "byte-identical MP3 reuses one file",
+    "download matches full original SHA-256",
+    "real Range bytes=10-99",
+    "real Range bytes=-32",
+    "HEAD reports exact audio size",
+    "invalid Range returns 416",
+    "favorite relation can be added",
+    "unfavorite changes relation",
+    "unfavorite keeps downloadable Telegram audio",
+    "authorized send uses stored Telegram file",
+    "webhook remains healthy"
+  ],
+  "sha256": "916ae9bd40370fe6403f1763935d084d1f86cee42fa97275f8d280a6d00d16c0",
+  "bytes": 24641,
+  "track_id": "yt_c0snowtest1",
+  "recorded_at_unix": 1794799701,
+  "note": "前轮已执行的脱敏结果；任务记录时间为 recorded_at_unix。本轮补录，未重新发送或上传。"
+}

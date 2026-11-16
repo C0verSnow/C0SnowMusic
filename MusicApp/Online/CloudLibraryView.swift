@@ -56,7 +56,10 @@ struct OnlineLibraryView: View {
                 NavigationLink("艺术家") { MusicCollectionView(browseID: "FEmusic_library_corpus_artists", title: "艺术家") }
             }
         }.localizedNavigationTitle("在线资料库")
-            .task { await cloud.refresh() }
+            .task(id: "\(account.isSignedIn)-\(cloud.connected)") {
+                if account.isSignedIn { await online.syncFavorites(cookies: account.downloadCookies(), cloud: cloud) }
+                else { await cloud.refresh() }
+            }
     }
 }
 

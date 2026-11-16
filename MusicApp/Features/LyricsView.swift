@@ -42,7 +42,9 @@ struct LyricsView: View {
                             ContentUnavailableView {
                                 Label("暂无歌词", systemImage: "quote.bubble")
                             } description: {
-                                Text("可在线查找同步歌词、导入 LRC 文件，或读取音频内嵌歌词。")
+                                if playback.isEnriching { ProgressView("正在自动加载歌词与专辑…") }
+                                else if let message = playback.enrichmentMessage { Text(message) }
+                                else { Text("可在线查找同步歌词、导入 LRC 文件，或读取音频内嵌歌词。") }
                             } actions: {
                                 Button("在线查找歌词与封面", systemImage: "magnifyingglass") { onlineSearch = true }
                                     .buttonStyle(.borderedProminent)

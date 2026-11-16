@@ -244,7 +244,10 @@ struct YouTubeMusicClient: Sendable {
         let images = (musicThumb?["thumbnail"] as? [String: Any])?["thumbnails"] as? [[String: Any]]
         let cover = (images?.last?["url"] as? String).flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
         let subtitle = value["subtitle"] ?? second?["text"]
-        let subtitleRuns = (subtitle as? [String: Any])?["runs"] as? [[String: Any]] ?? []
+        let subtitleRuns = ((value["subtitle"] as? [String: Any])?["runs"] as? [[String: Any]] ?? []) + columns.dropFirst().flatMap { column -> [[String: Any]] in
+            let renderer = column["musicResponsiveListItemFlexColumnRenderer"] as? [String: Any]
+            return (renderer?["text"] as? [String: Any])?["runs"] as? [[String: Any]] ?? []
+        }
         let album = subtitleRuns.first { run in
             let destination = (run["navigationEndpoint"] as? [String: Any])?["browseEndpoint"] as? [String: Any]
             return (destination?["browseId"] as? String)?.hasPrefix("MPRE") == true

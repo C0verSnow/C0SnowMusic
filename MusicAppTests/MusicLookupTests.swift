@@ -21,6 +21,20 @@ final class MusicLookupTests: XCTestCase {
         XCTAssertFalse(matches[0].matches(albumQuery))
     }
 
+    func testAutomaticMatchRequiresKnownArtistDurationAndUnambiguousAlbum() throws {
+        let matches = try JSONDecoder().decode([LyricsMatch].self, from: Data(#"""
+        [{"id":1,"trackName":"Example","artistName":"Artist","albumName":"Album","duration":260,"instrumental":false,"syncedLyrics":"[00:01.00]Line"},
+         {"id":2,"trackName":"Example","artistName":"Artist","albumName":"Live","duration":260,"instrumental":false,"syncedLyrics":"[00:01.00]Other version"},
+         {"id":3,"trackName":"Example","artistName":"Other artist","albumName":"Album","duration":260,"instrumental":false,"syncedLyrics":"[00:01.00]Wrong artist"}]
+        """#.utf8))
+        let query = SongLookupQuery(title: "Example", artist: "Artist", album: "", duration: 260)
+        XCTAssertEqual(LyricsMatch.automatic(in: [matches[0], matches[2]], for: query)?.id, 1)
+        XCTAssertNil(LyricsMatch.automatic(in: matches, for: query))
+        XCTAssertNil(LyricsMatch.automatic(in: matches, for: SongLookupQuery(title: "Example", artist: "", album: "Album", duration: 260)))
+        XCTAssertNil(LyricsMatch.automatic(in: matches, for: SongLookupQuery(title: "Example", artist: "Artist", album: "Album", duration: 200)))
+        XCTAssertEqual(LyricsMatch.automatic(in: matches, for: SongLookupQuery(title: "Example", artist: "Artist", album: "Album", duration: 260))?.id, 1)
+    }
+
     func testPlainTextAndInstrumentalDoNotInventTimestamps() throws {
         let matches = try JSONDecoder().decode([LyricsMatch].self, from: Data("""
         [{"id":1,"trackName":"Example","artistName":"Example artist","albumName":"Example album","duration":3,"instrumental":false,"plainLyrics":"First line\\nSecond line","syncedLyrics":null},

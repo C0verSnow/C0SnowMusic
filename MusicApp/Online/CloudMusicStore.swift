@@ -69,6 +69,7 @@ struct CloudConnection: Codable, Sendable {
             } else if status != errSecSuccess { throw CloudMusicError(message: "无法保存音乐仓库配置。") }
             connection = next; self.endpoint = url.absoluteString; connected = true
             favorites = []; trending = []
+            await refresh()
         } catch { self.error = error.localizedDescription }
     }
 

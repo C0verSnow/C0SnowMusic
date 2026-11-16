@@ -40,6 +40,7 @@ struct AccountView: View {
         }
         .localizedNavigationTitle("账户").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+        .task { if !account.sessionVerified { await account.refreshProfile() } }
         .sheet(isPresented: $login) { NavigationStack { YouTubeLoginView() } }
         .alert("登录状态", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {
             Button("好") { account.error = nil }
