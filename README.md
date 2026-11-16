@@ -4,7 +4,7 @@
 
 IPA 未签名，须用自己的 Apple 证书签名安装。
 
-iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不上传音乐；可选 Google 登录、YouTube 卡片搜索和手机本机音频下载。
+iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不自动上传本地音乐；可选 Google 登录、YouTube Music 搜索和 Telegram 音乐仓库。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
@@ -64,7 +64,7 @@ Issue #11 新流程、D1 数据模型、专用 Bot 配置、收藏同步、20 MB
 
 ## 在线搜索、下载和 Google 登录
 
-见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。下载全部在手机完成，不请求中转服务器。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
+见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。音源获取在手机完成；连接仓库后，存储和取回音频经过独立 Worker/D1 与 Telegram。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
 
 Google 登录按 [NeriPlayer](https://github.com/cwuom/NeriPlayer) 的网页会话思路独立实现：通过 Google 网页登录 YouTube，确认已登录后把 Cookie 存入本机 Keychain，供搜索和 yt-dlp 使用。不需要 Google Client ID 或服务器。Google 可能拒绝内嵌浏览器登录；以真机结果为准，不会把失败显示成成功。
 
