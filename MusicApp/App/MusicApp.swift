@@ -6,6 +6,7 @@ import SwiftData
     @State private var runtime = AppRuntime()
     @State private var account = YouTubeAccountStore()
     @State private var online = OnlineMusicStore()
+    @State private var cloud = CloudMusicStore()
     @AppStorage("appLanguage") private var language = "system"
 
     var body: some Scene {
@@ -17,6 +18,7 @@ import SwiftData
                         .environment(playback)
                         .environment(account)
                         .environment(online)
+                        .environment(cloud)
                 } else if let error = runtime.error {
                     ContentUnavailableView {
                         Label("无法打开音乐库", systemImage: "externaldrive.badge.exclamationmark")
@@ -28,7 +30,11 @@ import SwiftData
             .tint(.pink)
             .environment(\.locale, language == "system" ? .autoupdatingCurrent : Locale(identifier: language))
             .task { if runtime.library == nil { runtime.open() }; await runtime.importTestFixturesIfRequested() }
-            .task { await account.restore() }
+            .task {
+                cloud.restore()
+                await account.restore()
+                if !ProcessInfo.processInfo.arguments.contains("--ui-testing") { await account.refreshProfile() }
+            }
             .onOpenURL { runtime.receive($0) }
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { runtime.playback?.saveSession() }

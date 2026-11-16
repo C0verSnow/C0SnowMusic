@@ -5,8 +5,15 @@ struct OnlineTrack: Codable, Identifiable, Sendable, Equatable {
     let title: String
     let artist: String
     let coverURL: URL?
+    var kind: MusicItemKind? = nil
+    var browseID: String? = nil
+    var albumTitle: String? = nil
+    var duration: Double? = nil
+    var isPlayable: Bool { kind == .telegram || (YouTubeSearchClient.validID(id) && (kind == nil || kind == .song || kind == .video)) }
     var watchURL: URL { URL(string: "https://m.youtube.com/watch?v=\(id)")! }
 }
+
+enum MusicItemKind: String, Codable, Sendable { case song, video, album, artist, playlist, telegram }
 
 enum OnlineMusicError: LocalizedError {
     case invalidResponse, searchLayoutChanged, runtimeUnavailable, invalidAudio, cacheFull
@@ -28,7 +35,7 @@ struct YouTubeSearchClient: Sendable {
         var request = URLRequest(url: url.url!)
         request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 Version/26.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
         request.setValue("en-US,en;q=0.9", forHTTPHeaderField: "Accept-Language")
-        let browserCookies = cookies.compactMap(\.cookie).filter { "/results".hasPrefix($0.path) }
+        let browserCookies = cookies.filter { $0.matches(request.url!) }.compactMap(\.cookie)
         for (field, value) in HTTPCookie.requestHeaderFields(with: browserCookies) { request.setValue(value, forHTTPHeaderField: field) }
         request.timeoutInterval = 30
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -48,7 +55,7 @@ struct YouTubeSearchClient: Sendable {
         return results
     }
 
-    private static func initialData(in html: String) throws -> Data {
+    static func initialData(in html: String) throws -> Data {
         let markers = ["var ytInitialData =", "ytInitialData =", "window[\"ytInitialData\"] =", "ytInitialData="]
         for marker in markers {
             guard let range = html.range(of: marker),

@@ -4,7 +4,7 @@
 
 IPA 未签名，须用自己的 Apple 证书签名安装。
 
-iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不上传音乐；可选 Google 登录、YouTube 卡片搜索和手机本机音频下载。
+iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不自动上传本地音乐；可选 Google 登录、YouTube Music 搜索和 Telegram 音乐仓库。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
@@ -14,7 +14,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 2. 打开 `C0SnowMusic.xcodeproj`，选择共享 Scheme `C0SnowMusic`。
 3. 在 Signing & Capabilities 中选择自己的 Team；必要时把 Bundle Identifier 改成自己的唯一标识。
 4. 选择 iOS 26 iPhone 或模拟器，运行。
-5. 点击右上角「+」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
+5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
 
 在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
@@ -24,7 +24,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 - 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
 - 右上角账户页包含 YouTube 网页登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
-- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；首次结果自动预下载第一首，也可逐首操作。
+- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
 - 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。
@@ -58,9 +58,13 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 歌词查询参考用户指定的 [lyrics-downloader](https://github.com/antongpopov/lyrics-downloader)，仍使用原生 Swift URLSession，不经过音频下载用的 Python。[来源、许可证和匹配细节](docs/LYRICS_RESEARCH.md)。
 
+## YouTube Music 与 Telegram 音乐仓库
+
+Issue #11 新流程、D1 数据模型、专用 Bot 配置、收藏同步、20 MB 交付范围和故障恢复见 [音乐仓库说明](docs/TELEGRAM_MUSIC.md) 与 [接口调研](docs/TELEGRAM_MUSIC_RESEARCH.md)。首页使用 YouTube Music 真实分区，账户显示真实头像和验证状态；连接仓库后先查索引，缺失时手机获取 M4A 并上传 Telegram，取消收藏保留音频。
+
 ## 在线搜索、下载和 Google 登录
 
-见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。下载全部在手机完成，不请求中转服务器。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
+见 [在线功能配置与验收](docs/ONLINE_MUSIC.md)、[开源方案比较](docs/ONLINE_MUSIC_RESEARCH.md)。音源获取在手机完成；连接仓库后，存储和取回音频经过独立 Worker/D1 与 Telegram。只选择 YouTube 提供的原生 AAC/M4A 音轨，不下载视频，不伪造 MP3/FLAC 或无损音质；不支持的格式、地区限制、验证页面和网络错误会提示。缓存可被系统清理，长期保留请点「下载到资料库」。
 
 Google 登录按 [NeriPlayer](https://github.com/cwuom/NeriPlayer) 的网页会话思路独立实现：通过 Google 网页登录 YouTube，确认已登录后把 Cookie 存入本机 Keychain，供搜索和 yt-dlp 使用。不需要 Google Client ID 或服务器。Google 可能拒绝内嵌浏览器登录；以真机结果为准，不会把失败显示成成功。
 

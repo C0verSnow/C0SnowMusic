@@ -87,8 +87,13 @@ struct MusicLookupView: View {
     private func apply(_ match: LyricsMatch) async {
         downloading = match.id; error = nil; notice = nil
         defer { downloading = nil }
-        library.applyDownloadedMatch(match, to: song)
-        if let error = library.error { self.error = error; return }
+        if playback.isCachedSong {
+            do { try playback.applyCachedMatch(match, to: song) }
+            catch { self.error = error.localizedDescription; return }
+        } else {
+            library.applyDownloadedMatch(match, to: song)
+            if let error = library.error { self.error = error; return }
+        }
         title = match.trackName; artist = match.artistName
         playback.refreshMediaInfo()
         notice = "歌名和艺术家已更新。"
@@ -99,7 +104,8 @@ struct MusicLookupView: View {
             do {
                 let data = try await MusicLookupClient.shared.cover(for: match)
                 try Task.checkCancellation()
-                try await library.setDownloadedCover(song, data: data)
+                if playback.isCachedSong { try await playback.setCachedCover(data, for: song) }
+                else { try await library.setDownloadedCover(song, data: data) }
                 playback.refreshMediaInfo()
                 notice = (notice.map { $0 + "\n" } ?? "") + "专辑封面已保存。"
             } catch {

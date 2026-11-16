@@ -13,6 +13,31 @@ concurrency:
 permissions:
   contents: read
 jobs:
+  music-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Generate real audio fixtures (remote CI only)
+        run: |
+          if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          python3 scripts/make_audio_fixtures.py
+      - name: Test Worker HTTP API with real SQLite and audio bytes
+        working-directory: worker
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-results.log
+      - name: Upload API evidence and synthetic audio for deployed verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-api-evidence
+          path: |
+            worker/test-results.log
+            MusicApp/Resources/Fixtures/Fixture.mp3
+          if-no-files-found: warn
   ios:
     runs-on: macos-15
     timeout-minutes: 45
@@ -114,7 +139,7 @@ jobs:
           if-no-files-found: warn
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: ios
+    needs: [ios, music-api]
     runs-on: ubuntu-latest
     permissions:
       contents: write

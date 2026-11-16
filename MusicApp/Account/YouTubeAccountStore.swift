@@ -25,11 +25,19 @@ struct WebCookie: Codable, Sendable, Equatable {
     }
     var isCurrent: Bool { expires.map { $0 > Date.now.timeIntervalSince1970 } ?? true }
     var isYouTube: Bool { domain == "youtube.com" || domain.hasSuffix(".youtube.com") }
+
+    func matches(_ url: URL) -> Bool {
+        let host = url.host ?? ""
+        let suffix = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        return isCurrent && (host == suffix || (domain.hasPrefix(".") && host.hasSuffix("." + suffix))) && url.path.hasPrefix(path) && (!secure || url.scheme == "https")
+    }
 }
 
 @MainActor @Observable final class YouTubeAccountStore {
     var isSignedIn = false
     var checking = false
+    var profile: YouTubeProfile?
+    var sessionVerified = false
     var error: String?
     @ObservationIgnored let websiteData = WKWebsiteDataStore.nonPersistent()
     @ObservationIgnored private var cookies: [WebCookie] = []
@@ -49,7 +57,9 @@ struct WebCookie: Codable, Sendable, Equatable {
             return
         }
         do {
-            cookies = try JSONDecoder().decode([WebCookie].self, from: data).filter(\.isCurrent)
+            if let saved = try? JSONDecoder().decode(SavedWebSession.self, from: data) {
+                cookies = saved.cookies.filter(\.isCurrent); profile = saved.profile
+            } else { cookies = try JSONDecoder().decode([WebCookie].self, from: data).filter(\.isCurrent) }
             for cookie in cookies.compactMap(\.cookie) { await websiteData.httpCookieStore.setCookie(cookie) }
             isSignedIn = cookies.contains { $0.isYouTube && Self.authCookieNames.contains($0.name) }
         } catch { self.error = error.localizedDescription }
@@ -71,7 +81,7 @@ struct WebCookie: Codable, Sendable, Equatable {
                 error = AppLanguage.text("尚未确认 YouTube 已登录，请完成网页登录后重试。")
                 return false
             }
-            let data = try JSONEncoder().encode(snapshot)
+            let data = try JSONEncoder().encode(SavedWebSession(cookies: snapshot, profile: nil))
             let status = SecItemUpdate(keychainQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary)
             if status == errSecItemNotFound {
                 var entry = keychainQuery
@@ -79,24 +89,41 @@ struct WebCookie: Codable, Sendable, Equatable {
                 entry[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
                 guard SecItemAdd(entry as CFDictionary, nil) == errSecSuccess else { throw SessionStorageError() }
             } else if status != errSecSuccess { throw SessionStorageError() }
-            cookies = snapshot; isSignedIn = true; error = nil
+            cookies = snapshot; profile = nil; isSignedIn = true; sessionVerified = true; error = nil
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
 
     func downloadCookies() -> [WebCookie] { cookies.filter { $0.isYouTube && $0.isCurrent } }
 
+    func refreshProfile() async {
+        guard isSignedIn, !checking else { return }
+        checking = true
+        defer { checking = false }
+        do {
+            let loaded = try await YouTubeMusicClient().profile(cookies: downloadCookies())
+            let data = try JSONEncoder().encode(SavedWebSession(cookies: cookies, profile: loaded))
+            guard SecItemUpdate(keychainQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary) == errSecSuccess else { throw SessionStorageError() }
+            profile = loaded; sessionVerified = true; error = nil
+        } catch { sessionVerified = false; self.error = error.localizedDescription }
+    }
+
     func signOut() async {
         let status = SecItemDelete(keychainQuery as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { error = SessionStorageError().localizedDescription; return }
         for cookie in await websiteData.httpCookieStore.allCookies() { await websiteData.httpCookieStore.deleteCookie(cookie) }
-        cookies = []; isSignedIn = false
+        cookies = []; isSignedIn = false; profile = nil; sessionVerified = false; error = nil
     }
 
     private static let authCookieNames: Set<String> = ["SID", "SAPISID", "__Secure-1PAPISID", "__Secure-3PAPISID", "__Secure-1PSID", "__Secure-3PSID"]
     private var keychainQuery: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "org.c0versnow.C0SnowMusic.youtube", kSecAttrAccount as String: storageAccount]
     }
+}
+
+private struct SavedWebSession: Codable {
+    let cookies: [WebCookie]
+    let profile: YouTubeProfile?
 }
 
 private struct SessionStorageError: LocalizedError {

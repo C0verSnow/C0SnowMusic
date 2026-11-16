@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Environment(LibraryStore.self) private var library
     @State private var excludeBackup = UserDefaults.standard.bool(forKey: "excludeMusicFromBackup")
     @State private var changingBackup = false
+    @State private var importing = false
     @AppStorage("appLanguage") private var language = "system"
     var body: some View {
         @Bindable var library = library
@@ -15,8 +16,12 @@ struct SettingsView: View {
                     Text("English").tag("en")
                 }.accessibilityIdentifier("appLanguage")
                 NavigationLink { OnlineCacheView() } label: { Label("音频缓存", systemImage: "externaldrive") }
+                NavigationLink { CloudLibrarySettingsView() } label: { Label("音乐仓库", systemImage: "cloud") }
             }
             Section("导入设置") {
+                Button("从文件导入", systemImage: "folder") { importing = true }
+                    .accessibilityIdentifier("importMusic")
+                    .disabled(library.importProgress != nil)
                 Picker("重复文件", selection: $library.duplicatePolicy) {
                     ForEach(DuplicatePolicy.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
                 }
@@ -49,10 +54,15 @@ struct SettingsView: View {
             }
             Section("关于 C0SnowMusic") {
                 Text("原生本地音乐播放器").font(.headline)
-                Text("本地音乐离线使用。可登录 Google、搜索 YouTube 并下载音频；不会上传本地音乐。")
+                Text("本地音乐离线使用。连接音乐仓库后，在线下载的音频会保存到 Telegram；本地导入的音乐不会自动上传。")
                 Text("iOS 26 · SwiftUI · AVFoundation · SwiftData").font(.footnote).foregroundStyle(.secondary)
             }
         }
         .localizedNavigationTitle("Music Settings").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $importing) {
+            DocumentImportPicker(types: AudioImportService.contentTypes, multiple: true) { urls in
+                importing = false; library.startImport(urls)
+            } onCancel: { importing = false }
+        }
     }
 }

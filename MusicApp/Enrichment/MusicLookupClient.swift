@@ -62,6 +62,13 @@ struct LyricsMatch: Decodable, Identifiable, Sendable {
         && abs(duration - query.duration) <= 2
     }
 
+    static func automatic(in matches: [LyricsMatch], for query: SongLookupQuery) -> LyricsMatch? {
+        guard !query.artist.isEmpty, query.duration > 0 else { return nil }
+        let exact = matches.filter { $0.matches(query) && ($0.text != nil || $0.instrumental) }
+        guard Set(exact.map { normalized($0.albumName) }).count == 1 else { return nil }
+        return exact.first(where: \.isSynced) ?? exact.first
+    }
+
     static func normalized(_ value: String) -> String {
         value.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
             .split(whereSeparator: \.isWhitespace).joined(separator: " ")
@@ -169,6 +176,19 @@ actor MusicLookupClient {
             catch MusicLookupError.unavailable(404) { continue }
         }
         throw MusicLookupError.noCover
+    }
+
+    func artwork(at url: URL) async throws -> Data {
+        guard url.scheme == "https" else { throw MusicLookupError.invalidResponse }
+        return try await fetch(Self.playbackArtworkURL(url))
+    }
+
+    static func playbackArtworkURL(_ url: URL) -> URL {
+        guard ["yt3.googleusercontent.com", "lh3.googleusercontent.com"].contains(url.host() ?? "") else { return url }
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        // YouTube Music list thumbnails are often 120px; request the provider's full-player size.
+        components.path = components.path.replacingOccurrences(of: #"=w\d+-h\d+"#, with: "=w544-h544", options: .regularExpression)
+        return components.url!
     }
 
     private func fetch(_ url: URL) async throws -> Data {

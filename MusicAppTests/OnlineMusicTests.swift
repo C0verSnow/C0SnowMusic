@@ -82,7 +82,7 @@ import WebKit
         let reopened = try OnlineAudioCache(root: root.appending(path: "cache"))
         let restored = await reopened.all()
         XCTAssertEqual(restored.map(\.id), entries.map(\.id))
-        let playback = try PlaybackStore(library: library, systemIntegration: false)
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         let online = OnlineMusicStore(cache: cache)
         let current = try XCTUnwrap(entries.first)
         let currentURL = await cache.url(for: current.id)
@@ -143,4 +143,155 @@ import WebKit
         let sought = await engine.seek(to: 2.5)
         XCTAssertTrue(sought)
     }
+
+    func testCachedPlaybackStartsWhenTheConnectedWarehouseFails() async throws {
+        let previousHistory = UserDefaults.standard.data(forKey: "onlineListenAgain")
+        defer { UserDefaults.standard.set(previousHistory, forKey: "onlineListenAgain") }
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = try OnlineAudioCache(root: root.appending(path: "cache"))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture-Online", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "input.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let track = OnlineTrack(id: "abcdefghijk", title: "Cached song", artist: "Cached artist", coverURL: nil)
+        _ = try await cache.insert(source, track: track)
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root.appending(path: "library")))
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
+        defer { playback.pause() }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FailingWarehouseProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let cloud = CloudMusicStore(session: session, storageAccount: "test-\(UUID())")
+        defer { cloud.disconnect() }
+        await cloud.connect(endpoint: "https://warehouse.example.test", apiKey: "synthetic-device-key")
+        XCTAssertTrue(cloud.connected, cloud.error ?? "")
+        let online = OnlineMusicStore(cache: cache)
+        online.prepare(track, play: true, playback: playback, cloud: cloud)
+        for _ in 0..<100 {
+            if online.downloadingID == nil, online.error != nil, playback.currentTime > 0 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertNil(online.downloadingID)
+        XCTAssertEqual(online.error, "warehouse unavailable")
+        XCTAssertEqual(playback.currentSong?.title, "Cached song")
+        XCTAssertGreaterThan(playback.currentTime, 0)
+        XCTAssertNil(playback.playbackError)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: playback.audioURL(for: try XCTUnwrap(playback.currentSong)).path))
+    }
+
+    func testPlayingOnlineAudioAutomaticallyLoadsAndPersistsLyricsCoverAndAlbum() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = try OnlineAudioCache(root: root.appending(path: "cache"))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture-Online", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "input.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let track = OnlineTrack(id: "abcdefghijk", title: "Automatic song", artist: "Automatic artist", coverURL: URL(string: "https://example.com/automatic-cover.png"))
+        let cached = try await cache.insert(source, track: track)
+        let originalHash = try LibraryFiles.hash(cached)
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root.appending(path: "library")))
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [OnlineEnrichmentProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let lookup = MusicLookupClient(session: session)
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: lookup)
+        try await playback.playCachedAudio(track, url: cached)
+        XCTAssertNotNil(playback.currentSong, "Starting playback must not await metadata requests")
+        XCTAssertTrue(playback.isEnriching)
+        for _ in 0..<100 {
+            if !playback.isEnriching { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        playback.pause()
+        XCTAssertFalse(playback.isEnriching)
+        XCTAssertNil(playback.enrichmentMessage)
+        let song = try XCTUnwrap(playback.currentSong)
+        XCTAssertEqual(song.lyrics, "[00:00.00]First line")
+        XCTAssertEqual(song.albumTitle, "Automatic album")
+        let artworkID = try XCTUnwrap(song.artworkID)
+        let artwork = await ArtworkCache.shared.load(id: artworkID, files: library.files, thumbnail: false)
+        XCTAssertNotNil(artwork)
+        // Older cloud cache sidecars used an empty album even after manual lyrics/cover selection.
+        song.albumTitle = ""
+        try playback.setCachedLyrics(song.lyrics, for: song)
+        let reopened = try PlaybackStore(library: library, systemIntegration: false, lookupClient: lookup)
+        try await reopened.playCachedAudio(track, url: cached)
+        for _ in 0..<100 {
+            if !reopened.isEnriching { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        reopened.pause()
+        XCTAssertEqual(reopened.currentSong?.albumTitle, "Automatic album")
+        XCTAssertEqual(reopened.currentSong?.lyrics, song.lyrics)
+        XCTAssertEqual(reopened.currentSong?.artworkID, artworkID)
+        XCTAssertEqual(try LibraryFiles.hash(cached), originalHash)
+        XCTAssertTrue(library.songs.isEmpty)
+    }
+
+    func testOnlineLyricsAndMetadataSurviveReopeningCachedAudio() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = try OnlineAudioCache(root: root.appending(path: "cache"))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "input.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let track = OnlineTrack(id: "abcdefghijk", title: "Online title", artist: "Online artist", coverURL: nil, albumTitle: "Online album")
+        let cached = try await cache.insert(source, track: track)
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root.appending(path: "library")))
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
+        try await playback.playCachedAudio(track, url: cached)
+        playback.pause()
+        let song = try XCTUnwrap(playback.currentSong)
+        let identity = song.id
+        let match = try JSONDecoder().decode(LyricsMatch.self, from: Data(#"{"id":1,"trackName":"Online title","artistName":"Online artist","albumName":"Matched album","duration":3,"instrumental":false,"plainLyrics":null,"syncedLyrics":"[00:00.00]Saved online lyrics"}"#.utf8))
+        try playback.applyCachedMatch(match, to: song)
+        let reopened = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
+        try await reopened.playCachedAudio(track, url: cached)
+        reopened.pause()
+        XCTAssertEqual(reopened.currentSong?.id, identity)
+        XCTAssertEqual(reopened.currentSong?.lyrics, "[00:00.00]Saved online lyrics")
+        XCTAssertEqual(reopened.currentSong?.albumTitle, "Matched album")
+        XCTAssertTrue(library.songs.isEmpty, "Cache metadata must not create library records")
+        try await cache.remove(track.id)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cached.appendingPathExtension("json").path))
+    }
+}
+
+// Only the external HTTP boundary is replaced; playback, image decoding and cache persistence are real.
+private final class OnlineEnrichmentProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let image = url.host == "example.com"
+        let data = image ? Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGNQSFgARAwQCgAdjgSBQe+XXgAAAABJRU5ErkJggg==")! : Data(#"{"id":1,"trackName":"Automatic song","artistName":"Automatic artist","albumName":"Automatic album","duration":3,"instrumental":false,"plainLyrics":null,"syncedLyrics":"[00:00.00]First line"}"#.utf8)
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": image ? "image/png" : "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
+}
+
+private final class FailingWarehouseProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let failure = url.query?.contains("source_id=") == true
+        let response = HTTPURLResponse(url: url, statusCode: failure ? 503 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        let data = Data((failure ? #"{"error":"warehouse unavailable"}"# : #"{"items":[],"trending":[]}"#).utf8)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
 }

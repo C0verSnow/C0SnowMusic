@@ -1,0 +1,13 @@
+{
+  "run_id": 43819839808,
+  "product_commit": "4c69d895d513d4e7403bde0778a82a2b5b86143d",
+  "unit_and_integration_tests": 39,
+  "ui_tests": 3,
+  "worker_tests": 10,
+  "failed_tests": 0,
+  "simulator_build": "success",
+  "iphone_release_build": "success",
+  "ipa_packaging": "success",
+  "release_publish_job": "skipped",
+  "static_validation": "success"
+}

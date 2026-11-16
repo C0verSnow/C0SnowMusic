@@ -1,0 +1,9 @@
+name = "c0snow-music-api"
+main = "index.js"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "c0snow-music"
+database_id = "1593bbab-fcea-417b-932d-9e523299ee00"
+migrations_dir = "migrations"

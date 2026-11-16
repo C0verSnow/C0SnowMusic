@@ -12,9 +12,7 @@ struct ArtworkView: View {
             Group {
                 if let image { Image(uiImage: image).resizable().scaledToFill() }
                 else {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .fill(.gray.opacity(0.12))
-                        .overlay { Image(systemName: "music.note").font(.system(size: min(geometry.size.width * 0.28, 64))).foregroundStyle(.secondary) }
+                    Image("AppLogo").resizable().scaledToFill()
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -49,7 +47,7 @@ struct EmptyLibraryView: View {
         ContentUnavailableView {
             Label("你的音乐，从这里开始", systemImage: "music.note.house")
         } description: {
-            Text("点击右上角「+」，从文件导入你自己的音乐。无需账户，音乐保存在设备上。")
+            Text("搜索 YouTube 开始聆听；本地文件可从账户的 Music Settings 导入。")
         }
     }
 }

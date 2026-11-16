@@ -28,6 +28,9 @@ for name, options in [
                     "-metadata", "title=雪の音", "-metadata", "artist=C0Snow CI", "-metadata", "album=Offline Fixtures",
                     "-metadata", "track=2", "-metadata", "genre=Test", "-metadata", "date=2026",
                     "-metadata", "lyrics=[00:00.00]First line\n[00:01.00]Second line", str(root / name)], check=True)
+# Online downloads often have no embedded album, lyrics or artwork.
+subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(source),
+                "-c:a", "aac", str(root / "Fixture-Online.m4a")], check=True)
 shutil.copyfile(root / "Fixture.mp3", root / "中文 日本語 & ♫.mp3")
 (root / "Corrupt.flac").write_bytes(b"not an audio file")
 (root / "Fixture.lrc").write_text("[offset:100]\n[00:00.00]First line\n[00:01.00][00:02.00]Second line\n", encoding="utf-8")

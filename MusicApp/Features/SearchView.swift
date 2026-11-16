@@ -9,14 +9,16 @@ struct SearchView: View {
     @State private var artists: [Artist] = []
     @State private var playlists: [Playlist] = []
     @State private var searching = false
-    @State private var onlineSearch = false
+    @State private var scope = 0
     var body: some View {
         VStack(spacing: 0) {
-            Picker("搜索范围", selection: $onlineSearch) {
-                Text("资料库").tag(false)
-                Text("YouTube").tag(true)
+            Picker("搜索范围", selection: $scope) {
+                Text("资料库").tag(0)
+                Text("YouTube").tag(1)
+                Text("音乐仓库").tag(2)
             }.pickerStyle(.segmented).padding(.horizontal).padding(.bottom, 8)
-            if onlineSearch { OnlineSearchView() }
+            if scope == 1 { OnlineSearchView() }
+            else if scope == 2 { CloudSearchView() }
             else { localSearch }
         }.localizedNavigationTitle("搜索")
     }

@@ -33,6 +33,10 @@ struct NowPlayingView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(song.title).font(.title2.bold()).lineLimit(3)
                                 Text(song.artist).font(.title3).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
+                                if song.albumTitle != "未知专辑" {
+                                    Text(song.albumTitle).font(.subheadline).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+                                        .accessibilityIdentifier("playerAlbum")
+                                }
                             }.frame(maxWidth: .infinity, alignment: .leading)
                             if !playback.isCachedSong {
                             Button(song.isFavorite ? "取消收藏" : "收藏", systemImage: song.isFavorite ? "star.fill" : "star") { library.toggleFavorite(song) }
@@ -60,7 +64,6 @@ struct NowPlayingView: View {
                         SystemVolumeView().frame(height: 44).accessibilityLabel("系统音量")
                         HStack {
                             Button("歌词", systemImage: "quote.bubble") { panel = .lyrics }.accessibilityIdentifier("showLyrics")
-                                .disabled(playback.isCachedSong)
                             Spacer()
                             AirPlayView().frame(width: 44, height: 44).accessibilityLabel("选择音频输出设备")
                             Spacer()

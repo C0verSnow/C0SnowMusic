@@ -49,7 +49,7 @@ actor OnlineAudioCache {
         while entries.reduce(size, { $0 + $1.byteCount }) > maximumBytes, let oldest = entries.min(by: { $0.createdAt < $1.createdAt }) {
             try remove(oldest.id)
         }
-        let filename = "\(track.id).m4a"
+        let filename = "\(track.id).\(source.pathExtension.lowercased() == "mp3" ? "mp3" : "m4a")"
         let destination = root.appending(path: filename)
         if FileManager.default.fileExists(atPath: destination.path) { try FileManager.default.removeItem(at: destination) }
         try FileManager.default.moveItem(at: source, to: destination)
@@ -68,6 +68,7 @@ actor OnlineAudioCache {
         guard let entry = entries.first(where: { $0.id == id }) else { return }
         let url = root.appending(path: entry.filename)
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+        if FileManager.default.fileExists(atPath: url.appendingPathExtension("json").path) { try FileManager.default.removeItem(at: url.appendingPathExtension("json")) }
         entries.removeAll { $0.id == id }
         try save()
     }

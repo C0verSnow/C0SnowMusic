@@ -6,7 +6,6 @@ struct MusicRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Namespace private var playerTransition
     @State private var expanded = false
-    @State private var importing = false
     @State private var settings = false
     @AppStorage("appLanguage") private var language = "system"
 
@@ -26,12 +25,6 @@ struct MusicRootView: View {
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
         }
         .sheet(isPresented: $settings) { NavigationStack { AccountView() } }
-        .sheet(isPresented: $importing) {
-            DocumentImportPicker(types: AudioImportService.contentTypes, multiple: true) { urls in
-                importing = false
-                library.startImport(urls)
-            } onCancel: { importing = false }
-        }
         .overlay(alignment: .top) {
             if let progress = library.importProgress {
                 VStack(alignment: .leading, spacing: 8) {
@@ -61,10 +54,9 @@ struct MusicRootView: View {
                 .navigationDestination(for: LibraryRoute.self) { LibraryRouteView(route: $0) }
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button("导入音乐", systemImage: "plus") { importing = true }
-                            .accessibilityIdentifier("importMusic")
-                            .disabled(library.importProgress != nil)
-                        Button("账户", systemImage: "person.crop.circle") { settings = true }
+                        Button { settings = true } label: {
+                            AccountAvatar().frame(width: 28, height: 28)
+                        }.accessibilityLabel("账户")
                             .accessibilityIdentifier("accountSettings")
                     }
                 }

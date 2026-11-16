@@ -33,15 +33,16 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
-        XCTAssertTrue(app.buttons["importMusic"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["importMusic"].exists)
         XCTAssertTrue(app.staticTexts["你的音乐，从这里开始"].exists)
         app.tabBars.buttons["发现"].tap()
         XCTAssertTrue(app.staticTexts["重新发现你的音乐"].exists)
         app.tabBars.buttons["资料库"].tap()
-        XCTAssertTrue(app.buttons["importMusic"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["在线资料库"].exists)
         app.tabBars.buttons["搜索"].tap()
         XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
-        app.buttons["importMusic"].firstMatch.tap()
+        openImport(app)
         XCTAssertTrue(app.navigationBars.firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -50,14 +51,15 @@ import XCTest
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--picker-fixture", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
-        let importButton = app.buttons["importMusic"].firstMatch
-        XCTAssertTrue(importButton.waitForExistence(timeout: 15))
-        importButton.tap()
+        XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
+        openImport(app)
         let file = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "Test Tone")).firstMatch
         XCTAssertTrue(file.waitForExistence(timeout: 15))
         file.tap()
         let open = app.buttons.matching(NSPredicate(format: "label IN %@", ["Open", "打开"])).firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }
+        app.navigationBars["Music Settings"].buttons.element(boundBy: 0).tap()
+        app.buttons["完成"].firstMatch.tap()
         app.tabBars.buttons["资料库"].tap()
         let song = app.buttons["播放 Test Tone，未知艺术家"].firstMatch
         XCTAssertTrue(song.waitForExistence(timeout: 15))
@@ -101,5 +103,13 @@ import XCTest
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    private func openImport(_ app: XCUIApplication) {
+        app.buttons["accountSettings"].firstMatch.tap()
+        app.buttons["musicSettings"].tap()
+        let button = app.buttons["importMusic"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 5))
+        button.tap()
     }
 }
