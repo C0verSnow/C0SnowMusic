@@ -57,11 +57,19 @@ Additional corrections against the saved physical-device references:
 - Use the primary foreground tint for active mini-player controls. Keep unavailable idle controls disabled.
 - Display search history only while search is active; inactive browsing keeps the category grid first.
 
-The remote UI suite now saves Home, account, inactive Search, focused Search, Library editing, and New Playlist screenshots, in addition to its existing player, queue, import, and lyrics evidence. These are acceptance inputs; successful assertions alone do not establish visual identity. Build 12 has not yet been compiled or installed at this revision.
+The remote UI suite now saves Home, account, inactive Search, focused Search, Library editing, and New Playlist screenshots, in addition to its existing player, queue, import, and lyrics evidence. These are acceptance inputs; successful assertions alone do not establish visual identity.
+
+## Build 12 results and build 13 follow-up
+
+Run [43907719088](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43907719088) compiled simulator and unsigned iPhone Release and passed all 47 unit/integration tests. Account text, Search scopes, Library category selection and playlist creation, and mini/full player UI tests passed. Both build 11 UI failures are resolved in this run.
+
+The remaining failures are at the shared document-selection helper's initial file-existence assertion. In both cases the same query found the real file afterward, and the subsequent audio/LRC import assertions passed. The failure hierarchies show the presenting sheet before its remote file browser had finished appearing; the recorded files became actionable more than 20 seconds after the opening tap. Build 13 separately waits up to 30 seconds for the actual file-browser navigation bar, then uses the existing 15-second wait for the document cell (`Fixture.lrc, lrc` and `Test Tone, wav` in the recorded events). It narrows the broad `descendants(matching: .any)` query to actual cells and stops the helper after a missing-target failure. The real picker interaction, resulting import assertions, and overall per-test limits remain.
+
+Two warnings in the touched UI code are addressed by passing immutable values into the sendable layout/PhotosPicker closures instead of reading main-actor view state inside them. The account screenshot also showed a missing title icon; it now uses the existing bundled AppLogo. No new workflow, dependency, mock picker, or local compilation was introduced. Fresh build 13 remote checks and device acceptance remain pending.
 
 ## Acceptance still required
 
-- Build 12 remote checks, including all UI tests.
+- Build 13 remote checks, including all UI tests.
 - Install the verified new artifact and compare the same shared pages in the same appearance, device size, and scroll state.
 - Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
 - Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.
