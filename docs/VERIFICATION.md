@@ -2,6 +2,12 @@
 
 ## Issue #11 搜索、账户与 Telegram 音乐仓库证据
 
+### 最终缓存播放修正（1.1.1/build 9，远端验证待完成）
+
+- 封面修正提交 `5a6dbb1db3277ab6db0ba29480e0b8b3a1c667c6` 的 [CI 43823218667](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43823218667) 已全通过：40 项单元/集成、3 项 UI、10 项 Worker；模拟器、iPhone Release、图标和 IPA 打包通过，标签发布跳过。此构建为 build 8，不包含后来的缓存播放修正。
+- build 9 将缓存命中后的仓库核对/补传和播放统计移到后台，本地播放不等待仓库网络。新增回归使用真实缓存、Keychain 和 AVPlayer，HTTP 边界返回 503，检查报错可见、缓存文件保留且播放时间推进。尚未取得此修正的远端通过结果。
+- 最终 IPA 的哈希与版本核对，以及清晰封面、缓存快速播放、自动资料和强退恢复真机验收仍待完成；build 7 的既有证据保留在下方。本地未编译，服务器和数据没有重新部署。
+
 ### 恢复时已通过的 CI 与 IPA（自动补齐改动前）
 
 - 产品提交 `caa95d0c4febdb3c252bf6c6ecd998c6656bb000` 的 [CI 43797997679](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679) 已通过：36 项单元/集成测试、3 项 UI 测试零失败；模拟器编译、未签名 iPhone Release 编译、图标检查和 IPA 打包全部通过；Worker 的 10 项真实 SQLite、HTTP 与音频测试通过。`release` job 因本次不是发布标签而跳过，不影响 Release 编译或 IPA 产物。

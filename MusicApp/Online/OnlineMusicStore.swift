@@ -66,11 +66,10 @@ import SwiftUI
             do {
                 guard let cache else { throw OnlineMusicError.runtimeUnavailable }
                 let url: URL
-                if let existing = await cache.url(for: track.id) {
-                    if let cloud, cloud.connected, try await cloud.existing(track)?.files.contains(where: \.available) != true { try await cloud.upload(track, file: existing) }
-                    url = existing
-                }
-                else {
+                let cachedURL = await cache.url(for: track.id)
+                if let cachedURL {
+                    url = cachedURL
+                } else {
                     let directory = URL.cachesDirectory.appending(path: "OnlineStaging/\(UUID())")
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     defer { try? FileManager.default.removeItem(at: directory) }
@@ -102,7 +101,17 @@ import SwiftUI
                     history.removeAll { $0.id == track.id }; history.insert(track, at: 0)
                     history = Array(history.prefix(30))
                     UserDefaults.standard.set(try JSONEncoder().encode(history), forKey: "onlineListenAgain")
-                    if let cloud, cloud.connected { await cloud.recordPlay(track) }
+                }
+                if let cloud, cloud.connected {
+                    // A slow or unavailable warehouse must not block cached playback.
+                    Task {
+                        do {
+                            if let cachedURL, try await cloud.existing(track)?.files.contains(where: \.available) != true {
+                                try await cloud.upload(track, file: cachedURL)
+                            }
+                            if play { await cloud.recordPlay(track) }
+                        } catch { self.error = error.localizedDescription }
+                    }
                 }
             } catch is CancellationError { }
             catch { self.error = error.localizedDescription }

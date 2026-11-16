@@ -144,6 +144,44 @@ import WebKit
         XCTAssertTrue(sought)
     }
 
+    func testCachedPlaybackStartsWhenTheConnectedWarehouseFails() async throws {
+        let previousHistory = UserDefaults.standard.data(forKey: "onlineListenAgain")
+        defer { UserDefaults.standard.set(previousHistory, forKey: "onlineListenAgain") }
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cache = try OnlineAudioCache(root: root.appending(path: "cache"))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Fixture-Online", withExtension: "m4a", subdirectory: "Fixtures"))
+        let source = root.appending(path: "input.m4a")
+        try FileManager.default.copyItem(at: fixture, to: source)
+        let track = OnlineTrack(id: "abcdefghijk", title: "Cached song", artist: "Cached artist", coverURL: nil)
+        _ = try await cache.insert(source, track: track)
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let container = try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root.appending(path: "library")))
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
+        defer { playback.pause() }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [FailingWarehouseProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let cloud = CloudMusicStore(session: session, storageAccount: "test-\(UUID())")
+        defer { cloud.disconnect() }
+        await cloud.connect(endpoint: "https://warehouse.example.test", apiKey: "synthetic-device-key")
+        XCTAssertTrue(cloud.connected, cloud.error ?? "")
+        let online = OnlineMusicStore(cache: cache)
+        online.prepare(track, play: true, playback: playback, cloud: cloud)
+        for _ in 0..<100 {
+            if online.downloadingID == nil, online.error != nil, playback.currentTime > 0 { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        XCTAssertNil(online.downloadingID)
+        XCTAssertEqual(online.error, "warehouse unavailable")
+        XCTAssertEqual(playback.currentSong?.title, "Cached song")
+        XCTAssertGreaterThan(playback.currentTime, 0)
+        XCTAssertNil(playback.playbackError)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: playback.audioURL(for: try XCTUnwrap(playback.currentSong)).path))
+    }
+
     func testPlayingOnlineAudioAutomaticallyLoadsAndPersistsLyricsCoverAndAlbum() async throws {
         let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -236,6 +274,21 @@ private final class OnlineEnrichmentProtocol: URLProtocol, @unchecked Sendable {
         let image = url.host == "example.com"
         let data = image ? Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGNQSFgARAwQCgAdjgSBQe+XXgAAAABJRU5ErkJggg==")! : Data(#"{"id":1,"trackName":"Automatic song","artistName":"Automatic artist","albumName":"Automatic album","duration":3,"instrumental":false,"plainLyrics":null,"syncedLyrics":"[00:00.00]First line"}"#.utf8)
         let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": image ? "image/png" : "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
+}
+
+private final class FailingWarehouseProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let failure = url.query?.contains("source_id=") == true
+        let response = HTTPURLResponse(url: url, statusCode: failure ? 503 : 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        let data = Data((failure ? #"{"error":"warehouse unavailable"}"# : #"{"items":[],"trending":[]}"#).utf8)
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)

@@ -124,3 +124,7 @@ Worker 直接转发 `upstream.body` 可以保持流式传输；不要先 `arrayB
 ### 来源封面尺寸复验
 
 真机全屏放大 YouTube Music 的 120px 列表封面会模糊。GitHub 在 ytmusicapi 中检索 resize 没有命中通用辅助函数，未复制代码；直接对当前实际返回的 Google 图片地址验证尺寸参数：原图 HTTP 200、9,999 字节、120×120；同一图片改为 `=w544-h544` 后 HTTP 200、133,795 字节、544×544，已核对仍是正确 Starboy 封面。应用只为 yt3/lh3.googleusercontent.com 的原生尺寸参数请求播放器大小，列表仍用小图，其他域名地址保持原样。这是对实际图片服务的验证，不承诺所有外部图片都支持同样参数。
+
+## 缓存播放收尾核对
+
+Unix Timestamp：1794827855。本轮 GitHub 检索 `cache playback`，读取 MetroList 固定提交 [36bb564b4a148c6b415dc3c1c74faf790ae76bc6 的缓存说明](https://github.com/MetrolistGroup/Metrolist/blob/36bb564b4a148c6b415dc3c1c74faf790ae76bc6/docs/audio-cache.md)。该文档区分完整缓存、播放读取和网络预取，失败后保留已有文件。本项目结合真实手机的云端等待问题，自行把仓库核对/补传及播放统计移到本地缓存播放之后的后台任务；保留现有文件校验和缓存逻辑，不复制 GPL 代码，不引入上游缓存实现。真实音频、Keychain 和 AVPlayer 的 503 回归交由远端 CI 执行，本地仅静态核对。
