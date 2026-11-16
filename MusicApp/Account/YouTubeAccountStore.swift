@@ -25,6 +25,12 @@ struct WebCookie: Codable, Sendable, Equatable {
     }
     var isCurrent: Bool { expires.map { $0 > Date.now.timeIntervalSince1970 } ?? true }
     var isYouTube: Bool { domain == "youtube.com" || domain.hasSuffix(".youtube.com") }
+
+    func matches(_ url: URL) -> Bool {
+        let host = url.host ?? ""
+        let suffix = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        return isCurrent && (host == suffix || (domain.hasPrefix(".") && host.hasSuffix("." + suffix))) && url.path.hasPrefix(path) && (!secure || url.scheme == "https")
+    }
 }
 
 @MainActor @Observable final class YouTubeAccountStore {

@@ -52,6 +52,6 @@ struct AccountAvatar: View {
     var body: some View {
         AsyncImage(url: account.profile?.avatarURL) { image in image.resizable().scaledToFill() } placeholder: {
             Image(systemName: "person.crop.circle.fill").resizable().scaledToFit().foregroundStyle(.secondary)
-        }.clipShape(.circle()).accessibilityHidden(true)
+        }.clipShape(.circle).accessibilityHidden(true)
     }
 }

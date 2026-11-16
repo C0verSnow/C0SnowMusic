@@ -107,7 +107,7 @@ struct YouTubeMusicClient: Sendable {
         request.timeoutInterval = 30
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
-        let eligible = cookies.filter { $0.isYouTube && $0.isCurrent && (request.url?.path ?? "/").hasPrefix($0.path) }
+        let eligible = cookies.filter { $0.isYouTube && $0.matches(request.url!) }
         for (key, value) in HTTPCookie.requestHeaderFields(with: eligible.compactMap(\.cookie)) { request.setValue(value, forHTTPHeaderField: key) }
         if let sapisid = eligible.first(where: { $0.name == "SAPISID" }) ?? eligible.first(where: { $0.name == "__Secure-3PAPISID" }) {
             let timestamp = Int(Date.now.timeIntervalSince1970)
@@ -154,6 +154,28 @@ struct YouTubeMusicClient: Sendable {
         func visit(_ node: Any) {
             if let array = node as? [Any] { for child in array { visit(child) }; return }
             guard let object = node as? [String: Any] else { return }
+            if let section = object["itemSectionRenderer"] as? [String: Any], let contents = section["contents"] as? [[String: Any]] {
+                let items = contents.compactMap { child -> OnlineTrack? in
+                    guard let value = child["musicResponsiveListItemRenderer"] as? [String: Any] else { visit(child); return nil }
+                    return item(value)
+                }
+                if !items.isEmpty {
+                    recognized = true
+                    // Current search responses use one itemSection per result, without shelf titles.
+                    let title: String
+                    switch items[0].kind {
+                    case .song: title = AppLanguage.text("歌曲")
+                    case .video: title = AppLanguage.text("视频")
+                    case .album: title = AppLanguage.text("专辑")
+                    case .artist: title = AppLanguage.text("艺术家")
+                    default: title = AppLanguage.text("播放列表")
+                    }
+                    if let last = sections.last, last.title == title {
+                        sections[sections.count - 1] = MusicSection(id: last.id, title: title, items: last.items + items)
+                    } else { sections.append(MusicSection(id: "section-\(sections.count)", title: title, items: items)) }
+                }
+                return
+            }
             if let action = object["appendContinuationItemsAction"] as? [String: Any], let contents = action["continuationItems"] as? [[String: Any]] {
                 recognized = true
                 let items = contents.compactMap { content -> OnlineTrack? in
@@ -176,7 +198,7 @@ struct YouTubeMusicClient: Sendable {
                         }
                     }
                     let header = (shelf["header"] as? [String: Any])?["musicCarouselShelfBasicHeaderRenderer"] as? [String: Any]
-                    let title = text(shelf["title"] ?? header?["title"])
+                    let title = name == "musicCardShelfRenderer" ? AppLanguage.text("最佳结果") : text(shelf["title"] ?? header?["title"])
                     if !items.isEmpty { sections.append(MusicSection(id: "section-\(sections.count)", title: title.isEmpty ? AppLanguage.text("歌曲") : title, items: items)) }
                     if let next = (shelf["continuations"] as? [[String: Any]])?.first?["nextContinuationData"] as? [String: Any] { continuation = next["continuation"] as? String }
                     return

@@ -117,6 +117,9 @@
 
 ## 做完：
 
+- [1794798831] 首轮远端发现头像 Circle 调用和 Ubuntu 缺 FFmpeg；已修复。另读取真实 YouTube Music 搜索，补当前 itemSectionRenderer 和真实响应缩减回归，不只验证自编数据。
+
+
 - [1794798589] issue #11 首轮代码已接通 YouTube Music 搜索分组/分类/翻页、首页真实分区、头像/会话验证、在线资料库与完整收藏同步。音乐仓库新增 D1、哈希去重、任务/限流/人工核对、Webhook、Range 与用户隔离；新增真实音频和 SQL 的远端回归。
 - [1794798589] 已用 Wrangler 创建独立 c0snow-music D1、应用两份迁移、部署 c0snow-music-api；已用 tg 创建专用 Bot 和私有频道。密钥仅存本地忽略的 0600 .env 与 Workers Secrets。
 - [1794798589] GitHub 已比较 MetroList、TeleMusic、ytmusicapi、YouTube.js 并记录来源/许可，未复制 GPL 代码；本地仅源码、JS/Python 静态语法、plist、JSON 和差异检查，没有本地编译。
