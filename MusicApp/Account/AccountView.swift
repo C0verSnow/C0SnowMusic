@@ -28,7 +28,8 @@ struct AccountView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 HStack(spacing: 8) {
-                    Image(systemName: "music.note.circle.fill").foregroundStyle(.pink).accessibilityHidden(true)
+                    Image("AppLogo").resizable().scaledToFit().frame(width: 24, height: 24)
+                        .clipShape(.circle).accessibilityHidden(true)
                     Text("c0vermusic Account")
                 }.font(.headline).fixedSize()
             }.sharedBackgroundVisibility(.hidden)

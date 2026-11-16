@@ -159,8 +159,16 @@ import XCTest
     }
 
     private func selectDocument(_ name: String, in app: XCUIApplication) {
-        let file = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", name)).firstMatch
-        XCTAssertTrue(file.waitForExistence(timeout: 15))
+        let picker = app.navigationBars["FullDocumentManagerViewControllerNavigationBar"]
+        guard picker.waitForExistence(timeout: 30) else {
+            XCTFail("The system document picker did not finish presenting")
+            return
+        }
+        let file = app.cells.matching(NSPredicate(format: "label BEGINSWITH[c] %@", name)).firstMatch
+        guard file.waitForExistence(timeout: 15) else {
+            XCTFail("The system document picker did not show \(name)")
+            return
+        }
         file.tap()
         let open = app.buttons.matching(NSPredicate(format: "label IN %@", ["Open", "\u{6253}\u{5f00}"])).firstMatch
         if open.waitForExistence(timeout: 3) { open.tap() }

@@ -56,6 +56,7 @@ struct LibraryView: View {
     private var visible: Set<String> { Set(visibleCategories.split(separator: ",").map(String.init)) }
 
     var body: some View {
+        let separatorLeading: CGFloat = editing ? 84 : 44
         List {
             Section {
                 ForEach(orderedCategories.filter { editing || visible.contains($0.rawValue) }) { category in
@@ -83,7 +84,7 @@ struct LibraryView: View {
                     .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                     .listRowSeparator(.hidden, edges: .top)
                     .listRowSeparator(.visible, edges: .bottom)
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in editing ? 84 : 44 }
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in separatorLeading }
                     .moveDisabled(!editing)
                 }
                 .onMove { offsets, destination in
