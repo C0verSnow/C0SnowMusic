@@ -60,7 +60,7 @@ import SwiftData
                 : ModelConfiguration(schema: schema, url: files.url(for: "Library.store"), cloudKitDatabase: .none)
             let container = try ModelContainer(for: schema, migrationPlan: LibraryMigrationPlan.self, configurations: [configuration])
             let library = try LibraryStore(context: container.mainContext, files: files)
-            let playback = try PlaybackStore(library: library)
+            let playback = try PlaybackStore(library: library, lookupClient: testing ? nil : .shared)
             self.container = container; self.library = library; self.playback = playback; error = nil
             if !pendingURLs.isEmpty { library.startImport(pendingURLs); pendingURLs = [] }
         } catch { self.error = error.localizedDescription }
@@ -86,7 +86,8 @@ import SwiftData
                         if FileManager.default.fileExists(atPath: lyricsURL.path) { try FileManager.default.removeItem(at: lyricsURL) }
                         try FileManager.default.copyItem(at: lrc, to: lyricsURL)
                     }
-                } else { try await library.importOne(url) }
+                }
+                if arguments.contains("--fixture-library") { try await library.importOne(url) }
             } catch { library.error = error.localizedDescription }
         }
         #endif

@@ -119,11 +119,11 @@ import UIKit
         defer { try? FileManager.default.removeItem(at: root) }
         var first: LibraryStore? = try makeLibrary(root: root)
         try await first!.importOne(fixture("Test Tone", ext: "wav"))
-        let player = try PlaybackStore(library: first!, systemIntegration: false)
+        let player = try PlaybackStore(library: first!, systemIntegration: false, lookupClient: nil)
         player.enqueue(try XCTUnwrap(first?.songs.first), next: false)
         player.pause(); player.seek(to: 1.25); player.cycleRepeat(); player.toggleShuffle(); player.saveSession()
         let second = try makeLibrary(root: root)
-        let restored = try PlaybackStore(library: second, systemIntegration: false)
+        let restored = try PlaybackStore(library: second, systemIntegration: false, lookupClient: nil)
         XCTAssertEqual(second.songs.count, 1)
         XCTAssertEqual(restored.currentSong?.title, "Test Tone")
         XCTAssertEqual(restored.currentTime, 1.25, accuracy: 0.01)
@@ -153,7 +153,7 @@ import UIKit
         library.toggleFavorite(first)
         XCTAssertTrue(first.isFavorite)
         XCTAssertTrue(library.albums.contains { $0.title == "新专辑" && $0.id == first.albumID })
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         let path = library.files.url(for: first.fileRelativePath)
         library.remove(first, deleteFile: true, playback: player)
         XCTAssertFalse(FileManager.default.fileExists(atPath: path.path))
@@ -172,7 +172,7 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         try await library.importOne(fixture("Fixture", ext: "flac"))
         let songs = library.songs
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         player.play(songs)
         let deadline = ContinuousClock.now.advanced(by: .seconds(12))
         while player.currentSong?.id != songs[1].id, player.playbackError == nil, ContinuousClock.now < deadline {
@@ -234,7 +234,7 @@ import UIKit
             UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
         }
         try await library.setDownloadedCover(song, data: cover)
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         player.currentSong = song
         player.refreshMediaInfo()
         defer { player.pause(); MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }

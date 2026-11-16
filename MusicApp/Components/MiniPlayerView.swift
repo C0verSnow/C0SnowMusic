@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFAudio
 
 struct MiniPlayerView: View {
     @Environment(PlaybackStore.self) private var playback
@@ -31,6 +32,20 @@ struct MiniPlayerView: View {
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 4)
+        } else {
+            HStack(spacing: 10) {
+                Image(systemName: "music.note").font(.title3).foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32).background(.quaternary, in: .rect(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? "iPhone")
+                        .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    Text("Not Playing").font(.caption.bold())
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                Button("Play", systemImage: "play.fill") { }.labelStyle(.iconOnly).disabled(true).frame(width: 32, height: 36)
+                if placement != .inline {
+                    Button("Next", systemImage: "forward.fill") { }.labelStyle(.iconOnly).disabled(true).frame(width: 32, height: 36)
+                }
+            }.padding(.horizontal, 12).padding(.vertical, 4).accessibilityIdentifier("emptyMiniPlayer")
         }
     }
 }

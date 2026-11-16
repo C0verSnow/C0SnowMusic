@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    let onSearch: () -> Void
     @Environment(LibraryStore.self) private var library
     @Environment(OnlineMusicStore.self) private var online
     @Environment(YouTubeAccountStore.self) private var account
@@ -8,7 +9,8 @@ struct HomeView: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 32) {
+            LazyVStack(alignment: .leading, spacing: 20) {
+                HomeFeatureCard(track: online.home.first?.items.first, onSearch: onSearch).padding(.horizontal, 20)
                 if !online.history.isEmpty { OnlineHomeShelf(title: "Listen Again", items: online.history) }
                 if !library.albums.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
@@ -33,9 +35,6 @@ struct HomeView: View {
                     OnlineHomeShelf(title: section.title, items: section.items)
                 }
                 if !cloud.trending.isEmpty { OnlineHomeShelf(title: "Trending", items: cloud.trending) }
-                if online.home.isEmpty && online.history.isEmpty && library.songs.isEmpty && cloud.trending.isEmpty {
-                    EmptyLibraryView().frame(minHeight: 340)
-                }
                 if !library.songs.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
                         NavigationLink(value: LibraryRoute.songs(.favorites)) {
@@ -44,7 +43,7 @@ struct HomeView: View {
                         ForEach(library.songs.filter(\.isFavorite).prefix(4)) { SongRow(song: $0) }
                     }.padding(.horizontal, 20)
                 }
-            }.padding(.vertical, 20)
+            }.padding(.top, 4).padding(.bottom, 20)
         }
         .navigationTitle("Home")
         .refreshable { await refresh() }
@@ -109,22 +108,75 @@ struct OnlineMusicCard: View {
     }
 }
 
-struct DiscoverView: View {
-    @Environment(LibraryStore.self) private var library
+private struct HomeFeatureCard: View {
+    let track: OnlineTrack?
+    let onSearch: () -> Void
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
+    @Environment(PlaybackStore.self) private var playback
     var body: some View {
-        List {
-            Section {
-                NavigationLink(value: LibraryRoute.albums) { Label("All Albums", systemImage: "square.stack.fill") }
-                NavigationLink(value: LibraryRoute.artists) { Label("All Artists", systemImage: "music.mic") }
-                NavigationLink(value: LibraryRoute.songs(.all)) { Label("All Songs", systemImage: "music.note") }
-            }.font(.title3)
-            if !library.genres.isEmpty {
-                Section("Genres") {
-                    ForEach(library.genres, id: \.self) { genre in
-                        NavigationLink(value: LibraryRoute.genre(genre)) { Label(genre, systemImage: "guitars") }
-                    }
-                }
+        Group {
+            if let track, let id = track.browseID, !track.isPlayable {
+                NavigationLink { MusicCollectionView(browseID: id, title: track.title) } label: { poster }
+            } else {
+                Button {
+                    if let track, track.isPlayable {
+                        online.prepare(track, play: true, playback: playback, cookies: account.downloadCookies(), cloud: cloud)
+                    } else { onSearch() }
+                } label: { poster }
             }
-        }.listStyle(.plain).navigationTitle("Discover")
+        }.buttonStyle(.plain)
+    }
+    private var poster: some View {
+        VStack(spacing: 16) {
+            Text("Music just for you.").font(.system(size: 28, weight: .bold)).multilineTextAlignment(.center).padding(.top, 28)
+            Spacer()
+            if let track {
+                OnlineArtworkView(track: track).frame(width: 180, height: 180).shadow(radius: 20)
+            } else {
+                Label("c0vermusic", systemImage: "music.note").font(.system(size: 32, weight: .bold))
+            }
+            Spacer()
+            VStack(spacing: 4) {
+                Text(track?.title ?? "Explore Music").font(.headline).lineLimit(2)
+                Text(track?.artist ?? "Find your next favorite.").font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+            }.multilineTextAlignment(.center).padding(.horizontal).padding(.bottom, 24)
+        }.frame(maxWidth: .infinity).frame(height: 440)
+            .background(LinearGradient(colors: [Color(uiColor: .secondarySystemGroupedBackground), Color(uiColor: .systemBackground), Color(uiColor: .secondarySystemGroupedBackground)], startPoint: .topLeading, endPoint: .bottomTrailing), in: .rect(cornerRadius: 24))
+            .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(.quaternary) }
+    }
+}
+
+struct RadioView: View {
+    @Environment(YouTubeAccountStore.self) private var account
+    @State private var stations: [OnlineTrack] = []
+    @State private var loading = false
+    @State private var unavailable = false
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 28) {
+                if !stations.isEmpty { OnlineHomeShelf(title: "Radio Playlists", items: stations) }
+                else if unavailable {
+                    VStack(spacing: 8) {
+                        Text("Cannot Connect").font(.title3.bold())
+                        Text("The page couldn't be loaded. Try again.").font(.subheadline).foregroundStyle(.secondary)
+                        Button("Retry") { Task { await load() } }.padding(.top, 12)
+                    }.frame(maxWidth: .infinity).containerRelativeFrame(.vertical)
+                } else if loading { MusicPlaceholderRows().padding(.horizontal, 20) }
+            }.padding(.vertical, 20)
+        }
+        .navigationTitle("Radio").navigationBarTitleDisplayMode(.inline)
+        .refreshable { await load() }
+        .task { if !ProcessInfo.processInfo.arguments.contains("--ui-testing") { await load() } }
+    }
+    private func load() async {
+        guard !loading else { return }
+        loading = true; unavailable = false
+        defer { loading = false }
+        do {
+            let page = try await YouTubeMusicClient().search("music radio", filter: .playlists, cookies: account.downloadCookies())
+            stations = page.sections.flatMap(\.items).filter { $0.kind == .playlist }
+        } catch { unavailable = true }
     }
 }

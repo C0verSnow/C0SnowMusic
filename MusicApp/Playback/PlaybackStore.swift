@@ -30,6 +30,7 @@ import SwiftData
     @ObservationIgnored private var session: PlaybackSession
     @ObservationIgnored private var enrichmentTask: Task<Void, Never>?
     @ObservationIgnored private let lookupClient: MusicLookupClient?
+    @ObservationIgnored private let musicClient: YouTubeMusicClient
     @ObservationIgnored private var cachedSongs: [UUID: Song] = [:]
     @ObservationIgnored private var cachedURLs: [UUID: URL] = [:]
 
@@ -110,6 +111,40 @@ import SwiftData
         }
     }
 
+    private func enrichLibraryArtwork(_ song: Song, client: MusicLookupClient) async throws {
+        let query = SongLookupQuery(title: song.title, artist: song.artist, album: song.albumTitle, duration: song.duration)
+        if !query.artist.isEmpty {
+            do {
+                let page = try await musicClient.search("\(query.title) \(query.artist)", filter: .songs, cookies: [])
+                let track = page.tracks.first {
+                    LyricsMatch.normalized($0.title) == LyricsMatch.normalized(query.title)
+                    && $0.artist.split(separator: ",").contains { LyricsMatch.normalized(String($0)) == LyricsMatch.normalized(query.artist) }
+                }
+                if let track {
+                    for cover in track.artworkURLs {
+                        do {
+                            let data = try await client.artwork(at: cover)
+                            try Task.checkCancellation()
+                            try await library.setDownloadedCover(song, data: data)
+                            refreshMediaInfo()
+                            return
+                        } catch is CancellationError { throw CancellationError() }
+                        catch { continue }
+                    }
+                }
+            } catch is CancellationError { throw CancellationError() }
+            catch { }
+        }
+        let matches = try await client.search(query)
+        try Task.checkCancellation()
+        if let match = LyricsMatch.automatic(in: matches, for: query) {
+            let data = try await client.cover(for: match)
+            try Task.checkCancellation()
+            try await library.setDownloadedCover(song, data: data)
+            refreshMediaInfo()
+        }
+    }
+
     private func saveCachedDetails(_ song: Song) throws {
         guard let url = cachedURLs[song.id] else { return }
         try JSONEncoder().encode(CachedSongDetails(id: song.id, title: song.title, artist: song.artist, album: song.albumTitle, lyrics: song.lyrics, artworkID: song.artworkID)).write(to: url.appendingPathExtension("json"), options: .atomic)
@@ -125,8 +160,8 @@ import SwiftData
         }
     }
 
-    init(library: LibraryStore, engine: any PlayerEngine = AVPlayerEngine(), systemIntegration: Bool = true, lookupClient: MusicLookupClient? = .shared) throws {
-        self.library = library; files = library.files; self.engine = engine; self.lookupClient = lookupClient
+    init(library: LibraryStore, engine: any PlayerEngine = AVPlayerEngine(), systemIntegration: Bool = true, lookupClient: MusicLookupClient? = .shared, musicClient: YouTubeMusicClient = YouTubeMusicClient()) throws {
+        self.library = library; files = library.files; self.engine = engine; self.lookupClient = lookupClient; self.musicClient = musicClient
         if let saved = try library.context.fetch(FetchDescriptor<PlaybackSession>()).first { session = saved }
         else {
             session = PlaybackSession()
@@ -275,6 +310,15 @@ import SwiftData
             enrichmentTask?.cancel(); isEnriching = false; enrichmentMessage = nil
         }
         currentSong = song; currentTime = position; isLoading = true
+        if cachedURLs[song.id] == nil, song.artworkID == nil, let lookupClient {
+            isEnriching = true
+            enrichmentTask = Task {
+                defer { if currentSong?.id == song.id { isEnriching = false } }
+                do { try await enrichLibraryArtwork(song, client: lookupClient) }
+                catch is CancellationError { }
+                catch { if currentSong?.id == song.id { enrichmentMessage = error.localizedDescription } }
+            }
+        }
         wantsPlayback = autoplay; playbackError = nil
         saveSession(); remote.update(self)
         loadTask = Task {

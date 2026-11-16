@@ -276,6 +276,42 @@ import WebKit
         XCTAssertTrue(library.songs.isEmpty)
     }
 
+    func testPreviouslySavedLibrarySongRecoversCoverFromMatchingYouTubeSong() async throws {
+        let root = URL.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let schema = Schema(versionedSchema: LibrarySchemaV1.self)
+        let configuration = ModelConfiguration(schema: schema, url: root.appending(path: "Library.store"), cloudKitDatabase: .none)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        let library = try LibraryStore(context: container.mainContext, files: LibraryFiles(root: root))
+        let fixture = try XCTUnwrap(Bundle.main.url(forResource: "Test Tone", withExtension: "wav", subdirectory: "Fixtures"))
+        try await library.importOne(fixture)
+        let song = try XCTUnwrap(library.songs.first)
+        library.edit(song, title: "One of the Girls", artist: "The Weeknd", album: song.albumTitle, genre: song.genre)
+        let originalHash = try LibraryFiles.hash(library.files.url(for: song.fileRelativePath))
+        let network = URLSessionConfiguration.ephemeral
+        network.protocolClasses = [LibraryArtworkProtocol.self]
+        let session = URLSession(configuration: network)
+        defer { session.invalidateAndCancel() }
+        let playback = try PlaybackStore(library: library, systemIntegration: false, lookupClient: MusicLookupClient(session: session), musicClient: YouTubeMusicClient(session: session))
+        playback.play([song])
+        for _ in 0..<100 {
+            if !playback.isEnriching { break }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        playback.pause()
+        XCTAssertFalse(playback.isCachedSong)
+        XCTAssertNil(playback.enrichmentMessage)
+        let id = try XCTUnwrap(song.artworkID)
+        let artwork = await ArtworkCache.shared.load(id: id, files: library.files, thumbnail: false)
+        XCTAssertNotNil(artwork)
+        XCTAssertEqual(try LibraryFiles.hash(library.files.url(for: song.fileRelativePath)), originalHash)
+        let reopenedContainer = try ModelContainer(for: schema, configurations: [configuration])
+        let reopened = try LibraryStore(context: reopenedContainer.mainContext, files: library.files)
+        XCTAssertEqual(reopened.songs.first?.artworkID, id)
+        XCTAssertEqual(reopened.songs.first?.title, "One of the Girls")
+    }
+
     func testUnifiedLibraryIncludesYouTubeSongsFavoritesCacheAndHistory() throws {
         let online = OnlineMusicStore()
         let cloud = CloudMusicStore()
@@ -358,6 +394,38 @@ private final class MissingArtworkProtocol: URLProtocol, @unchecked Sendable {
         let image = url.host == "i.ytimg.com" && url.path == "/vi/HgLfYfJtc8M/hqdefault.jpg"
         let data = image ? Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGNQSFgARAwQCgAdjgSBQe+XXgAAAABJRU5ErkJggg==")! : Data()
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: image ? 200 : 503, httpVersion: nil, headerFields: ["Content-Type": image ? "image/png" : "application/json"])!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
+}
+
+private final class LibraryArtworkProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let image = url.host == "i.ytimg.com"
+        let data: Data
+        if image {
+            data = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGNQSFgARAwQCgAdjgSBQe+XXgAAAABJRU5ErkJggg==")!
+        } else if request.httpMethod != "POST" {
+            data = Data(#"<script>ytcfg.set({"INNERTUBE_CONTEXT":{"client":{"clientVersion":"test"}}});</script>"#.utf8)
+        } else {
+            data = Data(#"""
+            {"contents":{"musicShelfRenderer":{"contents":[{"musicResponsiveListItemRenderer":{
+              "playlistItemData":{"videoId":"HgLfYfJtc8M"},
+              "flexColumns":[
+                {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[{"text":"One Of The Girls"}]}}},
+                {"musicResponsiveListItemFlexColumnRenderer":{"text":{"runs":[
+                  {"text":"The Weeknd","navigationEndpoint":{"browseEndpoint":{"browseId":"UC_main"}}},
+                  {"text":", "},{"text":"JENNIE","navigationEndpoint":{"browseEndpoint":{"browseId":"UC_guest"}}}
+                ]}}}
+              ]
+            }}]}}}
+            """#.utf8)
+        }
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": image ? "image/png" : "application/json"])!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: data)
         client?.urlProtocolDidFinishLoading(self)
     }

@@ -6,36 +6,117 @@ enum LibraryRoute: Hashable {
     case album(UUID), artist(UUID), genre(String), playlist(UUID)
 }
 
+enum LibraryCategory: String, CaseIterable, Identifiable {
+    case playlists, artists, albums, songs, genres, history, favorites
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .playlists: "Playlists"
+        case .artists: "Artists"
+        case .albums: "Albums"
+        case .songs: "Songs"
+        case .genres: "Genres"
+        case .history: "Recently Played"
+        case .favorites: "Favorite Songs"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .playlists: "music.note.list"
+        case .artists: "music.mic"
+        case .albums: "square.stack"
+        case .songs: "music.note"
+        case .genres: "guitars"
+        case .history: "clock"
+        case .favorites: "star"
+        }
+    }
+    var route: LibraryRoute {
+        switch self {
+        case .playlists: .playlists
+        case .artists: .artists
+        case .albums: .albums
+        case .songs: .songs(.all)
+        case .genres: .genres
+        case .history: .songs(.history)
+        case .favorites: .songs(.favorites)
+        }
+    }
+}
+
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(OnlineMusicStore.self) private var online
     @Environment(YouTubeAccountStore.self) private var account
     @Environment(CloudMusicStore.self) private var cloud
+    @AppStorage("libraryCategoryOrder") private var categoryOrder = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
+    @AppStorage("libraryVisibleCategories") private var visibleCategories = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
+    @State private var editing = false
+    @State private var creatingPlaylist = false
+    private var orderedCategories: [LibraryCategory] { categoryOrder.split(separator: ",").compactMap { LibraryCategory(rawValue: String($0)) } }
+    private var visible: Set<String> { Set(visibleCategories.split(separator: ",").map(String.init)) }
+
     var body: some View {
         List {
             Section {
-                NavigationLink(value: LibraryRoute.playlists) { Label("Playlists", systemImage: "music.note.list") }
-                NavigationLink(value: LibraryRoute.artists) { Label("Artists", systemImage: "music.mic") }
-                NavigationLink(value: LibraryRoute.albums) { Label("Albums", systemImage: "square.stack") }
-                NavigationLink(value: LibraryRoute.songs(.all)) { Label("Songs", systemImage: "music.note") }
-                NavigationLink(value: LibraryRoute.genres) { Label("Genres", systemImage: "guitars") }
-                NavigationLink(value: LibraryRoute.songs(.history)) { Label("Recently Played", systemImage: "clock") }
-                NavigationLink(value: LibraryRoute.songs(.favorites)) { Label("Favorite Songs", systemImage: "star") }
-            }.font(.title3).foregroundStyle(.primary)
-            Section("Recently Added") {
-                ForEach(library.songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(8)) { SongRow(song: $0) }
-                ForEach(online.songs(for: .recent, cloud: cloud).prefix(8)) { OnlineTrackRow(track: $0) }
-                if library.songs.isEmpty && online.songs(for: .recent, cloud: cloud).isEmpty {
-                    EmptyLibraryView().listRowSeparator(.hidden)
+                ForEach(orderedCategories.filter { editing || visible.contains($0.rawValue) }) { category in
+                    if editing {
+                        Button {
+                            var next = visible
+                            if !next.insert(category.rawValue).inserted { next.remove(category.rawValue) }
+                            visibleCategories = orderedCategories.map(\.rawValue).filter { next.contains($0) }.joined(separator: ",")
+                        } label: {
+                            HStack(spacing: 20) {
+                                Image(systemName: visible.contains(category.rawValue) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(visible.contains(category.rawValue) ? Color.pink : .secondary)
+                                Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
+                            }
+                        }.buttonStyle(.plain)
+                    } else {
+                        NavigationLink(value: category.route) {
+                            Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
+                        }
+                    }
+                }.onMove { offsets, destination in
+                    var order = orderedCategories
+                    order.move(fromOffsets: offsets, toOffset: destination)
+                    categoryOrder = order.map(\.rawValue).joined(separator: ",")
+                }
+            }
+            if !editing {
+                Section("Recently Added") {
+                    ForEach(library.songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(8)) { SongRow(song: $0) }
+                    ForEach(online.songs(for: .recent, cloud: cloud).prefix(8)) { OnlineTrackRow(track: $0) }
                 }
             }
         }
         .listStyle(.plain)
+        .environment(\.editMode, .constant(editing ? .active : .inactive))
         .navigationTitle("Library")
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if !editing {
+                    Button("New Playlist", systemImage: "text.badge.plus") { creatingPlaylist = true }
+                        .accessibilityIdentifier("newLibraryPlaylist")
+                }
+                Button(editing ? "Done" : "Edit Library", systemImage: editing ? "checkmark" : "checklist") { editing.toggle() }
+                    .accessibilityIdentifier("editLibrary")
+            }
+        }
+        .sheet(isPresented: $creatingPlaylist) { NavigationStack { PlaylistCreationView() } }
         .refreshable {
             if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
             else { await cloud.refresh() }
         }
+    }
+}
+
+struct LibraryLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 18) {
+            configuration.icon.font(.title3).foregroundStyle(.pink).frame(width: 24)
+            configuration.title.foregroundStyle(.primary)
+        }.font(.body).padding(.vertical, 3)
     }
 }
 

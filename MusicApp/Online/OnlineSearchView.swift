@@ -5,6 +5,7 @@ struct OnlineSearchView: View {
     @Environment(YouTubeAccountStore.self) private var account
     @Environment(CloudMusicStore.self) private var cloud
     @Binding var query: String
+    var isActive = false
     @State private var warehouse: [OnlineTrack] = []
 
     var body: some View {
@@ -24,14 +25,15 @@ struct OnlineSearchView: View {
             List {
                 if query.isEmpty {
                     if !online.searchHistory.isEmpty {
-                        Section("Recent Searches") {
+                        Section("Recently Searched") {
                             ForEach(online.searchHistory, id: \.self) { value in
                                 Button { query = value } label: { Label(value, systemImage: "magnifyingglass") }
                             }
                             Button("Clear", role: .destructive) { online.clearSearchHistory() }
                         }
                     }
-                    Section("Browse Categories") {
+                    if !isActive {
+                    Section {
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                             ForEach(Array(Self.categories.enumerated()), id: \.offset) { index, category in
                                 Button { query = category } label: {
@@ -40,10 +42,11 @@ struct OnlineSearchView: View {
                                         Image(systemName: "music.note").font(.system(size: 62)).rotationEffect(.degrees(-15))
                                             .foregroundStyle(.white.opacity(0.15)).frame(maxWidth: .infinity, alignment: .trailing).padding(10)
                                         Text(category).font(.headline).foregroundStyle(.white).padding(14)
-                                    }.frame(height: 100).clipShape(.rect(cornerRadius: 12))
+                                    }.frame(height: 94).clipShape(.rect(cornerRadius: 12))
                                 }.buttonStyle(.plain)
                             }
                         }.listRowSeparator(.hidden)
+                    }
                     }
                 } else {
                     if online.searching && online.results.isEmpty { MusicPlaceholderRows() }

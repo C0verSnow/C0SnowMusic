@@ -10,16 +10,17 @@ struct MusicRootView: View {
     @Namespace private var playerTransition
     @State private var expanded = false
     @State private var settings = false
+    @State private var selectedTab = MusicTab.home
 
     var body: some View {
-        TabView {
-            Tab("Home", systemImage: "house.fill") { navigation { HomeView() } }
-            Tab("Discover", systemImage: "square.grid.2x2.fill") { navigation { DiscoverView() } }
-            Tab("Library", systemImage: "music.note.list") { navigation { LibraryView() } }
-            Tab("Search", systemImage: "magnifyingglass", role: .search) { navigation { SearchView() } }
+        TabView(selection: $selectedTab) {
+            Tab("Home", systemImage: "house.fill", value: MusicTab.home) { navigation { HomeView(onSearch: { selectedTab = .search }) } }
+            Tab("Radio", systemImage: "dot.radiowaves.left.and.right", value: MusicTab.radio) { navigation(titleDisplay: .inline) { RadioView() } }
+            Tab("Library", systemImage: "music.note", value: MusicTab.library) { navigation { LibraryView() } }
+            Tab("Search", systemImage: "magnifyingglass", value: MusicTab.search) { navigation { SearchView() } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .modifier(PlayerAccessoryModifier(enabled: playback.currentSong != nil, expanded: $expanded, namespace: playerTransition))
+        .modifier(PlayerAccessoryModifier(enabled: true, expanded: $expanded, namespace: playerTransition))
         .fullScreenCover(isPresented: $expanded) {
             if reduceMotion { NowPlayingView() }
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
@@ -57,13 +58,14 @@ struct MusicRootView: View {
         .onChange(of: playback.currentSong?.id) { _, id in if id == nil { expanded = false } }
     }
 
-    private func navigation<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func navigation<Content: View>(titleDisplay: ToolbarTitleDisplayMode = .inlineLarge, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             content()
+                .toolbarTitleDisplayMode(titleDisplay)
                 .navigationDestination(for: LibraryRoute.self) { LibraryRouteView(route: $0) }
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { settings = true } label: { AccountAvatar().frame(width: 30, height: 30) }
+                        Button { settings = true } label: { AccountAvatar().frame(width: 40, height: 40) }
                             .accessibilityLabel("c0vermusic Account")
                             .accessibilityIdentifier("accountSettings")
                     }
@@ -91,3 +93,5 @@ private struct PlayerAccessoryModifier: ViewModifier {
     }
 
 }
+
+private enum MusicTab: Hashable { case home, radio, library, search }

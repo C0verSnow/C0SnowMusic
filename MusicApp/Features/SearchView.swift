@@ -12,17 +12,21 @@ struct SearchView: View {
     @State private var playlists: [Playlist] = []
     @State private var searching = false
     @State private var scope = 0
+    @FocusState private var searchFocused: Bool
     var body: some View {
         VStack(spacing: 0) {
-            Picker("Search in", selection: $scope) {
-                Text("c0vermusic").tag(0)
-                Text("Library").tag(1)
-            }.pickerStyle(.segmented).padding(.horizontal, 20).padding(.bottom, 8)
-            if scope == 0 { OnlineSearchView(query: $text) }
+            if searchFocused || !text.isEmpty {
+                Picker("Search in", selection: $scope) {
+                    Text("c0vermusic").tag(0)
+                    Text("Library").tag(1)
+                }.pickerStyle(.segmented).padding(.horizontal, 20).padding(.bottom, 8)
+            }
+            if scope == 0 { OnlineSearchView(query: $text, isActive: searchFocused) }
             else { localSearch }
         }
         .navigationTitle("Search")
-        .searchable(text: $text, prompt: scope == 0 ? "Artists, Songs, and More" : "Search Your Library")
+        .searchable(text: $text, placement: .navigationBarDrawer(displayMode: .always), prompt: scope == 0 ? "Artists, Songs, Lyrics, and More" : "Search Your Library")
+        .searchFocused($searchFocused)
     }
 
     private var localSearch: some View {

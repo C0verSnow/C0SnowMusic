@@ -26,7 +26,7 @@ Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图�
 
 ## 功能
 
-- 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
+- Home、Radio、Library、Search 四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。Radio 使用真实 YouTube 电台歌单，空队列显示 Not Playing。
 - 右上角 c0vermusic Account 包含 YouTube 网页登录和 Music Settings；界面统一英文，含导入和缓存管理，旧语言偏好不再影响显示。
 - 搜索采用 c0vermusic / Library 两档，直接读取 YouTube Music 和已连接仓库；只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。

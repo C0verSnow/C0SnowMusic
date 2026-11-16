@@ -5,10 +5,9 @@ struct PlaylistsView: View {
     @Environment(OnlineMusicStore.self) private var online
     @Environment(LibraryStore.self) private var library
     @State private var creating = false
-    @State private var name = ""
     var body: some View {
         List {
-            Button("New playlist", systemImage: "plus") { name = ""; creating = true }
+            Button("New Playlist", systemImage: "plus") { creating = true }
             ForEach(library.playlists) { playlist in
                 NavigationLink(value: LibraryRoute.playlist(playlist.id)) {
                     HStack(spacing: 12) {
@@ -26,11 +25,7 @@ struct PlaylistsView: View {
             ForEach(online.playlists) { OnlineTrackRow(track: $0) }
         }
         .localizedNavigationTitle("Playlists")
-        .alert("New playlist", isPresented: $creating) {
-            TextField("Playlist name", text: $name)
-            Button("Create") { library.createPlaylist(name) }
-            Button("Cancel", role: .cancel) { }
-        }
+        .sheet(isPresented: $creating) { NavigationStack { PlaylistCreationView() } }
     }
 }
 
@@ -134,5 +129,54 @@ struct PlaylistSongPicker: View {
         .searchable(text: $query, prompt: "Search songs")
         .localizedNavigationTitle("Add songs").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+    }
+}
+
+struct PlaylistCreationView: View {
+    @Environment(LibraryStore.self) private var library
+    @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
+    @State private var cover: PhotosPickerItem?
+    @State private var artwork: Data?
+    @State private var saving = false
+
+    var body: some View {
+        VStack(spacing: 42) {
+            PhotosPicker(selection: $cover, matching: .images) {
+                ZStack {
+                    if let artwork, let image = UIImage(data: artwork) { Image(uiImage: image).resizable().scaledToFill() }
+                    else {
+                        Color.secondary.opacity(0.12)
+                        Image(systemName: "photo").font(.title2).foregroundStyle(.white)
+                            .frame(width: 64, height: 64).background(.pink, in: .circle)
+                    }
+                }.frame(width: 180, height: 180).clipShape(.rect(cornerRadius: 8))
+            }.padding(.top, 30).accessibilityLabel("Choose Playlist Artwork")
+            TextField("Playlist Title", text: $name).font(.title3.bold()).multilineTextAlignment(.center)
+                .padding(.bottom, 10).overlay(alignment: .bottom) { Divider() }.padding(.horizontal, 16)
+            Spacer()
+        }
+        .background(Color(uiColor: .systemGroupedBackground))
+        .navigationTitle("New Playlist").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Create Playlist", systemImage: "checkmark") {
+                    saving = true
+                    let existing = Set(library.playlists.map(\.id))
+                    library.createPlaylist(name)
+                    Task {
+                        if let playlist = library.playlists.first(where: { !existing.contains($0.id) }) {
+                            if let artwork { await library.setCover(playlist, data: artwork) }
+                            dismiss()
+                        }
+                        saving = false
+                    }
+                }.labelStyle(.iconOnly).disabled(saving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .task(id: cover) { if let cover { artwork = try? await cover.loadTransferable(type: Data.self) } }
     }
 }
