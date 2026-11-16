@@ -47,9 +47,12 @@ def main():
     if webhook.get("url") != url + "/api/telegram/webhook":
         raise RuntimeError("Webhook does not match this Worker.")
     key = next(iter(json.loads(settings["API_KEYS"])))
-    request = urllib.request.Request(url + "/api/tracks?limit=1", headers={"Authorization": "Bearer " + key})
-    with urllib.request.urlopen(request, timeout=30) as response:
-        result = json.load(response)
+    request = urllib.request.Request(url + "/api/tracks?limit=1", headers={"Authorization": "Bearer " + key, "User-Agent": "C0SnowMusic-Setup/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            result = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise RuntimeError("Catalog verification failed: HTTP " + str(error.code) + ". Check the deployment and rerun check.") from None
     if "items" not in result:
         raise RuntimeError("Catalog returned an unexpected response.")
     print("Verified protected catalog and webhook at " + url)

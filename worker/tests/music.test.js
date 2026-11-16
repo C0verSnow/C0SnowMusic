@@ -127,6 +127,11 @@ test('missing Telegram audio changes persistent file status', async () => {
   assert.equal((await call('/api/tracks/yt_abcdefghijk/content')).status, 404);
   const saved = await (await call('/api/tracks/yt_abcdefghijk')).json();
   assert.equal(saved.files[0].status, 'missing'); assert.equal(saved.files[0].available, false);
+  mode = 'ok';
+  assert.equal((await upload()).status, 201);
+  const restored = await (await call('/api/tracks/yt_abcdefghijk')).json();
+  assert.equal(restored.files[0].available, true);
+  assert.equal(uploads, 2);
 });
 test('staged favorites require complete count, remain isolated and unfavorite keeps Telegram audio', async () => {
   await upload();

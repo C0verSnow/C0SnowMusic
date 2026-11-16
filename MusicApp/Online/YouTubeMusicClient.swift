@@ -193,6 +193,7 @@ struct YouTubeMusicClient: Sendable {
                     var items: [OnlineTrack] = []
                     if let top = item(shelf) { items.append(top) }
                     for content in shelf["contents"] as? [[String: Any]] ?? [] {
+                        if content["continuationItemRenderer"] != nil { visit(content); continue }
                         for renderer in ["musicResponsiveListItemRenderer", "musicTwoRowItemRenderer"] {
                             if let value = content[renderer] as? [String: Any], let parsed = item(value) { items.append(parsed) }
                         }
@@ -233,10 +234,10 @@ struct YouTubeMusicClient: Sendable {
         let musicConfig = (watch?["watchEndpointMusicSupportedConfigs"] as? [String: Any])?["watchEndpointMusicConfig"] as? [String: Any]
         let videoType = musicConfig?["musicVideoType"] as? String ?? ""
         let kind: MusicItemKind
-        if let videoID, YouTubeSearchClient.validID(videoID) { kind = videoType.contains("ATV") ? .song : .video }
-        else if page.contains("ARTIST") { kind = .artist }
+        if page.contains("ARTIST") { kind = .artist }
         else if page.contains("ALBUM") { kind = .album }
         else if browseID != nil { kind = .playlist }
+        else if let videoID, YouTubeSearchClient.validID(videoID) { kind = videoType.contains("ATV") ? .song : .video }
         else { return nil }
         let thumb = (value["thumbnail"] ?? value["thumbnailRenderer"]) as? [String: Any]
         let musicThumb = thumb?["musicThumbnailRenderer"] as? [String: Any]
@@ -252,7 +253,8 @@ struct YouTubeMusicClient: Sendable {
             let destination = (run["navigationEndpoint"] as? [String: Any])?["browseEndpoint"] as? [String: Any]
             return (destination?["browseId"] as? String)?.hasPrefix("UC") == true
         }.compactMap { $0["text"] as? String }.joined(separator: ", ")
-        return OnlineTrack(id: videoID ?? browseID!, title: title, artist: artist.isEmpty ? text(subtitle) : artist, coverURL: cover, kind: kind, browseID: browseID, albumTitle: album)
+        let id = (kind == .song || kind == .video) ? videoID! : browseID!
+        return OnlineTrack(id: id, title: title, artist: artist.isEmpty ? text(subtitle) : artist, coverURL: cover, kind: kind, browseID: browseID, albumTitle: album)
     }
 
     static func profile(in node: Any) -> YouTubeProfile? {

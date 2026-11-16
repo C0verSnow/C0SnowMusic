@@ -27,7 +27,7 @@ async function route(request, env) {
     const rows = source
       ? await all(env, 'SELECT * FROM tracks WHERE source_id = ?', source)
       : await all(env, 'SELECT * FROM tracks WHERE title LIKE ? OR artist LIKE ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?', `%${search}%`, `%${search}%`, limit, offset);
-    return json({ items: await Promise.all(rows.map(track => presentTrack(env, track))) });
+    return json({ items: await presentTracks(env, rows) });
   }
   if (path === '/api/tracks' && request.method === 'POST') return upload(request, env);
   if (path === '/api/favorites/snapshots' && request.method === 'POST') {
@@ -70,8 +70,9 @@ async function route(request, env) {
     return json({ count: tracks.length });
   }
   if (path === '/api/favorites' && request.method === 'GET') {
-    const rows = await all(env, 'SELECT DISTINCT t.* FROM tracks t JOIN favorites f ON f.track_id = t.id WHERE f.user_id = ? ORDER BY t.title', user);
-    return json({ items: await Promise.all(rows.map(track => presentTrack(env, track))) });
+    const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+    const rows = await all(env, 'SELECT DISTINCT t.* FROM tracks t JOIN favorites f ON f.track_id = t.id WHERE f.user_id = ? ORDER BY t.title, t.id LIMIT 100 OFFSET ?', user, offset);
+    return json({ items: await presentTracks(env, rows) });
   }
   if (path === '/api/home' && request.method === 'GET') {
     const history = await all(env, 'SELECT t.* FROM tracks t JOIN plays p ON p.track_id = t.id WHERE p.user_id = ? ORDER BY p.played_at DESC LIMIT 20', user);
@@ -223,6 +224,7 @@ async function content(request, env, id) {
       await env.DB.batch([
         stmt(env, "UPDATE telegram_objects SET status = 'missing' WHERE id = ?", object.id),
         stmt(env, "UPDATE audio_files SET status = 'missing' WHERE id = ?", object.audio_file_id),
+        stmt(env, "UPDATE upload_jobs SET status = 'failed', error_message = 'Telegram audio missing', updated_at = CURRENT_TIMESTAMP WHERE audio_file_id = ? AND status = 'ready'", object.audio_file_id),
       ]);
     }
     throw error;
@@ -230,7 +232,11 @@ async function content(request, env, id) {
   // Telegram does not promise Range support. Slice its full stream ourselves.
   const upstream = await fetch(telegramFileURL(env, file.file_path));
   if (!upstream.ok || !upstream.body) {
-    if (upstream.status === 404) await stmt(env, "UPDATE audio_files SET status = 'missing' WHERE id = ?", object.audio_file_id).run();
+    if (upstream.status === 404) await env.DB.batch([
+      stmt(env, "UPDATE audio_files SET status = 'missing' WHERE id = ?", object.audio_file_id),
+      stmt(env, "UPDATE telegram_objects SET status = 'missing' WHERE id = ?", object.id),
+      stmt(env, "UPDATE upload_jobs SET status = 'failed', error_message = 'Telegram audio missing', updated_at = CURRENT_TIMESTAMP WHERE audio_file_id = ? AND status = 'ready'", object.audio_file_id),
+    ]);
     fail(502, 'Telegram media unavailable.');
   }
   const length = upstream.headers.get('Content-Length');
@@ -278,15 +284,25 @@ async function playableObject(env, id, download) {
 }
 
 async function presentTrack(env, track) {
-  const files = await all(env, 'SELECT a.id, a.sha256, a.size_bytes, a.mime_type, a.status FROM audio_files a JOIN track_files tf ON tf.audio_file_id = a.id WHERE tf.track_id = ?', track.id);
-  return { ...track, files: files.map(file => ({ ...file, available: file.status === 'ready' && file.size_bytes <= MAX_AUDIO_BYTES })), content_path: `/api/tracks/${track.id}/content` };
+  return (await presentTracks(env, [track]))[0];
+}
+
+async function presentTracks(env, tracks) {
+  if (!tracks.length) return [];
+  const rows = await all(env, `SELECT tf.track_id, a.id, a.sha256, a.size_bytes, a.mime_type, a.status FROM audio_files a JOIN track_files tf ON tf.audio_file_id = a.id WHERE tf.track_id IN (${tracks.map(() => '?').join(',')})`, ...tracks.map(track => track.id));
+  const grouped = new Map();
+  for (const { track_id, ...file } of rows) {
+    if (!grouped.has(track_id)) grouped.set(track_id, []);
+    grouped.get(track_id).push({ ...file, available: file.status === 'ready' && file.size_bytes <= MAX_AUDIO_BYTES });
+  }
+  return tracks.map(track => ({ ...track, files: grouped.get(track.id) ?? [], content_path: `/api/tracks/${track.id}/content` }));
 }
 
 async function commitReceipt(env, fileID, jobID, message, chatID) {
   const audio = message.audio;
   if (!audio?.file_id || !audio.file_unique_id || !message.message_id) fail(502, 'Telegram upload receipt incomplete; reconcile before retrying.');
   await env.DB.batch([
-    stmt(env, 'INSERT OR IGNORE INTO telegram_objects VALUES (?, ?, ?, ?, ?, ?, ?, ?)', jobID, fileID, env.TELEGRAM_BOT_TOKEN.split(':')[0], audio.file_id, audio.file_unique_id, chatID, message.message_id, 'active'),
+    stmt(env, 'INSERT INTO telegram_objects VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET tg_file_id = excluded.tg_file_id, tg_file_unique_id = excluded.tg_file_unique_id, message_id = excluded.message_id, status = excluded.status', jobID, fileID, env.TELEGRAM_BOT_TOKEN.split(':')[0], audio.file_id, audio.file_unique_id, chatID, message.message_id, 'active'),
     stmt(env, "UPDATE audio_files SET status = 'ready' WHERE id = ?", fileID),
     stmt(env, "UPDATE upload_jobs SET status = 'ready', error_message = NULL, retry_after = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?", jobID),
   ]);

@@ -81,8 +81,13 @@ struct CloudConnection: Codable, Sendable {
     func refresh() async {
         guard connected else { return }
         do {
-            let data = try await request("/api/favorites")
-            favorites = try JSONDecoder().decode(TrackList.self, from: data).items
+            var complete: [CloudTrack] = []
+            while true {
+                let page = try JSONDecoder().decode(TrackList.self, from: await request("/api/favorites?offset=\(complete.count)")).items
+                complete += page
+                if page.count < 100 { break }
+            }
+            favorites = complete
             let home = try JSONDecoder().decode(CloudHome.self, from: await request("/api/home"))
             trending = home.trending.compactMap { $0.onlineTrack }
             error = nil

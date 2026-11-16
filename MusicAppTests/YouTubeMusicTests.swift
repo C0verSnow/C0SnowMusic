@@ -25,6 +25,8 @@ final class YouTubeMusicTests: XCTestCase {
         XCTAssertEqual(continuation.tracks.first?.title, "Continued")
         XCTAssertEqual(continuation.continuation, "more")
         XCTAssertThrowsError(try YouTubeMusicClient.parse(Data(#"{"error":{"code":403}}"#.utf8)))
+        let inline = try YouTubeMusicClient.parse(Data(#"{"contents":{"musicPlaylistShelfRenderer":{"contents":[{"continuationItemRenderer":{"continuationEndpoint":{"continuationCommand":{"token":"inline-next"}}}}]}}}"#.utf8))
+        XCTAssertEqual(inline.continuation, "inline-next", "Do not mistake the first liked-playlist page for a complete snapshot")
     }
 
     func testBootstrapMergesConfigurationAndRejectsTruncatedData() throws {

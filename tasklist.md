@@ -117,7 +117,7 @@
 
 ## 做完：
 
-- [1794799245] issue #11: Worker HTTP/SQLite/audio tests passed remotely. Fixed the real-response fixture indentation; added VLLM complete likes, cached lyrics/artwork persistence, and English strings. Local checks remain static only.
+- [1794799245] Worker 的 HTTP、真实 SQLite 和音频测试已在远端通过；修复真实响应样本的缩进，补全量点赞列表 VLLM、在线歌词和封面持久化以及英文文案。本地仍然只做静态检查。
 
 
 - [1794798831] 首轮远端发现头像 Circle 调用和 Ubuntu 缺 FFmpeg；已修复。另读取真实 YouTube Music 搜索，补当前 itemSectionRenderer 和真实响应缩减回归，不只验证自编数据。
