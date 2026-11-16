@@ -10,13 +10,17 @@ struct MusicRootView: View {
     @Namespace private var playerTransition
     @State private var expanded = false
     @State private var settings = false
+    @State private var editingLibrary = false
+    @State private var creatingPlaylist = false
     @State private var selectedTab = MusicTab.home
 
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("Home", systemImage: "house.fill", value: MusicTab.home) { navigation { HomeView(onSearch: { selectedTab = .search }) } }
             Tab("Radio", systemImage: "dot.radiowaves.left.and.right", value: MusicTab.radio) { navigation(titleDisplay: .inline) { RadioView() } }
-            Tab("Library", systemImage: "music.note", value: MusicTab.library) { navigation { LibraryView() } }
+            Tab("Library", systemImage: "music.note", value: MusicTab.library) {
+                navigation(libraryControls: true) { LibraryView(editing: $editingLibrary) }
+            }
             Tab("Search", systemImage: "magnifyingglass", value: MusicTab.search) { navigation { SearchView() } }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -26,6 +30,7 @@ struct MusicRootView: View {
             else { NowPlayingView().navigationTransition(.zoom(sourceID: "player", in: playerTransition)) }
         }
         .sheet(isPresented: $settings) { NavigationStack { AccountView() } }
+        .sheet(isPresented: $creatingPlaylist) { NavigationStack { PlaylistCreationView() } }
         .overlay(alignment: .top) {
             if let progress = library.importProgress {
                 VStack(alignment: .leading, spacing: 8) {
@@ -58,16 +63,35 @@ struct MusicRootView: View {
         .onChange(of: playback.currentSong?.id) { _, id in if id == nil { expanded = false } }
     }
 
-    private func navigation<Content: View>(titleDisplay: ToolbarTitleDisplayMode = .inlineLarge, @ViewBuilder content: () -> Content) -> some View {
+    private func navigation<Content: View>(titleDisplay: ToolbarTitleDisplayMode = .inlineLarge, libraryControls: Bool = false, @ViewBuilder content: () -> Content) -> some View {
         NavigationStack {
             content()
                 .toolbarTitleDisplayMode(titleDisplay)
                 .navigationDestination(for: LibraryRoute.self) { LibraryRouteView(route: $0) }
                 .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button { settings = true } label: { AccountAvatar().frame(width: 40, height: 40) }
-                            .accessibilityLabel("c0vermusic Account")
-                            .accessibilityIdentifier("accountSettings")
+                    if libraryControls {
+                        if editingLibrary {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done", systemImage: "checkmark") { editingLibrary = false }
+                                    .labelStyle(.iconOnly).buttonStyle(.glassProminent)
+                                    .accessibilityIdentifier("editLibrary")
+                            }
+                        } else {
+                            ToolbarItemGroup(placement: .topBarTrailing) {
+                                Button("New Playlist", systemImage: "text.badge.plus") { creatingPlaylist = true }
+                                    .tint(.primary).accessibilityIdentifier("newLibraryPlaylist")
+                                Button("Edit Library", systemImage: "checklist") { editingLibrary = true }
+                                    .tint(.primary).accessibilityIdentifier("editLibrary")
+                            }
+                        }
+                    }
+                    if !libraryControls || !editingLibrary {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button { settings = true } label: { AccountAvatar().frame(width: 40, height: 40) }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("c0vermusic Account")
+                                .accessibilityIdentifier("accountSettings")
+                        }.sharedBackgroundVisibility(.hidden)
                     }
                 }
         }

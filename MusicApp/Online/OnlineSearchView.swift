@@ -24,7 +24,7 @@ struct OnlineSearchView: View {
             }
             List {
                 if query.isEmpty {
-                    if !online.searchHistory.isEmpty {
+                    if isActive && !online.searchHistory.isEmpty {
                         Section("Recently Searched") {
                             ForEach(online.searchHistory, id: \.self) { value in
                                 Button { query = value } label: { Label(value, systemImage: "magnifyingglass") }

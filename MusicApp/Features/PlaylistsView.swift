@@ -141,14 +141,14 @@ struct PlaylistCreationView: View {
     @State private var saving = false
 
     var body: some View {
-        VStack(spacing: 42) {
+        VStack(spacing: 64) {
             PhotosPicker(selection: $cover, matching: .images) {
                 ZStack {
                     if let artwork, let image = UIImage(data: artwork) { Image(uiImage: image).resizable().scaledToFill() }
                     else {
                         Color.secondary.opacity(0.12)
                         Image(systemName: "photo").font(.title2).foregroundStyle(.white)
-                            .frame(width: 64, height: 64).background(.pink, in: .circle)
+                            .frame(width: 64, height: 64).background(.tint, in: .circle)
                     }
                 }.frame(width: 180, height: 180).clipShape(.rect(cornerRadius: 8))
             }.padding(.top, 30).accessibilityLabel("Choose Playlist Artwork")

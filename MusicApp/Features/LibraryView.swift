@@ -51,8 +51,7 @@ struct LibraryView: View {
     @Environment(CloudMusicStore.self) private var cloud
     @AppStorage("libraryCategoryOrder") private var categoryOrder = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
     @AppStorage("libraryVisibleCategories") private var visibleCategories = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
-    @State private var editing = false
-    @State private var creatingPlaylist = false
+    @Binding var editing: Bool
     private var orderedCategories: [LibraryCategory] { categoryOrder.split(separator: ",").compactMap { LibraryCategory(rawValue: String($0)) } }
     private var visible: Set<String> { Set(visibleCategories.split(separator: ",").map(String.init)) }
 
@@ -60,50 +59,51 @@ struct LibraryView: View {
         List {
             Section {
                 ForEach(orderedCategories.filter { editing || visible.contains($0.rawValue) }) { category in
-                    if editing {
-                        Button {
-                            var next = visible
-                            if !next.insert(category.rawValue).inserted { next.remove(category.rawValue) }
-                            visibleCategories = orderedCategories.map(\.rawValue).filter { next.contains($0) }.joined(separator: ",")
-                        } label: {
-                            HStack(spacing: 20) {
-                                Image(systemName: visible.contains(category.rawValue) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(visible.contains(category.rawValue) ? Color.pink : .secondary)
+                    Group {
+                        if editing {
+                            Button {
+                                var next = visible
+                                if !next.insert(category.rawValue).inserted { next.remove(category.rawValue) }
+                                visibleCategories = orderedCategories.map(\.rawValue).filter { next.contains($0) }.joined(separator: ",")
+                            } label: {
+                                HStack(spacing: 20) {
+                                    Image(systemName: visible.contains(category.rawValue) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(visible.contains(category.rawValue) ? Color.pink : .secondary)
+                                    Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
+                                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                            }.buttonStyle(.plain)
+                                .accessibilityIdentifier("libraryCategory-\(category.rawValue)")
+                                .accessibilityValue(visible.contains(category.rawValue) ? "Shown" : "Hidden")
+                        } else {
+                            NavigationLink(value: category.route) {
                                 Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
                             }
-                        }.buttonStyle(.plain)
-                    } else {
-                        NavigationLink(value: category.route) {
-                            Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
                         }
                     }
-                }.onMove { offsets, destination in
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowSeparator(.hidden, edges: .top)
+                    .listRowSeparator(.visible, edges: .bottom)
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in editing ? 84 : 44 }
+                    .moveDisabled(!editing)
+                }
+                .onMove { offsets, destination in
                     var order = orderedCategories
                     order.move(fromOffsets: offsets, toOffset: destination)
                     categoryOrder = order.map(\.rawValue).joined(separator: ",")
                 }
             }
-            if !editing {
-                Section("Recently Added") {
+            if !editing && (!library.songs.isEmpty || !online.songs(for: .recent, cloud: cloud).isEmpty) {
+                Section {
                     ForEach(library.songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(8)) { SongRow(song: $0) }
                     ForEach(online.songs(for: .recent, cloud: cloud).prefix(8)) { OnlineTrackRow(track: $0) }
+                } header: {
+                    Text("Recently Added").font(.title2.bold()).foregroundStyle(.primary).textCase(nil)
                 }
             }
         }
         .listStyle(.plain)
         .environment(\.editMode, .constant(editing ? .active : .inactive))
         .navigationTitle("Library")
-        .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                if !editing {
-                    Button("New Playlist", systemImage: "text.badge.plus") { creatingPlaylist = true }
-                        .accessibilityIdentifier("newLibraryPlaylist")
-                }
-                Button(editing ? "Done" : "Edit Library", systemImage: editing ? "checkmark" : "checklist") { editing.toggle() }
-                    .accessibilityIdentifier("editLibrary")
-            }
-        }
-        .sheet(isPresented: $creatingPlaylist) { NavigationStack { PlaylistCreationView() } }
         .refreshable {
             if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
             else { await cloud.refresh() }
@@ -116,7 +116,7 @@ struct LibraryLabelStyle: LabelStyle {
         HStack(spacing: 18) {
             configuration.icon.font(.title3).foregroundStyle(.pink).frame(width: 24)
             configuration.title.foregroundStyle(.primary)
-        }.font(.body).padding(.vertical, 3)
+        }.font(.body).frame(minHeight: 52)
     }
 }
 

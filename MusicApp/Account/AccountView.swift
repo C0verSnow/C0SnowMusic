@@ -27,8 +27,11 @@ struct AccountView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Label("c0vermusic Account", systemImage: "music.note.circle.fill").font(.headline)
-            }
+                HStack(spacing: 8) {
+                    Image(systemName: "music.note.circle.fill").foregroundStyle(.pink).accessibilityHidden(true)
+                    Text("c0vermusic Account")
+                }.font(.headline).fixedSize()
+            }.sharedBackgroundVisibility(.hidden)
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Close Account", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)
                     .accessibilityIdentifier("closeAccount")

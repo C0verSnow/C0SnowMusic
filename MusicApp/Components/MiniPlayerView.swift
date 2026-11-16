@@ -31,7 +31,7 @@ struct MiniPlayerView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12).padding(.vertical, 4)
+            .padding(.horizontal, 12).padding(.vertical, 4).tint(.primary)
         } else {
             HStack(spacing: 10) {
                 Image(systemName: "music.note").font(.title3).foregroundStyle(.secondary)
