@@ -43,9 +43,25 @@ Run 43892955452 built the simulator and iPhone Release, packaged the IPA, and pa
 
 A new local-library artwork regression exercises actual import, SwiftData persistence, image decoding, audio hashing, and playback, replacing only external HTTP responses. It complements the already passing missing-cache-artwork regression.
 
+## Build 11 evidence and build 12 revision
+
+Run [43900939286](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43900939286) built both simulator and unsigned iPhone Release successfully. All 47 unit/integration tests passed, including the saved-song artwork recovery. Four of six UI tests passed. The two failures were the account title and Library category visibility; this was not a compilation failure.
+
+The exported accessibility hierarchy confirms that the account sheet had no visible title text: a toolbar `Label` adopted the icon-only presentation. The exported Library tap event targeted the row center at x=220 points, outside the short plain-button label's content. Build 12 explicitly lays out the account icon and title, removes their shared glass background, and gives category buttons a full-width rectangular hit area. The existing UI tests retain both failing assertions and now also check the category's Shown/Hidden value.
+
+Additional corrections against the saved physical-device references:
+
+- Place Library create/edit controls together, followed by a separate account avatar. Editing shows only the prominent checkmark, matching the reference hierarchy.
+- Use 52-point minimum category rows with explicit insets and separator alignment. Hide the empty Recently Added heading.
+- Increase the New Playlist artwork-to-title spacing from 42 to 64 points.
+- Use the primary foreground tint for active mini-player controls. Keep unavailable idle controls disabled.
+- Display search history only while search is active; inactive browsing keeps the category grid first.
+
+The remote UI suite now saves Home, account, inactive Search, focused Search, Library editing, and New Playlist screenshots, in addition to its existing player, queue, import, and lyrics evidence. These are acceptance inputs; successful assertions alone do not establish visual identity. Build 12 has not yet been compiled or installed at this revision.
+
 ## Acceptance still required
 
-- Build 11 remote checks, including all UI tests.
+- Build 12 remote checks, including all UI tests.
 - Install the verified new artifact and compare the same shared pages in the same appearance, device size, and scroll state.
 - Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
 - Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.

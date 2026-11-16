@@ -34,12 +34,16 @@ Checked on 2026-11-16 with GitHub repository search, source reads, license metad
 
 The existing SwiftUI/AVFoundation/SwiftData architecture remains. No new UI framework, server, deployment, or account credential is required.
 
+A follow-up GitHub search for SwiftUI Apple Music replicas checked [AppleMusicBottombarSwiftUI](https://github.com/ahmetbostanciklioglu/AppleMusicBottombarSwiftUI) (8 stars, last push 2026-07-02, no declared license returned by GitHub) and [MyPlaylists](https://github.com/aisultanios/MyPlaylists) (25 stars, last push 2024-06-23, no declared license returned). Neither met the repository's active-maintenance and clear-license criteria, so neither was used as an implementation source. The existing same-device Apple Music captures and Apple's public SwiftUI APIs remain the UI references; no additional dependency or copied implementation was introduced.
+
 ## Validation
 
 Local verification is limited to source review, property-list linting, and diff checks. No local build, compiler invocation, or test execution is permitted by the repository instructions.
 
 The existing GitHub Actions workflow builds the simulator and unsigned iPhone Release, then runs the actual import/playback, cache, HTTP-boundary, and UI tests. New regressions cover old missing-artwork sidecars with unavailable lyrics service, unchanged audio hashes and restored artwork, library grid/continuation parsing, complete HTTP pagination with duplicate removal, combined song categories, and translation of legacy placeholders without changing song content or IDs. UI tests cover English under a Chinese device preference, unified Library, search categories/scopes, and the single lyrics settings menu through real file/LRC selection.
 
-Remote results and screenshots must be read from the PR's checks and `iOS-test-evidence` artifact before claiming a pass. Build 10 has been signed and installed on the physical device for comparison; build 11 acceptance is pending. Earlier Issue #11 device evidence is historical.
+Remote results and screenshots must be read from the PR's checks and `iOS-test-evidence` artifact before claiming a pass. Build 10 has been signed and installed on the physical device for comparison. Build 11 compiled and passed 47 unit/integration tests, but failed two of six UI tests. Build 12 corrects the account title and category hit area, along with toolbar grouping, row spacing, playlist spacing, and search-history visibility; fresh remote and device acceptance is pending. Earlier Issue #11 device evidence is historical.
 
 Apple API references used for native title/focus alignment: [inlineLarge](https://developer.apple.com/documentation/swiftui/toolbartitledisplaymode/inlinelarge) and [searchFocused](https://developer.apple.com/documentation/swiftui/view/searchfocused(_:)).
+
+Toolbar grouping follows Apple's [sharedBackgroundVisibility](https://developer.apple.com/documentation/swiftui/toolbarcontent/sharedbackgroundvisibility(_:)) API: hiding a shared background places the item in its own group. Category reordering retains native [EditMode](https://developer.apple.com/documentation/swiftui/editmode) and `onMove` behavior.
