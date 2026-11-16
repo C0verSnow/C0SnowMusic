@@ -1,0 +1,17 @@
+{
+  "checked_at_unix": 1794828957,
+  "run_id": 43856527391,
+  "product_commit": "933510d3bb171232a0401cd163977e4ebd90eeca",
+  "unit_and_integration_tests": 41,
+  "ui_tests": 3,
+  "worker_tests": 10,
+  "failed_tests": 0,
+  "cached_playback_503_regression": "passed (0.643 seconds)",
+  "simulator_build": "success",
+  "iphone_release_build": "success",
+  "app_icon": "success",
+  "ipa_packaging": "success",
+  "release_publish_job": "skipped",
+  "static_validation_run_id": 43856527519,
+  "static_validation": "success"
+}
