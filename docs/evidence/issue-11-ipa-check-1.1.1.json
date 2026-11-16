@@ -1,0 +1,14 @@
+{
+  "checked_at_unix": 1794813015,
+  "run_id": 43819839808,
+  "product_commit": "4c69d895d513d4e7403bde0778a82a2b5b86143d",
+  "artifact_id": 14203888195,
+  "artifact_zip_sha256": "9ed569fae03253b26d293f3463c716b2cf31a36385c3e1a743f32ecb3efd15df",
+  "ipa_sha256": "13a30a15f2e1d010f40336eb65f36a24f952f771f5ea770defdda68187bb7df3",
+  "ipa_bytes": 25013551,
+  "bundle_id": "org.c0versnow.C0SnowMusic",
+  "version": "1.1.1",
+  "build": "7",
+  "zip_crc": "passed",
+  "app_icon_and_assets": "passed"
+}

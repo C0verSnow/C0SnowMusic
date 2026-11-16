@@ -180,7 +180,15 @@ actor MusicLookupClient {
 
     func artwork(at url: URL) async throws -> Data {
         guard url.scheme == "https" else { throw MusicLookupError.invalidResponse }
-        return try await fetch(url)
+        return try await fetch(Self.playbackArtworkURL(url))
+    }
+
+    static func playbackArtworkURL(_ url: URL) -> URL {
+        guard ["yt3.googleusercontent.com", "lh3.googleusercontent.com"].contains(url.host() ?? "") else { return url }
+        var components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
+        // YouTube Music list thumbnails are often 120px; request the provider's full-player size.
+        components.path = components.path.replacingOccurrences(of: #"=w\d+-h\d+"#, with: "=w544-h544", options: .regularExpression)
+        return components.url!
     }
 
     private func fetch(_ url: URL) async throws -> Data {

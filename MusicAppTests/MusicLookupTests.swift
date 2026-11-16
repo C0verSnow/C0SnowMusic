@@ -65,6 +65,15 @@ final class MusicLookupTests: XCTestCase {
         XCTAssertFalse(match.matches(SongLookupQuery(title: "Example", artist: "Artist", album: "Album", duration: 3)))
     }
 
+    func testPlaybackCoverUsesFullSizeGoogleArtworkAndKeepsOtherURLs() throws {
+        let thumbnail = try XCTUnwrap(URL(string: "https://yt3.googleusercontent.com/album=w120-h120-l90-rj"))
+        XCTAssertEqual(MusicLookupClient.playbackArtworkURL(thumbnail).absoluteString, "https://yt3.googleusercontent.com/album=w544-h544-l90-rj")
+        let large = try XCTUnwrap(URL(string: "https://lh3.googleusercontent.com/album=w544-h544-l90-rj"))
+        XCTAssertEqual(MusicLookupClient.playbackArtworkURL(large), large)
+        let other = try XCTUnwrap(URL(string: "https://example.com/cover=w120-h120.jpg"))
+        XCTAssertEqual(MusicLookupClient.playbackArtworkURL(other), other)
+    }
+
     func testRetryAfterSecondsAndHTTPDate() {
         let now = Date(timeIntervalSince1970: 0)
         XCTAssertEqual(MusicLookupClient.retryDelay("12", now: now), 12)

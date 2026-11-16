@@ -120,3 +120,7 @@ Worker 直接转发 `upstream.body` 可以保持流式传输；不要先 `arrayB
 用户要求点歌后自动加载封面、歌词和专辑，准确匹配自动应用，有歧义再选择。GitHub 继续检索 MetroList 的 `LrcLibLyricsProvider`、`LyricsClient` 与回归位置，仅核对功能职责，没有复制 GPL 实现；本项目复用自己的 MusicLookupClient、LRCLIB 匹配规则和 CAA 下载链路。
 
 参考：[LRCLIB 官方接口文档](https://lrclib.net/docs)、[MetroList 歌词提供器职责](https://github.com/MetrolistGroup/Metrolist/blob/5b2fc2b88748ef0aec94320a8d853bba5dc125ef/shared/src/commonMain/kotlin/com/metrolist/shared/api/lyrics/LrcLibLyricsProvider.kt)。自动选择的“歌名、艺术家、时长相差不超过 2 秒，专辑唯一”是本项目的保守应用策略。播放器先播放，网络补齐后台执行；仍由本项目 Swift 实现落地，不新增服务或重复部署。
+
+### 来源封面尺寸复验
+
+真机全屏放大 YouTube Music 的 120px 列表封面会模糊。GitHub 在 ytmusicapi 中检索 resize 没有命中通用辅助函数，未复制代码；直接对当前实际返回的 Google 图片地址验证尺寸参数：原图 HTTP 200、9,999 字节、120×120；同一图片改为 `=w544-h544` 后 HTTP 200、133,795 字节、544×544，已核对仍是正确 Starboy 封面。应用只为 yt3/lh3.googleusercontent.com 的原生尺寸参数请求播放器大小，列表仍用小图，其他域名地址保持原样。这是对实际图片服务的验证，不承诺所有外部图片都支持同样参数。
