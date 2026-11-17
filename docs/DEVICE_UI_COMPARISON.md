@@ -105,6 +105,16 @@ The comparison still found visible details for build 14 to correct:
 
 Build 14 contains only these visual corrections. Its remote checks and a fresh installation are pending. Native navigation-title/search-field leading margins still differ slightly from Apple's private app layout; final visual acceptance must assess the new captures rather than treating build 13's functional checks as pixel identity.
 
+## Build 14 remote file-selection failure
+
+Run [43986526337](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43986526337) compiled simulator and iPhone Release, passed all 47 unit/integration tests, and passed five of six UI scenarios. The LRC scenario found and tapped `Fixture.lrc`, but the system browser remained open and synchronized lyrics never appeared. The separate real-audio document import passed.
+
+The original evidence archive matches SHA-256 `0322ca81199af08c698d5a3429220acbd28458bc4719985de4ce2da2663cfb27`. Its exported hierarchy shows the LRC cell enabled and the WAV cell correctly disabled for the lyrics filter. The recorded tap was `(77.33, 262)` points, inside the LRC icon; subsequent video frames still show the same file browser. This rules out a disabled LRC filter or a successful import whose lyrics merely failed to refresh. The precise system reason for the ignored first selection remains unproven.
+
+The follow-up changes only the UI test. It waits for the real file-browser navigation bar to disappear after selecting a file and, only while that browser remains present, permits one further selection attempt. Failure after both attempts still fails the test. The actual synchronized-lyrics import, line seeking, and current-line assertion remain required, and the 120-second per-test limit is unchanged. A missing lyric now stops that scenario before attempting to tap an absent line. No importer, file filter, product UI, or app build number changes in this follow-up.
+
+The disappearance check uses Apple's public [waitForNonExistence(timeout:)](https://developer.apple.com/documentation/xcuiautomation/xcuielement/waitfornonexistence(timeout:)) API. Fresh remote validation and the final build 14 device comparison remain pending.
+
 ## Acceptance still required
 
 - Run build 14 remote checks, install the verified new artifact, and recheck the listed visual adjustments in the same appearance, device size, and scroll state.
