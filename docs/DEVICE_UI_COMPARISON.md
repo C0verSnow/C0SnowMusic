@@ -133,13 +133,36 @@ Fresh light-appearance Apple Music references and build 14 captures use the same
 - Search's category side edges and column gap now match the reference: x=26 and x=189, with the right edge at x=342. The first row still started at y=187 rather than Apple's y=177. The explicit 12-point top row inset added this remaining gap; build 15 removes it.
 - The full player shows the recovered cover and white native volume slider. Playback remains paused. The app was returned to Home, with the original account, selected track, and artwork retained.
 
-Build 15 changes only the search category row's top inset from 12 to 0 and the New Playlist background from grouped system background to ordinary system background, plus its build number. Semantic system colors preserve appearance adaptation. No search behavior, account data, playlist storage, importer, or UI test is changed. Source review, plist linting, and whitespace checks pass; build 15 remote compilation and installation remain pending.
+Build 15 changes only the search category row's top inset from 12 to 0 and the New Playlist background from grouped system background to ordinary system background, plus its build number. Semantic system colors preserve appearance adaptation. No search behavior, account data, playlist storage, importer, or UI test is changed. Source review, plist linting, and whitespace checks pass. Final build 15 remote and physical verification is recorded below.
 
 Native navigation-title and search-field leading edges still differ by about four window pixels from Apple's private layout. The reference service content and Apple-only destinations also differ. The PR remains draft; full pixel identity and final acceptance are not claimed.
 
+## Build 15 remote and physical verification
+
+Run [43994398915](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43994398915), commit `4a6ca9568cb6d580aaec4d6a83478259e23ff69e`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. [Static validation](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43994398748) also passed. The tag-only Release job was correctly skipped. Real LRC import and line seeking passed in 59.336 seconds; real audio document import passed in 93.057 seconds. The result bundle includes a non-fatal UIKit toolbar-hosting diagnostic; both complete test suites report zero failures. No product change is inferred from that diagnostic alone.
+
+Both original archives match GitHub's SHA-256 values:
+
+- IPA archive: `da6da71e17deac6f19eabb36501ac4cedef820673e7b911f1084fccaa3f93db2`.
+- Test-evidence archive: `c0bf5512576f929820283a587c82095698b6efbdc05a6473a37ebd12d8e609df`.
+- Extracted IPA: 25,154,591 bytes; SHA-256 `0e8483ec9d24e4b193f4ebc2790de24ff4e514dd6eb59384337c9f557450ed78`; c0vermusic 1.2.0/build 15; original bundle `org.c0versnow.C0SnowMusic`.
+
+The phone downloaded the uniquely named `build15.ipa`; the temporary download service was stopped after completion. The existing certificate was reused, the signing configuration and log both confirmed build 15, and the native installation prompt was accepted. No new credential or Mac unlock was required in this round.
+
+On the same physical iPhone in light appearance and the same 368 x 808 window:
+
+- Search's first tile row now begins at approximately y=176, compared with Apple's y=177; the former roughly 10-pixel extra gap is gone. Category columns retain the matched x=26 and x=189 edges.
+- New Playlist has a white sheet background, with artwork still beginning at y=162 and primary-color cancellation. Opening and cancelling the sheet works.
+- Account preserves the original avatar and profile, and its close button works. Search exposes scopes on focus; switching to Library and searching `Girls` returns the saved One of the Girls with its recovered cover. Search was dismissed afterward.
+- The original local songs, connected account, selected track, and recovered mini-player artwork remain. Playback is paused and the app was returned to Home.
+
+Private evidence remains outside the public repository in `C0SnowMusic-device/issue-13-comparison/build15` and `reference-light`. The two build 15 fixes are physically verified. Native title/search-field leading edges retain the previously recorded roughly four-pixel difference. Apple's Radio success state and subscription-only services remain unavailable or outside the agreed free-product scope. These limitations mean global 1:1 acceptance is still open; the PR has not been merged and Issue #13 remains open.
+
+Public API checks for the remaining navigation detail covered Apple's [toolbarTitleDisplayMode](https://developer.apple.com/documentation/swiftui/view/toolbartitledisplaymode(_:)), [directionalLayoutMargins](https://developer.apple.com/documentation/uikit/uiview/directionallayoutmargins), and [UISearchBar](https://developer.apple.com/documentation/uikit/uisearchbar). UIKit margin documentation describes layout cues rather than guaranteeing the exact layout of SwiftUI's managed navigation/search hierarchy. No private-view traversal or replacement navigation implementation was introduced merely from that inference.
+
 ## Acceptance still required
 
-- Validate build 15 remotely, install its verified artifact, and recheck Search top spacing and the New Playlist background in the same appearance, device size, and scroll state.
+- Resolve the remaining native title/search-field alignment target before declaring global 1:1 acceptance. Build 15 remote validation, installation, Search top spacing, and New Playlist background checks are complete.
 - Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
 - Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.
 - Merge and close the issue only after the requested device acceptance.
