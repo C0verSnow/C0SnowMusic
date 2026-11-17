@@ -35,14 +35,20 @@ def run(request, navigation_callback):
 
             assert ssl.OPENSSL_VERSION
             assert AppleWebKitJCP.JS_RUNTIME_NAME
-            with YoutubeDL({"quiet": True, "cachedir": False}) as downloader:
+            downloader = _download_session(request, directory)
+            provider = getattr(downloader, "_c0snow_verification_provider", None)
+            if provider is None:
                 provider = AppleWebKitJCP(downloader.get_info_extractor("Youtube"), DefaultLoggerImpl(), {})
-                try:
-                    assert provider._lib_script.code and provider._core_script.code
-                    output = provider._run_js_runtime('console.log(JSON.stringify({answer: 1 + 1}));')
-                    assert json.loads(output) == {"answer": 2}
-                finally:
-                    provider.close()
+                downloader._c0snow_verification_provider = provider
+                downloader.add_close_hook(provider.close)
+            try:
+                assert provider._lib_script.code and provider._core_script.code
+                for expected in (2, 3):
+                    output = provider._run_js_runtime(f'console.log(JSON.stringify({{answer: 1 + {expected - 1}}}));')
+                    assert json.loads(output) == {"answer": expected}
+            except Exception:
+                _close_session()
+                raise
             if request.get("fixture"):
                 source = Path(request["fixture"])
                 with YoutubeDL({"enable_file_urls": True, "quiet": True, "outtmpl": str(directory / "fixture.m4a")}) as downloader:

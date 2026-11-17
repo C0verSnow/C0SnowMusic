@@ -75,7 +75,7 @@ final class OnDeviceDownloader: AudioDownloading, @unchecked Sendable {
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     defer { try? FileManager.default.removeItem(at: directory) }
                     let fixture = Bundle.main.url(forResource: "Fixture", withExtension: "m4a", subdirectory: "Fixtures")
-                    let response = try self.execute(["directory": directory.path, "action": "verify", "fixture": fixture?.path ?? ""])
+                    let response = try self.execute(["directory": directory.path, "action": "verify", "fixture": fixture?.path ?? "", "extractor_cache": URL.cachesDirectory.appending(path: "YouTubeExtractor").path])
                     if let error = response.error { throw DownloadError(message: error) }
                     continuation.resume(returning: response.version ?? "")
                 } catch { continuation.resume(throwing: error) }
