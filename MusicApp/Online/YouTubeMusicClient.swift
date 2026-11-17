@@ -82,7 +82,7 @@ struct YouTubeMusicClient: Sendable {
     private func call(_ endpoint: String, body: [String: Any], continuation: String? = nil, cookies: [WebCookie]) async throws -> Data {
         var bootstrap = URLRequest(url: URL(string: "https://music.youtube.com/")!)
         headers(&bootstrap, cookies: cookies)
-        let (page, response) = try await session.data(for: bootstrap)
+        let (page, response) = try await diagnosticResponse(for: bootstrap, operation: "YouTube bootstrap")
         guard (response as? HTTPURLResponse)?.statusCode == 200, let html = String(data: page, encoding: .utf8) else { throw OnlineMusicError.invalidResponse }
         let config = try Self.configuration(html)
         guard var context = config["INNERTUBE_CONTEXT"] as? [String: Any] else { throw OnlineMusicError.searchLayoutChanged }
@@ -105,10 +105,23 @@ struct YouTubeMusicClient: Sendable {
             request.setValue(client["visitorData"] as? String, forHTTPHeaderField: "X-Goog-Visitor-Id")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let (data, result) = try await session.data(for: request)
+        let (data, result) = try await diagnosticResponse(for: request, operation: "YouTube \(endpoint)")
         guard (result as? HTTPURLResponse)?.statusCode == 200,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any], root["error"] == nil else { throw OnlineMusicError.invalidResponse }
         return data
+    }
+
+    private func diagnosticResponse(for request: URLRequest, operation: String) async throws -> (Data, URLResponse) {
+        let id = await AppDiagnostics.shared.begin(operation)
+        await AppDiagnostics.shared.step(id, "HTTP request", detail: "\(request.url?.host ?? "unknown"); \(Int(request.timeoutInterval)) s timeout")
+        do {
+            let (data, response) = try await session.data(for: request)
+            await AppDiagnostics.shared.finish(id, detail: "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) bytes")
+            return (data, response)
+        } catch {
+            await AppDiagnostics.shared.finish(id, error: error)
+            throw error
+        }
     }
 
     private func headers(_ request: inout URLRequest, cookies: [WebCookie]) {

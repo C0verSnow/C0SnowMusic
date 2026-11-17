@@ -62,6 +62,8 @@ jobs:
         run: |
           set -o pipefail
           npm test 2>&1 | tee test-results.log
+      - name: Verify downloader diagnostic file redaction (remote CI only)
+        run: python3 scripts/test_downloader_diagnostics.py
       - name: Upload API evidence and synthetic audio for deployed verification
         if: always()
         uses: actions/upload-artifact@v4

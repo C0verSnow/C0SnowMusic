@@ -51,4 +51,4 @@ python3 scripts/configure_tg_s3.py check
 
 回退新写入可把 `AUDIO_STORAGE_BACKEND` 改为 `telegram` 并重新部署已验证网关。保留 S3 binding、密钥和映射以读取已写入的新文件；不要直接回退到不认识 S3 映射的旧版网关，也不要删除数据库、对象或 Telegram 消息。
 
-提交时尚未部署、迁移或完成三首歌真机验收。远端运行、部署版本和真机结果另记 [验收记录](VERIFICATION.md)；PR #16 保持草稿，真机通过前不合并。
+`7b3e4af` 已通过远端验证并部署；3 份旧音频已迁移，完整字节、SHA-256、CDN 命中、实际 R2 缓存和 Range/HEAD 已核对。版本与脱敏证据见 [验收记录](VERIFICATION.md)。三首歌真机验收尚未完成，PR #16 保持草稿，真机通过前不合并。后续 build 18 增加 [应用内 Debug](APP_DEBUG.md)，用于定位手机准备音频停滞。

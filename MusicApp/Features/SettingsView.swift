@@ -11,6 +11,8 @@ struct SettingsView: View {
             Section("General") {
                 NavigationLink { OnlineCacheView() } label: { Label("Audio cache", systemImage: "externaldrive") }
                 NavigationLink { CloudLibrarySettingsView() } label: { Label("Music warehouse", systemImage: "cloud") }
+                NavigationLink { DiagnosticsView() } label: { Label("Debug", systemImage: "ladybug") }
+                    .accessibilityIdentifier("debugSettings")
             }
             Section("Import settings") {
                 Button("Import from Files", systemImage: "folder") { importing = true }

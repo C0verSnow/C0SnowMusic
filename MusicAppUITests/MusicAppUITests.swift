@@ -1,6 +1,25 @@
 import XCTest
 
 @MainActor final class MusicAppUITests: XCTestCase {
+    func testDebugConsoleIsAccessibleAndCopiesSessionLog() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["accountSettings"].firstMatch.tap()
+        app.buttons["musicSettings"].tap()
+        app.buttons["debugSettings"].tap()
+        XCTAssertTrue(app.navigationBars["Debug"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Current activity"].exists)
+        XCTAssertTrue(app.buttons["Check connections"].exists)
+        let copy = app.buttons["copyDiagnostics"]
+        if !copy.isHittable { app.swipeUp() }
+        XCTAssertTrue(copy.waitForExistence(timeout: 5))
+        copy.tap()
+        XCTAssertTrue(app.buttons["Copied"].waitForExistence(timeout: 5))
+        captureScreen("Debug console with real session diagnostics")
+    }
+
     func testEnglishProductInterfaceIgnoresPreviousChinesePreference() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "-appLanguage", "zh-Hans", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]

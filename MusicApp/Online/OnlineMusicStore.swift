@@ -29,6 +29,7 @@ import SwiftUI
     @ObservationIgnored private var cache: OnlineAudioCache?
     @ObservationIgnored private let downloader: any AudioDownloading
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
+    @ObservationIgnored private var preparationDiagnosticID: UUID?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
 
     init(cache: OnlineAudioCache? = nil, downloader: any AudioDownloading = OnDeviceDownloader.shared) {
@@ -72,17 +73,25 @@ import SwiftUI
 
     func prepare(_ track: OnlineTrack, play: Bool = false, saveTo library: LibraryStore? = nil, playback: PlaybackStore? = nil, cookies: [WebCookie] = [], cloud: CloudMusicStore? = nil) {
         guard track.isPlayable, downloadTask == nil else { return }
+        let diagnosticID = AppDiagnostics.shared.begin("Prepare \(track.title)")
+        preparationDiagnosticID = diagnosticID
         downloadingID = track.id; error = nil; backgroundError = nil
         downloadTask = Task {
-            defer { playback?.forgetMissingCachedAudio(); downloadingID = nil; downloadTask = nil }
+            var diagnosticError: Error?
+            defer {
+                AppDiagnostics.shared.finish(diagnosticID, error: diagnosticError)
+                preparationDiagnosticID = nil
+                playback?.forgetMissingCachedAudio(); downloadingID = nil; downloadTask = nil
+            }
             do {
                 guard let cache else { throw OnlineMusicError.runtimeUnavailable }
-                let resolved = try await AudioRepository(cache: cache, downloader: downloader).audio(for: track, cookies: cookies, cloud: cloud)
+                let resolved = try await AudioRepository(cache: cache, downloader: downloader).audio(for: track, cookies: cookies, cloud: cloud, diagnosticID: diagnosticID)
                 let url = resolved.url
                 backgroundError = resolved.warehouseError
                 try Task.checkCancellation()
                 await refresh()
                 if let library {
+                    AppDiagnostics.shared.step(diagnosticID, "Importing library copy")
                     let existing = Set(library.songs.map(\.id))
                     let imported = try await library.importOne(url)
                     if imported, let song = library.songs.first(where: { !existing.contains($0.id) }) {
@@ -100,6 +109,7 @@ import SwiftUI
                 }
                 try Task.checkCancellation()
                 if play, let playback {
+                    AppDiagnostics.shared.step(diagnosticID, "Starting local playback")
                     try await playback.playCachedAudio(track, url: url)
                     history.removeAll { $0.id == track.id }; history.insert(track, at: 0)
                     history = Array(history.prefix(30))
@@ -116,12 +126,15 @@ import SwiftUI
                         } catch { backgroundError = error.localizedDescription }
                     }
                 }
-            } catch is CancellationError { }
-            catch { self.error = error.localizedDescription }
+            } catch is CancellationError { diagnosticError = CancellationError() }
+            catch { diagnosticError = error; self.error = error.localizedDescription }
         }
     }
 
-    func cancelDownload() { downloadTask?.cancel() }
+    func cancelDownload() {
+        AppDiagnostics.shared.step(preparationDiagnosticID, "Cancellation requested; waiting for the current network operation")
+        downloadTask?.cancel()
+    }
 
     func resetSession() {
         searchTask?.cancel(); downloadTask?.cancel(); results = []; sections = []; home = []; liked = []; librarySongs = []; playlists = []; albums = []; artists = []; libraryError = nil; homeError = nil; history = []; continuation = nil; searching = false; error = nil; searchError = nil

@@ -52,12 +52,18 @@ import Synchronization
             defer { files.remove() }
             let cloud = await warehouse(host)
             defer { cloud.disconnect() }
-            let resolved = try await files.repository.audio(for: track, cookies: [], cloud: cloud)
+            let operation = "Repository recovery \(host)"
+            let diagnosticID = AppDiagnostics.shared.begin(operation)
+            defer { AppDiagnostics.shared.finish(diagnosticID) }
+            let resolved = try await files.repository.audio(for: track, cookies: [], cloud: cloud, diagnosticID: diagnosticID)
             let downloads = await files.downloader.calls
             let cached = await files.cache.url(for: track.id)
             XCTAssertEqual(downloads, 1, host)
             XCTAssertEqual(resolved.url, cached, host)
             XCTAssertEqual(try LibraryFiles.hash(resolved.url), try LibraryFiles.hash(files.fixture), host)
+            let messages = AppDiagnostics.shared.events.filter { $0.operation == operation }.map(\.message)
+            XCTAssertTrue(messages.contains("On-device extraction"), host)
+            XCTAssertTrue(messages.contains("Caching extracted audio"), host)
             if host == "empty" { XCTAssertNil(resolved.warehouseError) }
             else { XCTAssertNotNil(resolved.warehouseError, host) }
         }

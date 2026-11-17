@@ -5,15 +5,22 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sys
+import time
+from urllib.parse import urlsplit
 
 _configured = False
+_active_directory = None
 
 
 def run(request, navigation_callback):
+    global _active_directory
     directory = Path(request["directory"])
+    _active_directory = directory
     result = {}
     try:
+        _diagnostic(directory, "Python initialisation", "Configuring SSL and challenge provider")
         _configure(navigation_callback)
         if request.get("action") == "verify":
             import ssl
@@ -39,8 +46,11 @@ def run(request, navigation_callback):
                 assert (directory / "fixture.m4a").read_bytes() == source.read_bytes()
             result["version"] = __version__
         else:
+            _diagnostic(directory, "YouTube extraction", "Starting yt-dlp")
             result["duration"] = _download(request, directory)
+            _diagnostic(directory, "Audio downloaded", "Returning audio for container normalization")
     except Exception as error:
+        _diagnostic(directory, "Downloader error", str(error))
         result["error"] = str(error)
         if request.get("action") == "verify":
             import traceback
@@ -70,11 +80,21 @@ def _configure(navigation_callback):
     restrict = ctypes.CFUNCTYPE(None, ctypes.c_size_t)(navigation_callback)
 
     def webview(provider):
+        _diagnostic(_active_directory, "WebKit challenge", "Creating the JavaScript runtime")
         view = original(provider)
         restrict(view._wv)
         return view
 
     AppleWebKitJCP._get_webview_lazy = webview
+    original_runtime = AppleWebKitJCP._run_js_runtime
+
+    def runtime(provider, *args, **kwargs):
+        _diagnostic(_active_directory, "WebKit challenge", "Evaluating the YouTube JavaScript challenge")
+        result = original_runtime(provider, *args, **kwargs)
+        _diagnostic(_active_directory, "WebKit challenge finished", "JavaScript evaluation returned")
+        return result
+
+    AppleWebKitJCP._run_js_runtime = runtime
     _configured = True
 
 
@@ -83,11 +103,20 @@ def _download(request, directory):
     from yt_dlp import YoutubeDL
     from yt_dlp.utils import DownloadError
 
+    last_progress = 0
+
     def progress(status):
+        nonlocal last_progress
         if (directory / "cancel").exists():
             raise DownloadError("Download cancelled")
         if status.get("downloaded_bytes", 0) > 500_000_000:
             raise DownloadError("Audio exceeds 500 MB")
+        now = time.monotonic()
+        if now - last_progress >= 1 or status.get("status") == "finished":
+            downloaded = status.get("downloaded_bytes", 0)
+            total = status.get("total_bytes") or status.get("total_bytes_estimate")
+            _diagnostic(directory, "Downloading audio", f"{downloaded} bytes received" + (f" / {total} bytes" if total else ""))
+            last_progress = now
 
     options = {
         "format": "bestaudio[ext=m4a][vcodec=none]",
@@ -101,6 +130,7 @@ def _download(request, directory):
         "quiet": True,
         "noprogress": True,
         "progress_hooks": [progress],
+        "logger": _DiagnosticLogger(directory),
     }
     with YoutubeDL(options) as downloader:
         for record in json.loads(request.get("cookies", "[]")):
@@ -118,3 +148,27 @@ def _download(request, directory):
     if not (directory / "audio.m4a").is_file():
         raise DownloadError("No compatible M4A audio was downloaded")
     return info["duration"]
+
+
+def _diagnostic(directory, stage, message):
+    # Only diagnostics are redacted; this never modifies requests or account cookies.
+    message = re.sub(r"https?://[^\s<>\"']+", lambda match: "https://" + (urlsplit(match.group()).hostname or "redacted-url") + "/<redacted>", message)
+    message = re.sub(r"(?im)\b(authorization|cookie|set-cookie|x-api-key|x-admin-key)\s*[:=][^\r\n]*", "<redacted>", message)
+    message = re.sub(r"(?i)\bBearer\s+[^\s,;]+", "<redacted>", message)
+    with (directory / "diagnostics.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps({"stage": stage, "message": message[:800]}) + "\n")
+
+
+class _DiagnosticLogger:
+    def __init__(self, directory):
+        self.directory = directory
+
+    def debug(self, message):
+        if not message.startswith("[debug]"):
+            _diagnostic(self.directory, "YouTube extraction", message)
+
+    def warning(self, message):
+        _diagnostic(self.directory, "YouTube warning", message)
+
+    def error(self, message):
+        _diagnostic(self.directory, "YouTube error", message)

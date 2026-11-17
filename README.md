@@ -16,6 +16,8 @@ Issue #15 的对象职责、播放链路与恢复规则见 [面向对象架构�
 
 应用显示名为 c0versnow music。Issue #13 按提供的 Apple Music 截图整理原生界面，统一英文、搜索和资料库；YouTube 歌单、专辑、艺人直接进入对应分类，不再另设 Online Library。歌词页只保留右下角设置入口，旧缓存缺封面会独立恢复。行为、来源与验证范围见 [产品界面说明](docs/PRODUCT_UI.md)。
 
+音频准备卡住时，可从账户 → Music Settings → Debug 查看实时阶段、耗时、网络状态和脱敏日志，并检查连接、复制或分享诊断。功能和隐私范围见 [应用内 Debug](docs/APP_DEBUG.md)。
+
 ## 打开与运行
 
 1. 安装含 iOS 26 SDK 的 Xcode 26 或更新版本。

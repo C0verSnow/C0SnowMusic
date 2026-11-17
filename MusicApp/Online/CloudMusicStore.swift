@@ -79,6 +79,10 @@ struct CloudConnection: Codable, Sendable {
         connection = nil; endpoint = ""; connected = false; favorites = []; trending = []; error = nil
     }
 
+    func checkDiagnosticsConnection() async {
+        _ = try? await request("/api/tracks?limit=1", timeout: 15)
+    }
+
     func refresh() async {
         guard connected else { return }
         do {
@@ -157,23 +161,34 @@ struct CloudConnection: Codable, Sendable {
         } catch { self.error = error.localizedDescription }
     }
 
-    private func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", connection supplied: CloudConnection? = nil) async throws -> Data {
+    private func request(_ path: String, method: String = "GET", body: Data? = nil, contentType: String = "application/json", timeout: TimeInterval = 180, connection supplied: CloudConnection? = nil) async throws -> Data {
         guard let settings = supplied ?? connection else { throw CloudMusicError(message: "Connect a music warehouse first.") }
         let url = URL(string: path, relativeTo: settings.endpoint)!.absoluteURL
         var request = URLRequest(url: url)
-        request.httpMethod = method; request.httpBody = body; request.timeoutInterval = 180
+        request.httpMethod = method; request.httpBody = body; request.timeoutInterval = timeout
         request.setValue("Bearer \(settings.apiKey)", forHTTPHeaderField: "Authorization")
         request.setValue(contentType, forHTTPHeaderField: "Content-Type")
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw OnlineMusicError.invalidResponse }
-        guard (200..<300).contains(http.statusCode) else {
-            let failure = try? JSONDecoder().decode(CloudFailure.self, from: data)
-            var message = failure?.error ?? "Music warehouse HTTP \(http.statusCode)"
-            if let retry = http.value(forHTTPHeaderField: "Retry-After") { message += " (Retry-After: \(retry)s)" }
-            if let job = failure?.job_id { message += " [\(job)]" }
-            throw CloudMusicError(message: message)
+        let diagnosticID = AppDiagnostics.shared.begin("Warehouse \(method) \(url.path)")
+        AppDiagnostics.shared.step(diagnosticID, "HTTP request", detail: "\(url.host ?? "unknown"); \(Int(request.timeoutInterval)) s timeout")
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw OnlineMusicError.invalidResponse }
+            let storage = http.value(forHTTPHeaderField: "X-Music-Storage") ?? "legacy / metadata"
+            let cache = http.value(forHTTPHeaderField: "X-Cache") ?? "none"
+            AppDiagnostics.shared.step(diagnosticID, "HTTP response", detail: "\(http.statusCode), \(data.count) bytes, storage=\(storage), cache=\(cache)")
+            guard (200..<300).contains(http.statusCode) else {
+                let failure = try? JSONDecoder().decode(CloudFailure.self, from: data)
+                var message = failure?.error ?? "Music warehouse HTTP \(http.statusCode)"
+                if let retry = http.value(forHTTPHeaderField: "Retry-After") { message += " (Retry-After: \(retry)s)" }
+                if let job = failure?.job_id { message += " [\(job)]" }
+                throw CloudMusicError(message: message)
+            }
+            AppDiagnostics.shared.finish(diagnosticID, detail: "HTTP \(http.statusCode)")
+            return data
+        } catch {
+            AppDiagnostics.shared.finish(diagnosticID, error: error)
+            throw error
         }
-        return data
     }
 
     private static func metadata(_ track: OnlineTrack) -> [String: Any] {
