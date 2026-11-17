@@ -132,7 +132,10 @@ import XCTest
         app.buttons["lyricsSettings"].tap()
         app.buttons["Import LRC"].tap()
         selectDocument("Fixture", in: app)
-        XCTAssertTrue(app.buttons["First line, skip to 0:00"].waitForExistence(timeout: 10))
+        guard app.buttons["First line, skip to 0:00"].waitForExistence(timeout: 10) else {
+            XCTFail("The selected LRC file did not produce synchronized lyrics")
+            return
+        }
         let firstLine = app.buttons["lyric-line-0"]
         firstLine.tap()
         XCTAssertEqual(firstLine.value as? String, "Current lyric")
@@ -169,9 +172,13 @@ import XCTest
             XCTFail("The system document picker did not show \(name)")
             return
         }
-        file.tap()
         let open = app.buttons.matching(NSPredicate(format: "label IN %@", ["Open", "\u{6253}\u{5f00}"])).firstMatch
-        if open.waitForExistence(timeout: 3) { open.tap() }
+        for _ in 0..<2 {
+            file.tap()
+            if open.waitForExistence(timeout: 3) { open.tap() }
+            if picker.waitForNonExistence(timeout: 5) { return }
+        }
+        XCTFail("The system document picker did not finish selecting \(name)")
     }
 
     private func captureScreen(_ name: String) {
