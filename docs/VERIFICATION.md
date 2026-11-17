@@ -200,3 +200,12 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 ### 用户追加的品牌和图标修正（build 16，待真机验收）
 
 正确显示名为 c0versnow music，Library 使用系统 music.note.square.stack，缺封面和播放器等占位使用原有 AppLogo。现有 UI 测试同步使用正确名称；CI 截图将覆盖账户、搜索、Library 和无封面播放器。本地 plist 和差异检查通过，没有本地编译。用户最新指令：本次不直接合并 PR，等真机测试通过再合并；PR #16 保持草稿，Issue #15 保持打开，旧版验收不能替代 build 16。
+
+
+### build 16 远端结果与截图发现的问题
+
+提交 `44889eb7b3baf4d89e0eba3d9ea9c24df3c896ab` 的 [CI 44041199789](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44041199789) 已通过模拟器、iPhone Release、55 项单元/集成、6 项 UI、10 项 Worker；其中 8 项 AudioRepository 回归全部通过。[静态验证 44041199725](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44041199725) 通过，非标签发布正常跳过。没有待处理评论或审核。
+
+下载并核对测试证据与 IPA 归档，SHA-256 均与 GitHub 一致。证据为 `dbbe4a7752f1cac511882bb9e1c339ec998240828e49638f86cfa147dbe499a9`，IPA 归档为 `6d11b06ae7a9e3931464f90725fef8c8e81497d7ce3a4cd7e1eababe29e5aaf1`；解出的 IPA 为 25,165,929 字节，SHA-256 `2be9460f0c1a90c771d58dc5b9f96e0118ff282d7172f2b522e7b2feb2217902`。显示名 c0versnow music、1.2.0/build 16、原 Bundle ID、AppIcon 和 Assets.car 均已核对。
+
+Library 截图确认堆叠音符图标，首页、空 Mini Player 和无封面播放器确认原有 AppLogo。账户截图却显示标题被工具栏裁切，存在性断言无法发现这一问题。build 17 恢复标题固有宽度，增加账户标题的可见宽度回归，重新跑完整 CI；build 16 不作为最终真机验收包。LRC 测试附件另有系统 UIKitToolbar 层级诊断文字，但测试零失败；该诊断与旧版记录一致，本次不扩大范围处理。

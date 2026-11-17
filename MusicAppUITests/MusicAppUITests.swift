@@ -8,7 +8,9 @@ import XCTest
         XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
         XCTAssertTrue(app.tabBars.buttons["Home"].exists)
         app.buttons["accountSettings"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["c0versnow music Account"].waitForExistence(timeout: 5))
+        let accountTitle = app.staticTexts["c0versnow music Account"]
+        XCTAssertTrue(accountTitle.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(accountTitle.frame.width, 150, "The account title must remain readable in the toolbar")
         XCTAssertTrue(app.buttons["googleSignIn"].exists)
         captureScreen("Account title and grouped controls")
         app.buttons["musicSettings"].tap()
