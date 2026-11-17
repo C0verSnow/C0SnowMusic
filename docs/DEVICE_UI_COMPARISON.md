@@ -135,7 +135,7 @@ Fresh light-appearance Apple Music references and build 14 captures use the same
 
 Build 15 changes only the search category row's top inset from 12 to 0 and the New Playlist background from grouped system background to ordinary system background, plus its build number. Semantic system colors preserve appearance adaptation. No search behavior, account data, playlist storage, importer, or UI test is changed. Source review, plist linting, and whitespace checks pass. Final build 15 remote and physical verification is recorded below.
 
-Native navigation-title and search-field leading edges still differ by about four window pixels from Apple's private layout. The reference service content and Apple-only destinations also differ. The PR remains draft; full pixel identity and final acceptance are not claimed.
+Native navigation-title and search-field leading edges still differ by about four window pixels from Apple's private layout. The reference service content and Apple-only destinations also differ. At this comparison stage the PR remained draft; the later acceptance decision is recorded below.
 
 ## Build 15 remote and physical verification
 
@@ -156,15 +156,16 @@ On the same physical iPhone in light appearance and the same 368 x 808 window:
 - Account preserves the original avatar and profile, and its close button works. Search exposes scopes on focus; switching to Library and searching `Girls` returns the saved One of the Girls with its recovered cover. Search was dismissed afterward.
 - The original local songs, connected account, selected track, and recovered mini-player artwork remain. Playback is paused and the app was returned to Home.
 
-Private evidence remains outside the public repository in `C0SnowMusic-device/issue-13-comparison/build15` and `reference-light`. The two build 15 fixes are physically verified. Native title/search-field leading edges retain the previously recorded roughly four-pixel difference. Apple's Radio success state and subscription-only services remain unavailable or outside the agreed free-product scope. These limitations mean global 1:1 acceptance is still open; the PR has not been merged and Issue #13 remains open.
+Private evidence remains outside the public repository in `C0SnowMusic-device/issue-13-comparison/build15` and `reference-light`. The two build 15 fixes are physically verified. Native title/search-field leading edges retain the previously recorded roughly four-pixel difference. Apple's Radio success state and subscription-only services remain unavailable or outside the agreed free-product scope. At the end of this comparison, global pixel identity remained unclaimed and the PR stayed draft. The subsequent user decision below resolves the remaining native-navigation acceptance question.
 
 Public API checks for the remaining navigation detail covered Apple's [toolbarTitleDisplayMode](https://developer.apple.com/documentation/swiftui/view/toolbartitledisplaymode(_:)), [directionalLayoutMargins](https://developer.apple.com/documentation/uikit/uiview/directionallayoutmargins), and [UISearchBar](https://developer.apple.com/documentation/uikit/uisearchbar). UIKit margin documentation describes layout cues rather than guaranteeing the exact layout of SwiftUI's managed navigation/search hierarchy. No private-view traversal or replacement navigation implementation was introduced merely from that inference.
 
-## Acceptance still required
+## Accepted scope and closeout decision
 
-- Resolve the remaining native title/search-field alignment target before declaring global 1:1 acceptance. Build 15 remote validation, installation, Search top spacing, and New Playlist background checks are complete.
-- Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
-- Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.
-- Merge and close the issue only after the requested device acceptance.
+The user selected **保留原生导航并收尾** (retain native navigation and finish this round). The approximately four-window-pixel title/search-field leading-margin difference is accepted. The existing native navigation, search focus, scrolling, and back behavior remain; no custom navigation replacement is required for this round.
+
+The same-device build 15 comparison and the preceding category/playlist/player/artwork checks satisfy the agreed UI scope with that accepted difference. The free-provider content boundary and the unavailable Apple Radio success reference remain documented limitations, rather than new work for this closeout. This decision does not claim global pixel identity or completion of unrelated business, hardware, format, or accessibility work.
+
+The remaining closeout steps are the final documentation commit's existing remote checks, merging PR #14, confirming Issue #13 closes, and synchronizing local main. No further application code, build-number change, or device installation is needed for this documentation-only closeout.
 
 No local compilation, build, or test invocation has been performed.
