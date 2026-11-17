@@ -1,0 +1,7 @@
+{
+  "name": "c0versnowmusic-tg-s3-build",
+  "private": true,
+  "devDependencies": {
+    "wrangler": "4.160.1"
+  }
+}

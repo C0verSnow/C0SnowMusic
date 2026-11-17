@@ -31,21 +31,22 @@ jobs:
           path: build/tg-s3-source
           persist-credentials: false
       - name: Bundle the real upstream TG-S3 Worker (remote CI only)
-        working-directory: build/tg-s3-source
+        working-directory: storage/tg-s3
         run: |
           npm ci
           npx --no-install wrangler deploy "$GITHUB_WORKSPACE/build/tg-s3-source/src/index.ts" \
             --config "$GITHUB_WORKSPACE/storage/tg-s3/wrangler.toml" --dry-run --outdir "$GITHUB_WORKSPACE/build/tg-s3-package"
-          mv ../tg-s3-package/index.js ../tg-s3-package/worker.mjs
-          cp src/storage/schema.sql ../tg-s3-package/schema.sql
-          cp ../../storage/tg-s3/upstream.json ../tg-s3-package/upstream.json
-          cp README.md ../tg-s3-package/UPSTREAM_README.md
+          mv ../../build/tg-s3-package/index.js ../../build/tg-s3-package/worker.mjs
+          cp ../../build/tg-s3-source/src/storage/schema.sql ../../build/tg-s3-package/schema.sql
+          cp upstream.json ../../build/tg-s3-package/upstream.json
+          cp ../../build/tg-s3-source/README.md ../../build/tg-s3-package/UPSTREAM_README.md
+          cp package.json package-lock.json ../../build/tg-s3-package/
           npx --no-install wrangler deploy "$GITHUB_WORKSPACE/worker/index.js" \
             --config "$GITHUB_WORKSPACE/worker/wrangler.toml" --dry-run --outdir "$GITHUB_WORKSPACE/build/tg-s3-package/gateway"
           python3 - <<'PY'
           import hashlib, json
           from pathlib import Path
-          package = Path('../tg-s3-package')
+          package = Path('../../build/tg-s3-package')
           manifest = {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest() for p in package.rglob('*') if p.is_file()}
           (package / 'sha256.json').write_text(json.dumps(manifest, indent=2) + '\n')
           PY

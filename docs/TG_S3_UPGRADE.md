@@ -33,7 +33,9 @@ flowchart LR
 
 ## 验证与部署
 
-本地只做源码、语法、配置和差异检查，不运行构建或测试。既有 `build-player.yml` 的 music-api job 在远端拉取固定上游源码，用上游锁文件 `npm ci`，生成真实上游与音乐网关 bundle。集成测试把真实上游 bundle、真实音乐 API、SQLite 和 MP3 字节串起来，仅替换外部 Telegram HTTP 及 Cloudflare 缓存运行环境。覆盖 SigV4、私有桶、PUT/HEAD/GET、412、去重、CDN/R2、Range、回执丢失恢复、限流、旧文件迁移/回退、收藏保留和发送格式。
+本地只做源码、语法、配置和差异检查，不运行构建或测试。既有 `build-player.yml` 的 music-api job 在远端拉取固定上游源码，用 `storage/tg-s3/package-lock.json` 固定 Wrangler 4.160.1 并 `npm ci`，生成真实上游与音乐网关 bundle。集成测试把真实上游 bundle、真实音乐 API、SQLite 和 MP3 字节串起来，仅替换外部 Telegram HTTP 及 Cloudflare 缓存运行环境。覆盖 SigV4、私有桶、PUT/HEAD/GET、412、去重、CDN/R2、Range、回执丢失恢复、限流、旧文件迁移/回退、收藏保留和发送格式。
+
+上游固定提交的 package.json 要求 Wrangler 4，但其锁文件仍锁定 Wrangler 3，直接 npm ci 会失败；本仓库独立锁定远端打包工具，不修改固定上游源码。
 
 远端测试成功才上传 `tg-s3-worker` 产物，包含 bundle、schema、固定提交说明与逐文件 SHA-256。下载时先核对 GitHub 归档摘要，再解压到忽略的 `Vendor/tg-s3/`；脚本继续核对文件摘要和固定提交。
 
