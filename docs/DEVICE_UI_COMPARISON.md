@@ -1,6 +1,6 @@
 # Physical-device UI/UX comparison
 
-Scope: [Issue #13](https://github.com/C0verSnow/C0SnowMusic/issues/13), with the user's added requirement to compare Apple Music and c0vermusic on the same physical iPhone, revise differences, and complete acceptance before merging.
+Scope: [Issue #13](https://github.com/C0verSnow/c0versnowmusic/issues/13), with the user's added requirement to compare Apple Music and c0vermusic on the same physical iPhone, revise differences, and complete acceptance before merging.
 
 ## Product boundary
 
@@ -20,7 +20,7 @@ Observed source-app states:
 
 ## Initial c0vermusic installation
 
-The artifact from run [43892955452](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43892955452) was downloaded, checked against archive SHA-256 `77e4c7f85c4a9ae7ac9ff82fb54b0444ade6d24564b8326885dcf9e717f17e1d`, inspected as version 1.2.0/build 10, signed using the phone's existing certificate, and installed over the existing bundle `org.c0versnow.C0SnowMusic`. Existing songs and the account avatar remain visible. Playback was paused.
+The artifact from run [43892955452](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43892955452) was downloaded, checked against archive SHA-256 `77e4c7f85c4a9ae7ac9ff82fb54b0444ade6d24564b8326885dcf9e717f17e1d`, inspected as version 1.2.0/build 10, signed using the phone's existing certificate, and installed over the existing bundle `org.c0versnow.C0SnowMusic`. Existing songs and the account avatar remain visible. Playback was paused.
 
 The first installed version did **not** satisfy the shared-page 1:1 target:
 
@@ -45,7 +45,7 @@ A new local-library artwork regression exercises actual import, SwiftData persis
 
 ## Build 11 evidence and build 12 revision
 
-Run [43900939286](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43900939286) built both simulator and unsigned iPhone Release successfully. All 47 unit/integration tests passed, including the saved-song artwork recovery. Four of six UI tests passed. The two failures were the account title and Library category visibility; this was not a compilation failure.
+Run [43900939286](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43900939286) built both simulator and unsigned iPhone Release successfully. All 47 unit/integration tests passed, including the saved-song artwork recovery. Four of six UI tests passed. The two failures were the account title and Library category visibility; this was not a compilation failure.
 
 The exported accessibility hierarchy confirms that the account sheet had no visible title text: a toolbar `Label` adopted the icon-only presentation. The exported Library tap event targeted the row center at x=220 points, outside the short plain-button label's content. Build 12 explicitly lays out the account icon and title, removes their shared glass background, and gives category buttons a full-width rectangular hit area. The existing UI tests retain both failing assertions and now also check the category's Shown/Hidden value.
 
@@ -61,7 +61,7 @@ The remote UI suite now saves Home, account, inactive Search, focused Search, Li
 
 ## Build 12 results and build 13 follow-up
 
-Run [43907719088](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43907719088) compiled simulator and unsigned iPhone Release and passed all 47 unit/integration tests. Account text, Search scopes, Library category selection and playlist creation, and mini/full player UI tests passed. Both build 11 UI failures are resolved in this run.
+Run [43907719088](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43907719088) compiled simulator and unsigned iPhone Release and passed all 47 unit/integration tests. Account text, Search scopes, Library category selection and playlist creation, and mini/full player UI tests passed. Both build 11 UI failures are resolved in this run.
 
 The remaining failures are at the shared document-selection helper's initial file-existence assertion. In both cases the same query found the real file afterward, and the subsequent audio/LRC import assertions passed. The failure hierarchies show the presenting sheet before its remote file browser had finished appearing; the recorded files became actionable more than 20 seconds after the opening tap. Build 13 separately waits up to 30 seconds for the actual file-browser navigation bar, then uses the existing 15-second wait for the document cell (`Fixture.lrc, lrc` and `Test Tone, wav` in the recorded events). It narrows the broad `descendants(matching: .any)` query to actual cells and stops the helper after a missing-target failure. The real picker interaction, resulting import assertions, and overall per-test limits remain.
 
@@ -69,7 +69,7 @@ Two warnings in the touched UI code are addressed by passing immutable values in
 
 ## Build 13 verified artifacts
 
-Run [43911966701](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43911966701) passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI tests, and the API job for commit `7040ce1a5f6854863f07fabeafa85342631a6251`. The separate validate job was initially cancelled before receiving a runner; GitHub reported macOS arm64 capacity constraints. Its targeted rerun passed. The tag-only Release job was correctly skipped.
+Run [43911966701](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43911966701) passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI tests, and the API job for commit `7040ce1a5f6854863f07fabeafa85342631a6251`. The separate validate job was initially cancelled before receiving a runner; GitHub reported macOS arm64 capacity constraints. Its targeted rerun passed. The tag-only Release job was correctly skipped.
 
 Both original artifact archives were downloaded and compared with GitHub's SHA-256 values:
 
@@ -107,7 +107,7 @@ Build 14 contains only these visual corrections. Its final remote checks and phy
 
 ## Build 14 remote file-selection failure
 
-Run [43986526337](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43986526337) compiled simulator and iPhone Release, passed all 47 unit/integration tests, and passed five of six UI scenarios. The LRC scenario found and tapped `Fixture.lrc`, but the system browser remained open and synchronized lyrics never appeared. The separate real-audio document import passed.
+Run [43986526337](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43986526337) compiled simulator and iPhone Release, passed all 47 unit/integration tests, and passed five of six UI scenarios. The LRC scenario found and tapped `Fixture.lrc`, but the system browser remained open and synchronized lyrics never appeared. The separate real-audio document import passed.
 
 The original evidence archive matches SHA-256 `0322ca81199af08c698d5a3429220acbd28458bc4719985de4ce2da2663cfb27`. Its exported hierarchy shows the LRC cell enabled and the WAV cell correctly disabled for the lyrics filter. The recorded tap was `(77.33, 262)` points, inside the LRC icon; subsequent video frames still show the same file browser. This rules out a disabled LRC filter or a successful import whose lyrics merely failed to refresh. The precise system reason for the ignored first selection remains unproven.
 
@@ -117,7 +117,7 @@ The disappearance check uses Apple's public [waitForNonExistence(timeout:)](http
 
 ## Final build 14 remote verification
 
-Run [43990026426](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43990026426), commit `d4dfb2a31ac3779ff704a28c1616ff8005bae19b`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. Static validation also passed; the tag-only Release job was correctly skipped. The real LRC scenario passed in 53.894 seconds with one file selection, confirmed browser dismissal, imported synchronized lyrics, and line seeking. The second selection attempt was not needed in this run.
+Run [43990026426](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43990026426), commit `d4dfb2a31ac3779ff704a28c1616ff8005bae19b`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. Static validation also passed; the tag-only Release job was correctly skipped. The real LRC scenario passed in 53.894 seconds with one file selection, confirmed browser dismissal, imported synchronized lyrics, and line seeking. The second selection attempt was not needed in this run.
 
 The final downloaded IPA archive matches GitHub SHA-256 `4aa808addfc78160970a168d57c1bab9fce325dfc5ed119b4413158194344454`. The extracted IPA is 25,154,715 bytes, version 1.2.0/build 14, bundle `org.c0versnow.C0SnowMusic`, SHA-256 `52206a6123ccf4a138714da451c5e8774ae4f9cb1663ee72893c8cd639afdf4a`. It is prepared locally as `C0SnowMusic-device/issue-13-build14/build14.ipa` for an unambiguous phone download.
 
@@ -139,7 +139,7 @@ Native navigation-title and search-field leading edges still differ by about fou
 
 ## Build 15 remote and physical verification
 
-Run [43994398915](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43994398915), commit `4a6ca9568cb6d580aaec4d6a83478259e23ff69e`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. [Static validation](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43994398748) also passed. The tag-only Release job was correctly skipped. Real LRC import and line seeking passed in 59.336 seconds; real audio document import passed in 93.057 seconds. The result bundle includes a non-fatal UIKit toolbar-hosting diagnostic; both complete test suites report zero failures. No product change is inferred from that diagnostic alone.
+Run [43994398915](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43994398915), commit `4a6ca9568cb6d580aaec4d6a83478259e23ff69e`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. [Static validation](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43994398748) also passed. The tag-only Release job was correctly skipped. Real LRC import and line seeking passed in 59.336 seconds; real audio document import passed in 93.057 seconds. The result bundle includes a non-fatal UIKit toolbar-hosting diagnostic; both complete test suites report zero failures. No product change is inferred from that diagnostic alone.
 
 Both original archives match GitHub's SHA-256 values:
 

@@ -59,7 +59,7 @@ def main():
     print("Device credentials remain in " + str(args.env_file) + "; they were not printed.")
 
 
-def load_settings(path):
+def load_settings(path, keys=KEYS):
     values = {}
     if path.exists():
         if path.stat().st_mode & 0o077:
@@ -68,11 +68,11 @@ def load_settings(path):
             if line.strip() and not line.lstrip().startswith("#"):
                 key, value = line.split("=", 1)
                 values[key.strip()] = value.strip()
-    values.update({key: os.environ[key] for key in KEYS if key in os.environ})
-    missing = [key for key in KEYS if not values.get(key)]
+    values.update({key: os.environ[key] for key in keys if key in os.environ})
+    missing = [key for key in keys if not values.get(key)]
     if missing:
         raise RuntimeError("Missing configuration keys: " + ", ".join(missing))
-    return {key: values[key] for key in KEYS}
+    return {key: values[key] for key in keys}
 
 
 def bot(settings, method, payload=None):

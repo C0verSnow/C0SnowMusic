@@ -1,6 +1,6 @@
 # Issue #15：实际对象、职责和播放链路
 
-本次按 [Issue #15](https://github.com/C0verSnow/C0SnowMusic/issues/15) 核对代码。图中的 Service、Manager 是业务角色，不要求每个名字都新增一个类。以下记录实际实现、修复点与现有边界。
+本次按 [Issue #15](https://github.com/C0verSnow/c0versnowmusic/issues/15) 核对代码。图中的 Service、Manager 是业务角色，不要求每个名字都新增一个类。以下记录实际实现、修复点与现有边界。
 
 ## 对象核对
 
@@ -77,3 +77,7 @@ YouTube 音乐信息查询由 App 的 YouTubeMusicClient 承担。D1 按已知�
 继续采用现有职责划分：ytmusicapi 提供音乐信息接口的协议参考，依赖 HTTP；yt-dlp 提供音源提取，依赖现有手机 Python / EJS / WebKit 运行时。前者不能替代下载引擎，后者不能替代资料库或云端存储；网页会话和网站变动仍是已知限制。没有添加新依赖，没有复制上游实现。原有方案比较、版本和许可见 [在线调研](ONLINE_MUSIC_RESEARCH.md) 与 [仓库调研](TELEGRAM_MUSIC_RESEARCH.md)。
 
 回归覆盖见 `MusicAppTests/AudioRepositoryTests.swift`：本地命中、云端命中、无仓库、六类云端缺失或失败、Telegram-only 失败、取消、Telegram 播放不误补传、自动淘汰后保留永久副本。使用真实音频、缓存、SwiftData 和播放器，只替换外部 HTTP 与提取服务边界。编译与执行结果以 [测试记录](VERIFICATION.md) 和当前 PR 的远端 CI 为准；本地只做阅读、静态和差异检查。
+
+## TG-S3 存储升级
+
+音乐接口和本机 AudioRepository 保持原契约。Worker 通过 `TgS3Store` 及 SigV4 对接真实固定版本 gps949/tg-s3，新文件使用对象服务、独立 D1 与 R2 缓存；旧 Telegram 副本保留。对象映射、幂等任务、迁移、回退和远端验证见 [升级说明](TG_S3_UPGRADE.md)。上表与原播放链路中的 Telegram 角色现由该对象适配器及旧文件回退共同承担。

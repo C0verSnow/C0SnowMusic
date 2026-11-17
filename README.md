@@ -1,14 +1,16 @@
-# c0versnow music (C0SnowMusic)
+# c0versnow music
 
-[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/C0SnowMusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1)
+[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/c0versnowmusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/c0versnowmusic/releases/tag/v1.1.0-beta.1)
 
 IPA 未签名，须用自己的 Apple 证书签名安装。
 
 iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不自动上传本地音乐；可选 Google 登录、YouTube Music 搜索和 Telegram 音乐仓库。
 
-本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
+本分支按 [issue #7](https://github.com/C0verSnow/c0versnowmusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
 Issue #15 的对象职责、播放链路与恢复规则见 [面向对象架构核对](docs/OBJECT_ARCHITECTURE.md)。缓存优先；YouTube 曲目遇到云端缺失或故障时尝试手机重新获取，完成后后台补传。
+
+仓库地址现为 `C0verSnow/c0versnowmusic`，应用显示名为 `c0versnow music`。存储升级接入固定版本的 [gps949/tg-s3](https://github.com/gps949/tg-s3)，音乐 API、旧 Telegram 音频和手机缓存继续兼容；接入、部署和回退见 [TG-S3 升级说明](docs/TG_S3_UPGRADE.md)。Xcode 工程、Bundle ID 和已发布 IPA 文件名保留原标识，支持覆盖安装。
 
 ## 当前界面
 
@@ -20,7 +22,7 @@ Issue #15 的对象职责、播放链路与恢复规则见 [面向对象架构�
 2. 打开 `C0SnowMusic.xcodeproj`，选择共享 Scheme `C0SnowMusic`。
 3. 在 Signing & Capabilities 中选择自己的 Team；必要时把 Bundle Identifier 改成自己的唯一标识。
 4. 选择 iOS 26 iPhone 或模拟器，运行。
-5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
+5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 c0versnow music。
 
 在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 

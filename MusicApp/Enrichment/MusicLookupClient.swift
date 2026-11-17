@@ -113,7 +113,7 @@ enum MusicLookupError: LocalizedError {
 
 actor MusicLookupClient {
     static let shared = MusicLookupClient()
-    private static let userAgent = "C0SnowMusic/1.0.4 (https://github.com/C0verSnow/C0SnowMusic)"
+    private static let userAgent = "C0SnowMusic/1.0.4 (https://github.com/C0verSnow/c0versnowmusic)"
     private let session: URLSession
     private var retryDates: [String: Date] = [:]
     private var lastMusicBrainzRequest = Date.distantPast

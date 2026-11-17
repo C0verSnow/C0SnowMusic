@@ -1,6 +1,6 @@
 # YouTube Music、Telegram 音乐仓库与 D1
 
-对应 [Issue #11](https://github.com/C0verSnow/C0SnowMusic/issues/11)。保留现有 SwiftUI、资料库和播放器设计；接口参考及许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
+对应 [Issue #11](https://github.com/C0verSnow/c0versnowmusic/issues/11)。保留现有 SwiftUI、资料库和播放器设计；接口参考及许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
 
 ## 用户流程
 
@@ -25,7 +25,7 @@
 
 ## 部署与配置
 
-本服务使用专用 Bot、私有存储频道、新 D1 和独立 Worker，初期不使用 R2、Queues 或常驻服务器。不要复用或覆盖旁边 TGMusic 的 Worker/Webhook。
+以下是原音乐服务的首次配置流程。现有实例本次改用独立 TG-S3 Worker、D1 和 R2，按 [升级说明](TG_S3_UPGRADE.md) 部署和迁移；不要用旧部署步骤替代升级产物流程。原 Bot 和音乐 Webhook 保留，不覆盖旁边 TGMusic 的 Worker/Webhook。
 
 1. 复用现有 Wrangler 登录，运行 `wrangler d1 create c0snow-music --config worker/wrangler.toml`，将返回 UUID 填入该配置。已有数据库不得重复创建。
 2. 使用已登录 `tg` 与 BotFather 创建专用 Bot，用 `tg create-channel` 创建私有存储频道；把 Bot 加为可发音频的管理员。`tg` 的子命令对数字私有聊天支持不完全一致，先核对帮助；不能因为 `send` 支持 `id:` 就假设 `invite` 也支持。必要时在本人已登录的 Telegram 界面完成管理员配置。

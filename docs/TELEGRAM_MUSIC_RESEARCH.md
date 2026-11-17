@@ -1,6 +1,6 @@
 # Telegram 音乐仓库和 YouTube Music 功能调研
 
-核对日期：2026-11-16 UTC（美国东部仍为 11 月 15 日）；Unix Timestamp：1794797528。范围对应 [Issue #11](https://github.com/C0verSnow/C0SnowMusic/issues/11)。本次读取 GitHub 仓库、实际源码、许可证和 Issue 回复，以及 Telegram、Cloudflare 官方文档。没有本地编译、构建或运行测试，也没有执行 Telegram 账号操作。
+核对日期：2026-11-16 UTC（美国东部仍为 11 月 15 日）；Unix Timestamp：1794797528。范围对应 [Issue #11](https://github.com/C0verSnow/c0versnowmusic/issues/11)。本次读取 GitHub 仓库、实际源码、许可证和 Issue 回复，以及 Telegram、Cloudflare 官方文档。没有本地编译、构建或运行测试，也没有执行 Telegram 账号操作。
 
 ## 建议采用的路线
 

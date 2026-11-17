@@ -192,6 +192,10 @@
 
 - [1794904802] 遇到的问题：账户标题的可访问文字和测试都正常，实际截图却只显示一小截；通用解决步骤：必须读远端真实截图，核对工具栏给内容的宽度；保留已验证的固有尺寸约束，为重要标题补可见宽度检查，再看新截图，不能把 exists 当成视觉验收。
 
+## 问题48及解决模板：对象存储部署脚本可能覆盖已有 Webhook
+
+- [1794918928] 遇到的问题：上游 tg-s3 一键脚本会注册自己的 Bot Webhook，还包含带删除动作的定时任务；通用解决步骤：固定源码版本，在远端构建产物，独立配置 Worker 和 D1，仅复用指定 Bot 与频道，关闭公网入口和破坏性 cron，部署前后核对原 Webhook，旧音频复制核验后再登记新映射。
+
 ## 想做：
 - [1794906260] Issue #15 的代码与 build 17 自动验证已完成；后续按用户指令安装已校验的 build 17 做真机测试，未通过前不合并 PR #16，也不关闭 Issue。
 - [1794901506] Issue #15 的 PR #16 先完成代码与远端测试；用户最新要求本次不直接合并，必须等真机测试通过后再合并，Issue 保持打开。
@@ -199,6 +203,9 @@
 - [1794880706] 其他业务、Issue #7 的硬件、格式和辅助功能完整验收继续作为后续任务，不算本轮 UI 收尾范围。
 
 ## 做完：
+
+- [1794918621] 已把 GitHub 仓库从 C0verSnow/C0SnowMusic 改名为 C0verSnow/c0versnowmusic，并读取新仓库确认成功；本地 origin 与仓库内链接同步更新。应用显示名继续为 c0versnow music，保留原 Bundle ID、工程名和数据目录以覆盖升级。
+- [1794907619] 最后文档提交 75d213e 的完整 CI 44052264876 与静态验证 44052264864 也全部通过，PR #16 仍为草稿且未合并，Issue #15 仍打开，没有待处理评论；本地代码与远端一致，应用和测试与已核验的 f26cec6 完全相同。已更新 PR 结果，交还用户等待真机测试，不再推送仅为记状态的新提交；本条交接状态仅保留本地 tasklist.md。没有本地编译，本轮没有新增 GitHub 功能检索。
 - [1794906260] build 17 / f26cec6 的 CI 44048763713 和静态验证 44048763721 全通过：55 项单元/集成、6 项 UI、10 项 Worker 零失败，模拟器、iPhone Release、图标和 IPA 打包通过。已读新截图，账户完整显示 c0versnow music Account；Library 堆叠图标与无封面 AppLogo 正确。原始证据和 IPA 的 SHA-256 与 GitHub 一致，IPA 为 25,165,288 字节、1.2.0/build 17；脱敏证据已写入 docs/evidence/issue-15-ci-build17.json。本地没有编译，本轮没有新增 GitHub 功能检索。
 - [1794904802] build 16 的远端 CI 已全通过：55 项单元/集成、6 项 UI、10 项 Worker、模拟器、iPhone Release、IPA 和静态检查；8 项 AudioRepository 回归全部通过。已下载并校验原始证据和 IPA，读截图确认 Library 和 Logo 正确，但账户标题被裁切；已恢复固有宽度并补真实可见宽度检查，构建号升至 17，不把 build 16 当作最终真机验收包。没有本地编译，也没有新增 GitHub 功能检索。
 - [1794901506] 已创建并关联 PR #16，远端代码树与本地逐字相同。用户追加正确显示名 c0versnow music、Apple Library 图标和软件 Logo 占位；已核对 Issue #13 图片与同机历史截图，在 GitHub 找到 SFSafeSymbols 7 的 music.note.square.stack，直接使用系统图标并复用原有 AppLogo。显示名、账户、搜索、首页、设置和对应 UI 测试已同步，构建号升为 16；PR 已转草稿，未合并也未关闭 Issue。
@@ -267,7 +274,7 @@
 - [1794829265] 手机 Chrome 已下载最终 build 9，心动签选中的新归档显示版本号 9；沿用既有证书与原 Bundle ID，签名打包成功，系统已确认覆盖安装。临时 8765 IPA 下载服务已关闭，正在等待安装完成并复验。
 - [1794829059] 最终 build 9 IPA 已下载并静态核对：ZIP SHA-256 c8759fe4dd447503dce64914e60603efb102c05560b7fb9a471924a777acc5d2 与 GitHub 一致；IPA 25,016,019 字节，SHA-256 bfa2caa9b3b8fc01c23c0a11184e4c698901c2c54350401af3ba67b5c7b325ee，CRC、1.1.1/build 9、原 Bundle ID、AppIcon 和 Assets.car 通过。持久副本在 /Users/troy/Desktop/2/C0SnowMusic-device/C0SnowMusic-1.1.1-build9-933510d.ipa，CI 与 IPA 脱敏结果已写 docs/evidence。
 - [1794828990] 933510d 的 CI 43856527391 已全通过：41 项单元/集成、3 项 UI、10 项 Worker 零失败；新增 503 缓存播放回归 0.643 秒通过。模拟器、iPhone Release、图标和 IPA 均通过，release 发布按标签条件跳过；静态验证 43856527519 通过。正在下载最终 IPA 产物 14221785543，预期 ZIP SHA-256 为 c8759fe4dd447503dce64914e60603efb102c05560b7fb9a471924a777acc5d2。
-- [1794827975] 缓存播放修正已提交并推送为 933510d3bb171232a0401cd163977e4ebd90eeca（1.1.1/build 9）。项目静态检查 CI 43856527519 已通过；编译和测试 CI 43856527391 正在运行：https://github.com/C0verSnow/C0SnowMusic/actions/runs/43856527391 。PR #12 已更新当前范围与证据，仍为草稿；现有 review 和行内评论为空。
+- [1794827975] 缓存播放修正已提交并推送为 933510d3bb171232a0401cd163977e4ebd90eeca（1.1.1/build 9）。项目静态检查 CI 43856527519 已通过；编译和测试 CI 43856527391 正在运行：https://github.com/C0verSnow/c0versnowmusic/actions/runs/43856527391 。PR #12 已更新当前范围与证据，仍为草稿；现有 review 和行内评论为空。
 - [1794827975] iPhone Mirroring 已通过专用密码文件解锁，当前手机 App 可操作；没有把密码写入代码、文档或日志。真机最终验收等待 build 9 IPA。
 - [1794827855] 已恢复 Issue #11，核对原工作区三份未提交差异和远端 PR #12；分支仍为 feature/issue-11-youtube-telegram，PR 草稿、Issue 打开，未合并。
 - [1794827855] 暂停前提交 5a6dbb1db3277ab6db0ba29480e0b8b3a1c667c6 的 CI 43823218667 已全通过：40 项单元/集成、3 项 UI、10 项 Worker；模拟器、iPhone Release、图标和 IPA 均通过，发布 job 按条件跳过。这只证明 build 8 的清晰封面修正，不包含后来的缓存播放修正。
@@ -278,7 +285,7 @@
 ### 之前的完成记录与历史快照（其中状态以当时为准）：
 
 
-- [1794814249] 已按用户要求记录暂停点。本轮最新已推送提交为 5a6dbb1db3277ab6db0ba29480e0b8b3a1c667c6（1.1.1/build 8，仅含清晰封面修正及其回归）；PR https://github.com/C0verSnow/C0SnowMusic/pull/12 仍为草稿，Issue #11 未关闭，PR 未合并。
+- [1794814249] 已按用户要求记录暂停点。本轮最新已推送提交为 5a6dbb1db3277ab6db0ba29480e0b8b3a1c667c6（1.1.1/build 8，仅含清晰封面修正及其回归）；PR https://github.com/C0verSnow/c0versnowmusic/pull/12 仍为草稿，Issue #11 未关闭，PR 未合并。
 - [1794814249] 4c69d895d513d4e7403bde0778a82a2b5b86143d 的 CI 43819839808 已全通过：39 项单元/集成、3 项 UI、10 项 Worker，模拟器、iPhone Release、图标和 IPA 均通过；新增自动补齐、旧缓存空专辑、歧义版本与第三列专辑回归通过。本地没有编译。
 - [1794814249] 已下载并核对 build 7 IPA：25,013,551 字节，SHA-256 13a30a15f2e1d010f40336eb65f36a24f952f771f5ea770defdda68187bb7df3，归档 SHA-256 9ed569fae03253b26d293f3463c716b2cf31a36385c3e1a743f32ecb3efd15df；CRC、版本、原 Bundle ID 和图标通过。手机已覆盖安装，持久副本在 /Users/troy/Desktop/2/C0SnowMusic-device/C0SnowMusic-1.1.1-4c69d89.ipa。
 - [1794814249] build 7 真机已通过：旧缓存自动补 Starboy；清空仅本次缓存至 Zero KB 后重新从仓库取 Die For You，封面、同步歌词和 Starboy 专辑自动加载，未进入匹配页；歌词跟随滚动，4:20 自然结束回零暂停，点歌词可跳到 0:33。未按 Return 输入查询已自动得到分组搜索结果；进入在线资料库自动启动收藏同步。
@@ -313,13 +320,13 @@
 - [1794809716] 已核对产品提交 caa95d0 的 CI 43797997679：36 项单元/集成、3 项 UI 零失败；模拟器、iPhone Release、图标检查和 IPA 打包通过，Worker job 通过；发布 Release job 按条件跳过，不表示编译失败。
 - [1794809716] 已下载并核对最终产物：归档 SHA-256 为 2efe5f91dd246507e35345e9b806b295e9461cd5f6058ca44f9cf953d7f84c67，与 GitHub 和 CI 日志一致；IPA 为 24,994,905 字节，SHA-256 为 9a71d5f9f7aa17ec6a2867a6185666016503a0f943f2eca194cb47f92c59df2f，版本 1.1.0/build 6，Bundle ID org.c0versnow.C0SnowMusic，图标配置和 Assets.car 正常。文件在 /tmp/c0snow-issue11。
 
-- [1794799701] issue #11 的代码已提交并推送到 feature/issue-11-youtube-telegram；最新代码提交 caa95d0c4febdb3c252bf6c6ecd998c6656bb000。草稿 PR 已创建：https://github.com/C0verSnow/C0SnowMusic/pull/12 ，没有合并，Issue #11 尚未关闭。
+- [1794799701] issue #11 的代码已提交并推送到 feature/issue-11-youtube-telegram；最新代码提交 caa95d0c4febdb3c252bf6c6ecd998c6656bb000。草稿 PR 已创建：https://github.com/C0verSnow/c0versnowmusic/pull/12 ，没有合并，Issue #11 尚未关闭。
 - [1794799701] 已部署独立服务 https://c0snow-music-api.f1515xcn.workers.dev ，D1 为 c0snow-music，数据库 ID 为 1593bbab-fcea-417b-932d-9e523299ee00，两份迁移均已应用。部署版本为 4a5d0351-4cba-4970-8734-46b176d53770；服务已运行，暂停开发不会下线服务。
 - [1794799701] 已用 tg 创建专用 Bot @C0SnowMusic_Storage_bot 和私有频道 C0SnowMusic Audio Storage，频道 ID 为 -1004312111508；tg 邀请命令不支持私有数字地址，已使用用户授权的浏览器完成添加管理员，只保留发消息权限。Webhook 已注册并核对健康，浏览器会话已关闭。
 - [1794799701] 配置只在仓库根目录被忽略的 .env 和 Workers Secrets 中，.env 权限为 0600；没有把密钥写进源码、IPA 或记录。配置脚本为 scripts/configure_music_backend.py，恢复后可用 check 子命令核对服务，不要重复创建 Bot、频道或数据库。
 - [1794799701] 已通过真实部署的 14 项检查：无密钥拒绝访问、两条歌曲上传复用一份文件、完整下载哈希一致、普通 Range、后缀 Range、HEAD、错误 Range 返回 416、增加收藏、取消收藏后保留音频、向授权用户发送音频、Webhook 健康。使用远端 CI 生成的 24641 字节合成 MP3，未使用用户音乐；文件 SHA-256 为 916ae9bd40370fe6403f1763935d084d1f86cee42fa97275f8d280a6d00d16c0。
 - [1794799701] 线上验收保留了两条明确标为合成测试音的歌曲记录 yt_c0snowtest1、yt_c0snowtest2，以及一份 Telegram 音频；授权用户私聊也收到一份测试音。没有删除用户原有资源。脱敏结果在 /tmp/c0snow-live-results.json，远端合成文件和测试日志在 /tmp/c0snow-live-evidence，验收脚本在 /tmp/c0snow-verify-live.py；临时文件可能被系统清理，关键结果已记在本文件。
-- [1794799701] 最后一轮远端 CI 为 https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679 ，对应 caa95d0；Worker 的 10 项真实 SQLite、HTTP 和音频测试已通过。暂停前最后一次观察到 iOS 已通过模拟器编译，正在编译 iPhone Release；最终测试和 IPA 结果尚未核对，不能写成全部通过。
+- [1794799701] 最后一轮远端 CI 为 https://github.com/C0verSnow/c0versnowmusic/actions/runs/43797997679 ，对应 caa95d0；Worker 的 10 项真实 SQLite、HTTP 和音频测试已通过。暂停前最后一次观察到 iOS 已通过模拟器编译，正在编译 iPhone Release；最终测试和 IPA 结果尚未核对，不能写成全部通过。
 - [1794799701] 已检索 GitHub 并比较 MetroList、TeleMusic、ytmusicapi、YouTube.js，来源、许可证和接口限制记在 docs/TELEGRAM_MUSIC_RESEARCH.md；未复制 GPL 代码。本机始终没有编译、构建或执行会触发编译的测试，只做源码、静态语法、plist 和差异检查；线上检查请求的是已部署服务。
 
 - [1794799245] Worker 的 HTTP、真实 SQLite 和音频测试已在远端通过；修复真实响应样本的缩进，补全量点赞列表 VLLM、在线歌词和封面持久化以及英文文案。本地仍然只做静态检查。
@@ -332,8 +339,8 @@
 - [1794798589] 已用 Wrangler 创建独立 c0snow-music D1、应用两份迁移、部署 c0snow-music-api；已用 tg 创建专用 Bot 和私有频道。密钥仅存本地忽略的 0600 .env 与 Workers Secrets。
 - [1794798589] GitHub 已比较 MetroList、TeleMusic、ytmusicapi、YouTube.js 并记录来源/许可，未复制 GPL 代码；本地仅源码、JS/Python 静态语法、plist、JSON 和差异检查，没有本地编译。
 
-- [1794721630] issue #9 已实现、测试、更新文档并关闭；PR #10 已转为待审核，状态 open、draft=false、merged=false。GitHub 链接：https://github.com/C0verSnow/C0SnowMusic/pull/10 。
-- [1794721630] v1.1.0-beta.1 已正式发布为预发布版，标签指向已通过完整 CI 的 b8bf67887449c6f7bada48f17e147d174f19f6e4；Release 附带 24,696,065 字节的未签名 IPA，状态 uploaded，附件 SHA-256 与本地及 CI 产物一致：0a912f8d768cf007163a87c6603c9c0d7b9aa481bddffa2a42a40e1a48b03609。链接：https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1 。
+- [1794721630] issue #9 已实现、测试、更新文档并关闭；PR #10 已转为待审核，状态 open、draft=false、merged=false。GitHub 链接：https://github.com/C0verSnow/c0versnowmusic/pull/10 。
+- [1794721630] v1.1.0-beta.1 已正式发布为预发布版，标签指向已通过完整 CI 的 b8bf67887449c6f7bada48f17e147d174f19f6e4；Release 附带 24,696,065 字节的未签名 IPA，状态 uploaded，附件 SHA-256 与本地及 CI 产物一致：0a912f8d768cf007163a87c6603c9c0d7b9aa481bddffa2a42a40e1a48b03609。链接：https://github.com/C0verSnow/c0versnowmusic/releases/tag/v1.1.0-beta.1 。
 - [1794721630] 最终 CI 43680765143 的 28 项单元/集成、3 项 UI 全通过；最终 IPA 已通过 iPhone Mirror 覆盖安装，Google/YouTube 会话恢复、语言切换、连续下载、官方 One Of The Girls 的 4:04 时长、结束和跳转均通过。只清理了本次测试音频，原 Die For You 与封面保留；音乐已暂停，临时 8765 下载服务已关闭。
 - [1794721630] 已更新 README 的 IPA 下载入口、在线设计、开源比较和完整验收记录。本机始终只做阅读、静态与差异检查，没有本地编译；已在 GitHub 比较 NeriPlayer、Palladium、BeeWare、yt-dlp 等方案，未复制 GPL 代码。
 
@@ -373,12 +380,12 @@
 
 - [1794675965] 用户明确授权合并。已核对 PR #8 最新全部检查通过、无冲突，转出草稿并合入 main，合并提交为 6b0f2ad9064ca05373e922fb40c58f112ae30391；本地 main 已同步。其他格式和完整实机矩阵仍保留待办，issue #7 保持打开。本轮仅核对 GitHub 状态，没有新增功能检索，也没有本地编译。
 - [1794674736] 1.0.4 / build 5 / e24fbb5 已通过 Chrome 下载和心动签覆盖安装。选用联网匹配版本后，播放器、控制中心显示 Die For You / The Weeknd，艺人列表正确分组；强制退出重开后标准信息、封面和进度保留，启动暂停。
-- [1794674736] 1.0.4 的 CI https://github.com/C0verSnow/C0SnowMusic/actions/runs/43615814350 全通过：21 项单元/集成、2 项 UI、模拟器编译、iPhone Release、图标检查和 IPA；标准信息与分组持久化、后台系统封面及音频哈希不变回归通过。
+- [1794674736] 1.0.4 的 CI https://github.com/C0verSnow/c0versnowmusic/actions/runs/43615814350 全通过：21 项单元/集成、2 项 UI、模拟器编译、iPhone Release、图标检查和 IPA；标准信息与分组持久化、后台系统封面及音频哈希不变回归通过。
 - [1794674736] 在 1.0.3 把歌词设为延后 0.5 秒，再将本 App 无线数据设为 Off，从多任务强制退出后重开；歌曲、3:36 进度、封面、歌词和 0.5 秒都保留，启动暂停。已恢复 WLAN & Cellular Data 和 0 秒偏移。
 - [1794674736] 最新 IPA 在 /Users/troy/Desktop/2/C0SnowMusic-device/C0SnowMusic-e24fbb5.ipa，通用 C0SnowMusic-unsigned.ipa 已更新为同一份；临时服务已关闭，音乐暂停。
 - [1794673656] 用户确认耳机断开自动暂停、来电中断和挂断恢复两项实机检查均通过；手机没有其他格式音频，用户明确要求先保留格式验收待办。
 
-- [1794673553] 已从暂停恢复。原生 iOS 26 / Swift 6 / SwiftUI 应用在 feature/issue-7-native-ios；PR：https://github.com/C0verSnow/C0SnowMusic/pull/8 。已提供统一资料库、SwiftData、导入、AVPlayer、Mini Player、全屏、队列、播放列表、收藏、搜索、元数据编辑和系统媒体控制。
+- [1794673553] 已从暂停恢复。原生 iOS 26 / Swift 6 / SwiftUI 应用在 feature/issue-7-native-ios；PR：https://github.com/C0verSnow/c0versnowmusic/pull/8 。已提供统一资料库、SwiftData、导入、AVPlayer、Mini Player、全屏、队列、播放列表、收藏、搜索、元数据编辑和系统媒体控制。
 - [1794673553] 已在 GitHub 检索并比较指定 UI 项目、Petrichor、antongpopov/lyrics-downloader、LRCLIB 和活跃歌词插件；许可证与来源见 docs/THIRD_PARTY.md、docs/LYRICS_RESEARCH.md。本轮另检索 Swift 元数据实现，结合 Apple 官方 API 和实际日志修复，没有直接复制不明代码。
 - [1794673553] 用户确认 The Weeknd – Die For You.mp3 已导入并出声。先前镜像验证退到主屏幕后进度继续推进、控制中心暂停和恢复有效。
 - [1794673553] 指定图标源文件在 Design/AppIconSource.png，生成脚本已生成无透明 1024px AppIcon，实际像素与 Release 配置已检查；新图标在手机 Spotlight 显示。
@@ -387,7 +394,7 @@
 - [1794673553] CI 43609769276 发现 MP3 歌词和嵌套页面“完成”按钮两处失败。CI 43611483223 确认 UI 修复通过，并从真实 MP3 确认 TXXX 的 Description 为 USLT；已从 extraAttributes[.info] 补认该别名，删除临时诊断，真实导入回归通过。
 - [1794673553] 真机封面 400 已复现并修复：同一 CAA UUID 大写返回 400，小写返回 200、JPEG、89288 字节。请求改用小写，保留实际 URL 回归。1.0.2 / 55c0a10 的 CI 43612778897 全通过。
 - [1794673553] 1.0.2 下载封面后实机退出，用户确认不是手动返回；已在手机读取 11:05 的对应版本崩溃日志，栈定位到系统后台请求 MPMediaItemArtwork 时触发主线程隔离检查。1.0.3 显式使用 @Sendable 图片回调，没有关闭 Swift 6 并发检查；真实系统后台取图回归已通过。
-- [1794673553] 1.0.3 / build 4 / 5ab55d5 的 CI https://github.com/C0verSnow/C0SnowMusic/actions/runs/43614305475 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。覆盖真实目标格式、播放推进、Seek、持久化、文件选择器、LRC、版本匹配、空时长、Retry-After、音频哈希不变和后台系统封面读取。
+- [1794673553] 1.0.3 / build 4 / 5ab55d5 的 CI https://github.com/C0verSnow/c0versnowmusic/actions/runs/43614305475 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。覆盖真实目标格式、播放推进、Seek、持久化、文件选择器、LRC、版本匹配、空时长、Retry-After、音频哈希不变和后台系统封面读取。
 - [1794673553] 1.0.3 已通过手机 Chrome 下载、心动签内导入、沿用证书和 Bundle ID 签名覆盖安装。原音乐库、进度、歌词及下载封面保留，启动保持暂停；Mini Player、全屏封面和背景取色正常，未再退出。
 - [1794673553] 已关闭镜像，由用户实机播放并锁屏等待 30 秒；用户确认持续出声、锁屏封面、锁屏暂停和恢复全部正常。
 - [1794673553] 已更新 PR 的实现、失败原因、远端与真机证据；PR 仍为草稿，未合并，issue #7 未关闭。本地仅阅读代码、检查属性列表/资源/语法和差异，没有本地编译、构建、CMake 或会触发编译的测试。
@@ -442,7 +449,7 @@
 
 - [1794721630] 本次 issue #9 没有进行中的实现或验收任务；PR 等用户 review。
 
-- [1794841621] PR #14 已创建：https://github.com/C0verSnow/C0SnowMusic/pull/14 ；提交 b1d2453，已关联当前会话，等待本次远端编译和测试。
+- [1794841621] PR #14 已创建：https://github.com/C0verSnow/c0versnowmusic/pull/14 ；提交 b1d2453，已关联当前会话，等待本次远端编译和测试。
 
 ### 历史计划和执行记录（保留当时原文，不代表当前进度）
 
@@ -456,7 +463,7 @@
 - [1794830155] 本期没有进行中的开发、验收或部署任务；本记录随最终文档提交，PR 仅等待用户审核。
 
 ## 没做：
-- [1794901003] Issue #15 的三首指定歌曲真机测试按正文要求继续搁置。本地没有编译、构建或编译型测试；build 17 完整回归和截图核对已通过；最终真机验收尚未执行，当前不能合并。
+- [1794918928] 三首歌真机测试已开始，白色风车有声由用户确认；另外两首与 TG-S3 取回仍未完成，当前不能合并。TG-S3 新代码尚未经过远端 CI、部署或迁移，本地没有编译或运行测试。
 - [1794830155] 没有合并 PR #12 或 PR #10，等待用户审核。
 - [1794799701] 超过 20,000,000 字节的云端音频交付、Local Bot API 和真正远程边播边下未实现；App 先取完整音频到缓存后本地播放。
 - [1794717540] 不同 Google 账户、地区与全部视频的兼容性没有穷尽验证，第三方网络故障仍会影响未缓存下载和首次资料请求。
@@ -464,5 +471,8 @@
 - [1794880706] 没有追求全面像素一致；约 4 像素原生边距按用户选择保留。没有等同验收 Apple Radio 成功页面或订阅专属服务，免费产品边界保持原约定。PR #14 和 Issue #13 的收尾结果见最新做完记录。
 
 ## 在做：
-- [1794900555] Issue #15 已读完正文和补充说明，已同步远端并创建 feature/issue-15-architecture；已核对实际对象、依赖和本地缓存、云端查询、下载、后台上传链路，build 17 的账户标题修正和新一轮远端验证已完成，正在提交最终验收记录；随后交还用户等待真机测试。三首歌真机测试按 Issue 要求继续搁置；保留进入任务前已有的 PR #14 收尾记录。
+- [1794918928] 已完成真实 TG-S3 适配、独立对象映射迁移、旧音频复制接口、远端上游 bundle 和集成测试、无本地构建部署脚本。已创建专用 D1/R2，尚未部署。GitHub 已检索固定上游源码、鉴权、缓存、失败和大文件约束，调研见 docs/TG_S3_RESEARCH.md。准备推送远端 CI，保持 PR 草稿。
+- [1794917855] 用户在真机测试中明确要求升级并实际采用 gps949/tg-s3。build 17 已覆盖安装，原数据保留；白色风车已完成搜索、本机提取、4:31 时长、封面专辑、用户确认有声、暂停和跳转，并在旧仓库登记 4,410,306 字节 ready 音频。现先接入 tg-s3 底层对象存储，保留音乐接口和旧文件，再继续另外两首及新存储取回测试；三首未全部通过，不合并 PR。
+- [1794916695] 用户已明确开始真机测试；已确认手机镜像连通且解锁，校验 build 17 原始 IPA，准备沿用手机既有心动签证书覆盖安装，保留资料库和会话。随后检查正确品牌、Library 图标、Logo 占位与指定三首歌的播放和缓存链路；PR 暂不合并。
+- [1794900555] Issue #15 已读完正文和补充说明，已同步远端并创建 feature/issue-15-architecture；已核对实际对象、依赖和本地缓存、云端查询、下载、后台上传链路，build 17 的账户标题修正、完整远端验证和最终文档检查均已完成；当前没有进行中的开发或 CI 任务，等待用户指令做真机测试。三首歌真机测试按 Issue 要求继续搁置；保留进入任务前已有的 PR #14 收尾记录。
 - [1794880968] 本轮没有进行中的 UI 开发、验收或合并任务；已完成约定范围的收尾。

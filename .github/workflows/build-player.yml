@@ -20,12 +20,44 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Read pinned TG-S3 revision
+        id: tg-s3
+        run: |
+          node -p "'revision=' + require('./storage/tg-s3/upstream.json').revision" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: gps949/tg-s3
+          ref: ${{ steps.tg-s3.outputs.revision }}
+          path: build/tg-s3-source
+          persist-credentials: false
+      - name: Bundle the real upstream TG-S3 Worker (remote CI only)
+        working-directory: build/tg-s3-source
+        run: |
+          npm ci
+          npx --no-install wrangler deploy "$GITHUB_WORKSPACE/build/tg-s3-source/src/index.ts" \
+            --config "$GITHUB_WORKSPACE/storage/tg-s3/wrangler.toml" --dry-run --outdir "$GITHUB_WORKSPACE/build/tg-s3-package"
+          mv ../tg-s3-package/index.js ../tg-s3-package/worker.mjs
+          cp src/storage/schema.sql ../tg-s3-package/schema.sql
+          cp ../../storage/tg-s3/upstream.json ../tg-s3-package/upstream.json
+          cp README.md ../tg-s3-package/UPSTREAM_README.md
+          npx --no-install wrangler deploy "$GITHUB_WORKSPACE/worker/index.js" \
+            --config "$GITHUB_WORKSPACE/worker/wrangler.toml" --dry-run --outdir "$GITHUB_WORKSPACE/build/tg-s3-package/gateway"
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          package = Path('../tg-s3-package')
+          manifest = {str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest() for p in package.rglob('*') if p.is_file()}
+          (package / 'sha256.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          PY
       - name: Generate real audio fixtures (remote CI only)
         run: |
           if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
           python3 scripts/make_audio_fixtures.py
       - name: Test Worker HTTP API with real SQLite and audio bytes
         working-directory: worker
+        env:
+          TG_S3_WORKER_ENTRY: ../build/tg-s3-package/worker.mjs
+          TG_S3_SCHEMA: ../build/tg-s3-package/schema.sql
         run: |
           set -o pipefail
           npm test 2>&1 | tee test-results.log
@@ -38,6 +70,12 @@ jobs:
             worker/test-results.log
             MusicApp/Resources/Fixtures/Fixture.mp3
           if-no-files-found: warn
+      - name: Upload verified upstream bundle for no-build deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: tg-s3-worker
+          path: build/tg-s3-package/
+          if-no-files-found: error
   ios:
     runs-on: macos-15
     timeout-minutes: 45
@@ -164,5 +202,5 @@ jobs:
           release_flags=()
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then release_flags+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" "release/C0SnowMusic-unsigned.ipa" \
-            --verify-tag --title "C0SnowMusic $GITHUB_REF_NAME" \
+            --verify-tag --title "c0versnow music $GITHUB_REF_NAME" \
             --notes-file release/notes.md "${release_flags[@]}"

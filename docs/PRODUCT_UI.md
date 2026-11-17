@@ -1,6 +1,6 @@
 # c0versnow music product interface
 
-This change implements [Issue #13](https://github.com/C0verSnow/C0SnowMusic/issues/13), including its eight comments and seven Apple Music reference screenshots. The app's display name is **c0versnow music**; the Xcode target, bundle identifier, Keychain services, and on-disk library locations retain their existing identifiers so an update keeps the user's music and account.
+This change implements [Issue #13](https://github.com/C0verSnow/c0versnowmusic/issues/13), including its eight comments and seven Apple Music reference screenshots. The app's display name is **c0versnow music**; the Xcode target, bundle identifier, Keychain services, and on-disk library locations retain their existing identifiers so an update keeps the user's music and account.
 
 ## Navigation and behavior
 
@@ -55,7 +55,7 @@ Search tile spacing uses the existing native List/Grid with explicit row insets 
 
 The current display name is **c0versnow music**, including the Home brand, Account title/accessibility label, Search scope, settings, and import guidance. Build 17 keeps the existing bundle identifier, Keychain service names, and library paths so an update retains data. Historical build 13–15 records keep the names actually present in those builds.
 
-The Library tab uses the system **music.note.square.stack** symbol, with the native selected-state variant. It matches the stacked music icon in the user's [Issue #13 reference screenshots](https://github.com/C0verSnow/C0SnowMusic/issues/13#issuecomment-6919410981), also checked against the existing same-device Library captures. Missing local/online artwork, the idle Mini Player, empty music screens, Home branding, and decorative search tiles use the existing **AppLogo** asset through AppLogoView. Artist and action/category icons retain their own meaning.
+The Library tab uses the system **music.note.square.stack** symbol, with the native selected-state variant. It matches the stacked music icon in the user's [Issue #13 reference screenshots](https://github.com/C0verSnow/c0versnowmusic/issues/13#issuecomment-6919410981), also checked against the existing same-device Library captures. Missing local/online artwork, the idle Mini Player, empty music screens, Home branding, and decorative search tiles use the existing **AppLogo** asset through AppLogoView. Artist and action/category icons retain their own meaning.
 
 GitHub search found both symbol names and exported SVG/PNG references. The maintained MIT [SFSafeSymbols](https://github.com/SFSafeSymbols/SFSafeSymbols) catalogue confirms [music.note.square.stack and its fill variant in SF Symbols 7](https://github.com/SFSafeSymbols/SFSafeSymbols/blob/cb2e670a213ff42ae08528ee2c401bfb1d799675/Sources/SFSafeSymbols/Symbols/SFSymbol%2B7.0.swift). Query snapshot on 2026-11-17: 1,899 stars, pushed 2026-11-15. The local system image lookup also resolved both names without compilation. The app calls Apple's system symbol directly; no third-party icon package, screenshots, or exported Apple artwork are bundled. The existing generated AppLogo is reused without editing generated assets.
 
