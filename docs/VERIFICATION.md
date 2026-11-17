@@ -195,3 +195,8 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 新增 AudioRepositoryTests 的 8 项回归，覆盖真实缓存命中、Worker 音频交付、无仓库手机提取、六类云端失败恢复、Telegram-only 失败、取消、Telegram 缓存播放不误补传、自动淘汰后清理引用并保留永久副本。外部网络与提取器使用固定边界样本；音频验证、缓存、SwiftData、AVPlayer 使用真实实现。
 
 本地 git diff --check、plist 静态检查通过；没有本地编译、构建或编译型测试。远端结果等待当前 PR 的既有 build-player.yml 和 validate-workflows.yml，尚不能把新增测试写为通过。三首指定歌曲的真机测试按 Issue 要求搁置。已在 GitHub 检索 yt-dlp 与 ytmusicapi，维护、许可与取舍见 [架构核对](OBJECT_ARCHITECTURE.md)。
+
+
+### 用户追加的品牌和图标修正（build 16，待真机验收）
+
+正确显示名为 c0versnow music，Library 使用系统 music.note.square.stack，缺封面和播放器等占位使用原有 AppLogo。现有 UI 测试同步使用正确名称；CI 截图将覆盖账户、搜索、Library 和无封面播放器。本地 plist 和差异检查通过，没有本地编译。用户最新指令：本次不直接合并 PR，等真机测试通过再合并；PR #16 保持草稿，Issue #15 保持打开，旧版验收不能替代 build 16。

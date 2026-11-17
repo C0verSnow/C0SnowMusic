@@ -34,8 +34,7 @@ struct MiniPlayerView: View {
             .padding(.horizontal, 12).padding(.vertical, 4).tint(.primary)
         } else {
             HStack(spacing: 10) {
-                Image(systemName: "music.note").font(.title3).foregroundStyle(.secondary)
-                    .frame(width: 32, height: 32).background(.quaternary, in: .rect(cornerRadius: 6))
+                AppLogoView().frame(width: 32, height: 32).clipShape(.rect(cornerRadius: 6))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? "iPhone")
                         .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)

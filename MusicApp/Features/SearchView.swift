@@ -17,7 +17,7 @@ struct SearchView: View {
         VStack(spacing: 0) {
             if searchFocused || !text.isEmpty {
                 Picker("Search in", selection: $scope) {
-                    Text("c0vermusic").tag(0)
+                    Text("c0versnow music").tag(0)
                     Text("Library").tag(1)
                 }.pickerStyle(.segmented).padding(.horizontal, 20).padding(.bottom, 8)
             }

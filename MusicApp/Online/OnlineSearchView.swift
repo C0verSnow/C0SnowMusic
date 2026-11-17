@@ -39,8 +39,9 @@ struct OnlineSearchView: View {
                                 Button { query = category } label: {
                                     ZStack(alignment: .bottomLeading) {
                                         LinearGradient(colors: [Self.colors[index], Self.colors[index].opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        Image(systemName: "music.note").font(.system(size: 62)).rotationEffect(.degrees(-15))
-                                            .foregroundStyle(.white.opacity(0.15)).frame(maxWidth: .infinity, alignment: .trailing).padding(10)
+                                        AppLogoView().frame(width: 64, height: 64).clipShape(.rect(cornerRadius: 12))
+                                            .rotationEffect(.degrees(-15)).opacity(0.18)
+                                            .frame(maxWidth: .infinity, alignment: .trailing).padding(10)
                                         Text(category).font(.headline).foregroundStyle(.white).padding(14)
                                     }.frame(height: 94).clipShape(.rect(cornerRadius: 12))
                                 }.buttonStyle(.plain)
@@ -200,7 +201,8 @@ struct OnlineArtworkView: View {
                 else {
                     ZStack {
                         Color.secondary.opacity(0.12)
-                        Image(systemName: track.kind == .artist ? "person.fill" : "music.note").font(.title).foregroundStyle(.tertiary)
+                        if track.kind == .artist { Image(systemName: "person.fill").font(.title).foregroundStyle(.tertiary) }
+                        else { AppLogoView() }
                     }.onAppear { if case .failure = phase { useFallback = true } }
                 }
             }.frame(width: geometry.size.width, height: geometry.size.height).clipped()

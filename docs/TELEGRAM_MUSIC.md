@@ -4,7 +4,7 @@
 
 ## 用户流程
 
-- 搜索分为 c0vermusic 与 Library；已连接仓库的匹配结果合入 c0vermusic 搜索。YouTube Music 的综合/歌曲/视频/专辑/艺术家/歌单结果按服务返回分组，支持下一页与历史。艺人和专辑进入内容页，不当作音频下载。
+- 搜索分为 c0versnow music 与 Library；已连接仓库的匹配结果合入 c0versnow music 搜索。YouTube Music 的综合/歌曲/视频/专辑/艺术家/歌单结果按服务返回分组，支持下一页与历史。艺人和专辑进入内容页，不当作音频下载。
 - 首页读取 YouTube Music 实际首页分区；登录时使用当前账户 Cookie。再次聆听来自本设备真实播放记录，仓库社区热门来自 D1 真实播放次数；没有数据就不展示，不伪造推荐。
 - 顶栏只保留账户入口，使用已读取的真实头像。账户展示名字、handle、已验证/待验证状态，可刷新、重登或注销。原文件导入移到账户 → Music Settings → 从文件导入。
 - Music Settings → 音乐仓库输入 HTTPS 地址及设备密钥。密钥保存在本机 Keychain，不写入 IPA、UserDefaults 或公开文档。首次连接会请求真实 API；断开只清除本机连接，不删除云端资源。

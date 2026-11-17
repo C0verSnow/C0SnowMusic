@@ -169,3 +169,8 @@ The same-device build 15 comparison and the preceding category/playlist/player/a
 The remaining closeout steps are the final documentation commit's existing remote checks, merging PR #14, confirming Issue #13 closes, and synchronizing local main. No further application code, build-number change, or device installation is needed for this documentation-only closeout.
 
 No local compilation, build, or test invocation has been performed.
+
+
+## Current follow-up awaiting physical-device acceptance
+
+The user corrected the product name to **c0versnow music** and requested Apple's stacked Library icon plus the app logo in generic missing-artwork/player positions. These changes belong to build 16 and PR #16. This document's earlier c0vermusic names and build 13–15 acceptance records describe those historical builds; they do not certify build 16. The current PR must remain unmerged until fresh physical-device testing passes.

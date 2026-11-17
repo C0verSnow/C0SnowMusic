@@ -135,7 +135,10 @@ private struct HomeFeatureCard: View {
             if let track {
                 OnlineArtworkView(track: track).frame(width: 180, height: 180).shadow(radius: 20)
             } else {
-                Label("c0vermusic", systemImage: "music.note").font(.system(size: 32, weight: .bold))
+                VStack(spacing: 12) {
+                    AppLogoView().frame(width: 96, height: 96).clipShape(.rect(cornerRadius: 20))
+                    Text("c0versnow music").font(.system(size: 26, weight: .bold)).lineLimit(1).minimumScaleFactor(0.75)
+                }.padding(.horizontal)
             }
             Spacer()
             VStack(spacing: 4) {
