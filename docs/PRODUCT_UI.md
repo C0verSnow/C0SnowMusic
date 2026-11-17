@@ -53,7 +53,7 @@ Search tile spacing uses the existing native List/Grid with explicit row insets 
 
 ## Issue #15 follow-up: brand and icons
 
-The current display name is **c0versnow music**, including the Home brand, Account title/accessibility label, Search scope, settings, and import guidance. Build 16 keeps the existing bundle identifier, Keychain service names, and library paths so an update retains data. Historical build 13–15 records keep the names actually present in those builds.
+The current display name is **c0versnow music**, including the Home brand, Account title/accessibility label, Search scope, settings, and import guidance. Build 17 keeps the existing bundle identifier, Keychain service names, and library paths so an update retains data. Historical build 13–15 records keep the names actually present in those builds.
 
 The Library tab uses the system **music.note.square.stack** symbol, with the native selected-state variant. It matches the stacked music icon in the user's [Issue #13 reference screenshots](https://github.com/C0verSnow/C0SnowMusic/issues/13#issuecomment-6919410981), also checked against the existing same-device Library captures. Missing local/online artwork, the idle Mini Player, empty music screens, Home branding, and decorative search tiles use the existing **AppLogo** asset through AppLogoView. Artist and action/category icons retain their own meaning.
 
@@ -63,3 +63,6 @@ The earlier GitHub search for Apple Music replicas did not yield a suitable main
 
 
 Build 16 passed 55 unit/integration, six UI, and ten Worker tests, but reading the exported screenshots found that the Account toolbar compressed its title to a clipped fragment despite the accessibility text existing. Build 17 restores the title's intrinsic horizontal size and checks its visible width in the existing UI test. Library's stacked symbol and logo placeholders are confirmed in build 16 screenshots; the corrected Account layout still needs the new CI screenshots and subsequent physical-device acceptance.
+
+
+Build 17 / f26cec6 now passes the complete remote suite: 55 unit/integration, six UI, and ten Worker tests, plus simulator and iPhone Release compilation. The downloaded original screenshot confirms the complete c0versnow music Account title with space before the close button. Library's stacked music symbol and the full-player/idle-player AppLogo placeholders are also confirmed. The original IPA and evidence archives match GitHub SHA-256. See [the build 17 verification record](VERIFICATION.md#build-17完整-ci-与截图核对通过等待真机测试) and [machine-readable evidence](evidence/issue-15-ci-build17.json). This is simulator evidence; physical-device acceptance remains pending and the PR stays a draft.

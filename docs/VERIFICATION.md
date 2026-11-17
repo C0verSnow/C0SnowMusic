@@ -194,7 +194,7 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 
 新增 AudioRepositoryTests 的 8 项回归，覆盖真实缓存命中、Worker 音频交付、无仓库手机提取、六类云端失败恢复、Telegram-only 失败、取消、Telegram 缓存播放不误补传、自动淘汰后清理引用并保留永久副本。外部网络与提取器使用固定边界样本；音频验证、缓存、SwiftData、AVPlayer 使用真实实现。
 
-本地 git diff --check、plist 静态检查通过；没有本地编译、构建或编译型测试。远端结果等待当前 PR 的既有 build-player.yml 和 validate-workflows.yml，尚不能把新增测试写为通过。三首指定歌曲的真机测试按 Issue 要求搁置。已在 GitHub 检索 yt-dlp 与 ytmusicapi，维护、许可与取舍见 [架构核对](OBJECT_ARCHITECTURE.md)。
+本地 git diff --check、plist 静态检查通过；没有本地编译、构建或编译型测试。最新 build 17 的远端编译和回归已通过，详情见本节最后的验收记录。三首指定歌曲的真机测试按 Issue 要求搁置。已在 GitHub 检索 yt-dlp 与 ytmusicapi，维护、许可与取舍见 [架构核对](OBJECT_ARCHITECTURE.md)。
 
 
 ### 用户追加的品牌和图标修正（build 16，待真机验收）
@@ -209,3 +209,14 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 下载并核对测试证据与 IPA 归档，SHA-256 均与 GitHub 一致。证据为 `dbbe4a7752f1cac511882bb9e1c339ec998240828e49638f86cfa147dbe499a9`，IPA 归档为 `6d11b06ae7a9e3931464f90725fef8c8e81497d7ce3a4cd7e1eababe29e5aaf1`；解出的 IPA 为 25,165,929 字节，SHA-256 `2be9460f0c1a90c771d58dc5b9f96e0118ff282d7172f2b522e7b2feb2217902`。显示名 c0versnow music、1.2.0/build 16、原 Bundle ID、AppIcon 和 Assets.car 均已核对。
 
 Library 截图确认堆叠音符图标，首页、空 Mini Player 和无封面播放器确认原有 AppLogo。账户截图却显示标题被工具栏裁切，存在性断言无法发现这一问题。build 17 恢复标题固有宽度，增加账户标题的可见宽度回归，重新跑完整 CI；build 16 不作为最终真机验收包。LRC 测试附件另有系统 UIKitToolbar 层级诊断文字，但测试零失败；该诊断与旧版记录一致，本次不扩大范围处理。
+
+
+### build 17：完整 CI 与截图核对通过，等待真机测试
+
+最终代码提交 `f26cec62af1e96573a6be060d021c244c17ad2c8` 的 [CI 44048763713](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763713) 通过模拟器与 iPhone Release 编译、55 项单元/集成、6 项 UI、10 项 Worker，零失败；新增 8 项 AudioRepository 回归包含在 55 项中。[静态验证 44048763721](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763721) 通过，非标签发布正常跳过。
+
+已下载原始 [测试证据](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763713/artifacts/14313133827) 与 [未签名 IPA](https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763713/artifacts/14313141539)，核对 ZIP CRC 和 GitHub SHA-256。证据归档为 `fad4ca73ce7cb98d93e84c7d9495c95bf09481b7ce6eb175346bc252b4273bc7`，IPA 归档为 `e6e9e3e693a3bf296ac6e5f4abe034bf1bcdf23b50bdeed6fbd3fb95a19d6f6d`。解出的 IPA 为 25,165,288 字节，SHA-256 `a26ba3fdaa79664d0f7f677981e919869bc203b8250b1365e3d78c2b6340fbcf`；显示名 c0versnow music、1.2.0/build 17、原 Bundle ID、AppIcon 和 Assets.car 均正确。完整脱敏记录见 [build 17 证据](evidence/issue-15-ci-build17.json)。
+
+逐张读取远端截图：账户标题 c0versnow music Account 完整显示，与关闭按钮分开；Library 为堆叠音符图标；空 Mini Player 和无封面播放器使用软件 AppLogo。新增标题宽度回归通过。仅确认本次模拟器截图范围，没有把它写成真机通过。
+
+按用户最新指令，PR #16 保持草稿、未合并，Issue #15 保持打开。下一步是真机安装 build 17，核对显示名、账户/搜索/Library、无封面播放，并按用户后续指令执行指定三首歌曲的播放链路测试。当前 IPA 未签名，需沿用用户自己的签名方式。最后的验收文档提交不改应用或测试代码，不需要重新跑编译；其静态检查仍须通过。本机始终未编译，本轮未新增 GitHub 功能检索，沿用已记录的图标和下载方案来源。

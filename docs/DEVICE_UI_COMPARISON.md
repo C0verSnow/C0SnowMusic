@@ -173,4 +173,7 @@ No local compilation, build, or test invocation has been performed.
 
 ## Current follow-up awaiting physical-device acceptance
 
-The user corrected the product name to **c0versnow music** and requested Apple's stacked Library icon plus the app logo in generic missing-artwork/player positions. These changes belong to build 16 and PR #16. This document's earlier c0vermusic names and build 13–15 acceptance records describe those historical builds; they do not certify build 16. The current PR must remain unmerged until fresh physical-device testing passes.
+The user corrected the product name to **c0versnow music** and requested Apple's stacked Library icon plus the app logo in generic missing-artwork/player positions. These changes, including the final Account title correction, belong to build 17 and PR #16. This document's earlier c0vermusic names and build 13–15 acceptance records describe those historical builds; they do not certify build 17. The current PR must remain unmerged until fresh physical-device testing passes.
+
+
+Build 17 simulator screenshots and the complete CI suite are now verified. The corrected Account title is fully visible; Library uses the stacked music symbol and missing artwork uses the existing AppLogo. This only establishes the current simulator result. Fresh installation and comparison on the original physical iPhone remain pending; PR #16 is unmerged.
