@@ -186,7 +186,7 @@ struct OnlineCacheView: View {
                     }
                 }
             }
-        }.localizedNavigationTitle("Audio cache").task { await online.refresh() }
+        }.localizedNavigationTitle("Audio cache").task { await online.refresh(playback: playback) }
     }
 }
 

@@ -55,7 +55,7 @@ struct MusicRootView: View {
             Button("OK") { online.error = nil }
         } message: { Text("Check your connection and try again. Your saved music is still available.") }
         .task(id: "\(account.isSignedIn)-\(cloud.connected)") {
-            await online.refresh()
+            await online.refresh(playback: playback)
             guard !ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return }
             if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
             else if cloud.connected { await cloud.refresh() }

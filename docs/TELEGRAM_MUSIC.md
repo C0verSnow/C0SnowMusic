@@ -85,3 +85,7 @@ wrangler d1 export c0snow-music --remote --output /安全的备份目录/c0snow-
 本地只做源码、JS 语法、plist/JSON 和差异检查。已有 build-player.yml 增加 Worker 远端 job，使用真实 SQLite 执行正式迁移、真实合成 MP3 及 HTTP Telegram 边界服务，检查去重、哈希、Range、429、发送不明、人工核对、失效、大文件、完整收藏事务和用户隔离。原 iOS 模拟器集成/UI、设备 Release 和 IPA 仍走原流程；Release 依赖两个 job 都通过。
 
 真实网站接口、真机账户头像、YouTube 登录/收藏授权、用户实际音乐播放与大文件性能要单独记录，不把合成测试当作全部真机验收。
+
+## Issue #15：职责与失败恢复
+
+对象对应表和完整链路见 [架构核对](OBJECT_ARCHITECTURE.md)。AudioRepository 统一本地缓存、Worker 与手机提取；云端索引存在但文件不可用时，YouTube 曲目仍可尝试本机重新获取。云端错误保留在后台错误状态，取消不会触发重新下载。Telegram-only 曲目无法借 YouTube 重建文件，也不会再误走 YouTube 上传接口。自动缓存淘汰后同步清理失效播放引用，永久资料库副本独立保留。

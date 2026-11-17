@@ -189,3 +189,9 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 在 1.0.3 将歌词设为延后 0.5 秒。系统设置中只将 C0SnowMusic 的 Wireless Data 从 WLAN & Cellular Data 改为 Off，保留镜像连接；在多任务界面拖走应用卡片，确认退出后重新打开。歌曲、3:36 进度、封面、歌词和延后 0.5 秒全部保留，启动保持暂停。测完恢复 0 秒偏移和原来的 WLAN & Cellular Data。
 
 1.0.4 又完成一次强制退出重开，标准歌名、艺术家、封面和进度保留，启动暂停。临时局域网下载服务已关闭。
+
+## Issue #15：对象职责与播放链路回归
+
+新增 AudioRepositoryTests 的 8 项回归，覆盖真实缓存命中、Worker 音频交付、无仓库手机提取、六类云端失败恢复、Telegram-only 失败、取消、Telegram 缓存播放不误补传、自动淘汰后清理引用并保留永久副本。外部网络与提取器使用固定边界样本；音频验证、缓存、SwiftData、AVPlayer 使用真实实现。
+
+本地 git diff --check、plist 静态检查通过；没有本地编译、构建或编译型测试。远端结果等待当前 PR 的既有 build-player.yml 和 validate-workflows.yml，尚不能把新增测试写为通过。三首指定歌曲的真机测试按 Issue 要求搁置。已在 GitHub 检索 yt-dlp 与 ytmusicapi，维护、许可与取舍见 [架构核对](OBJECT_ARCHITECTURE.md)。

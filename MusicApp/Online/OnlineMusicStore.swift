@@ -27,18 +27,21 @@ import SwiftUI
     var searchError: String?
     var backgroundError: String?
     @ObservationIgnored private var cache: OnlineAudioCache?
+    @ObservationIgnored private let downloader: any AudioDownloading
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
     @ObservationIgnored private var searchTask: Task<Void, Never>?
 
-    init(cache: OnlineAudioCache? = nil) {
+    init(cache: OnlineAudioCache? = nil, downloader: any AudioDownloading = OnDeviceDownloader.shared) {
+        self.downloader = downloader
         do { self.cache = try cache ?? OnlineAudioCache() }
         catch { self.error = error.localizedDescription }
     }
 
     var cacheBytes: Int64 { cached.reduce(0) { $0 + $1.byteCount } }
 
-    func refresh() async {
+    func refresh(playback: PlaybackStore? = nil) async {
         cached = await cache?.all() ?? []
+        playback?.forgetMissingCachedAudio()
     }
 
     func search(_ query: String, cookies: [WebCookie] = [], more: Bool = false) {
@@ -69,30 +72,15 @@ import SwiftUI
 
     func prepare(_ track: OnlineTrack, play: Bool = false, saveTo library: LibraryStore? = nil, playback: PlaybackStore? = nil, cookies: [WebCookie] = [], cloud: CloudMusicStore? = nil) {
         guard track.isPlayable, downloadTask == nil else { return }
-        downloadingID = track.id; error = nil
+        downloadingID = track.id; error = nil; backgroundError = nil
         downloadTask = Task {
-            defer { downloadingID = nil; downloadTask = nil }
+            defer { playback?.forgetMissingCachedAudio(); downloadingID = nil; downloadTask = nil }
             do {
                 guard let cache else { throw OnlineMusicError.runtimeUnavailable }
-                let url: URL
-                let cachedURL = await cache.url(for: track.id)
-                if let cachedURL {
-                    url = cachedURL
-                } else {
-                    let directory = URL.cachesDirectory.appending(path: "OnlineStaging/\(UUID())")
-                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-                    defer { try? FileManager.default.removeItem(at: directory) }
-                    var stored: URL?
-                    if let cloud, cloud.connected { stored = try await cloud.download(track, directory: directory) }
-                    let downloaded: URL
-                    if let stored { downloaded = stored }
-                    else {
-                        guard track.kind != .telegram else { throw OnlineMusicError.invalidAudio }
-                        downloaded = try await OnDeviceDownloader.shared.download(track, directory: directory, cookies: cookies)
-                    }
-                    try Task.checkCancellation()
-                    url = try await cache.insert(downloaded, track: track)
-                }
+                let resolved = try await AudioRepository(cache: cache, downloader: downloader).audio(for: track, cookies: cookies, cloud: cloud)
+                let url = resolved.url
+                backgroundError = resolved.warehouseError
+                try Task.checkCancellation()
                 await refresh()
                 if let library {
                     let existing = Set(library.songs.map(\.id))
@@ -110,6 +98,7 @@ import SwiftUI
                         }
                     }
                 }
+                try Task.checkCancellation()
                 if play, let playback {
                     try await playback.playCachedAudio(track, url: url)
                     history.removeAll { $0.id == track.id }; history.insert(track, at: 0)
@@ -120,7 +109,7 @@ import SwiftUI
                     // A slow or unavailable warehouse must not block cached playback.
                     Task {
                         do {
-                            if try await cloud.existing(track)?.files.contains(where: \.available) != true {
+                            if track.kind != .telegram, try await cloud.existing(track)?.files.contains(where: \.available) != true {
                                 try await cloud.upload(track, file: url)
                             }
                             if play { await cloud.recordPlay(track) }

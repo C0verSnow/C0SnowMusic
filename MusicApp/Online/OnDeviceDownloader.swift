@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import WebKit
 
-final class OnDeviceDownloader: @unchecked Sendable {
+final class OnDeviceDownloader: AudioDownloading, @unchecked Sendable {
     static let shared = OnDeviceDownloader()
     // Python owns process-wide state. Every C API call stays on this serial queue.
     private let queue = DispatchQueue(label: "org.c0versnow.youtube-python", qos: .userInitiated)

@@ -8,6 +8,8 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
 
+Issue #15 的对象职责、播放链路与恢复规则见 [面向对象架构核对](docs/OBJECT_ARCHITECTURE.md)。缓存优先；YouTube 曲目遇到云端缺失或故障时尝试手机重新获取，完成后后台补传。
+
 ## 当前界面
 
 Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图整理原生界面，统一英文、搜索和资料库；YouTube 歌单、专辑、艺人直接进入对应分类，不再另设 Online Library。歌词页只保留右下角设置入口，旧缓存缺封面会独立恢复。行为、来源与验证范围见 [产品界面说明](docs/PRODUCT_UI.md)。
