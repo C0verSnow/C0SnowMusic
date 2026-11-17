@@ -47,7 +47,7 @@ import Synchronization
     }
 
     func testMissingFailedAndOversizedWarehouseAudioFallsBackToExtractor() async throws {
-        for host in ["empty", "offline-fallback", "missing", "pending", "oversized", "deleted-content"] {
+        for host in ["empty", "offline-fallback", "lookup-timeout", "missing", "pending", "oversized", "deleted-content"] {
             let files = try AudioFixtures()
             defer { files.remove() }
             let cloud = await warehouse(host)
@@ -211,6 +211,11 @@ private final class WarehouseAudioProtocol: URLProtocol, @unchecked Sendable {
         let url = request.url!
         Self.requests.withLock { $0.append(url) }
         let host = url.host!.components(separatedBy: ".")[0]
+        if host == "lookup-timeout", url.query?.contains("source_id=") == true {
+            XCTAssertEqual(request.timeoutInterval, 5)
+            client?.urlProtocol(self, didFailWithError: URLError(.timedOut))
+            return
+        }
         var status = 200
         var data = Data(#"{"items":[],"trending":[]}"#.utf8)
         if url.query?.contains("source_id=") == true || url.path == "/api/tracks/tg_123_9" {

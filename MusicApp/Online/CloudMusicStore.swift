@@ -99,9 +99,9 @@ struct CloudConnection: Codable, Sendable {
         } catch { self.error = error.localizedDescription }
     }
 
-    func existing(_ track: OnlineTrack) async throws -> CloudTrack? {
-        if track.kind == .telegram { return try JSONDecoder().decode(CloudTrack.self, from: await request("/api/tracks/\(track.id)")) }
-        let list = try JSONDecoder().decode(TrackList.self, from: await request("/api/tracks?source_id=\(track.id)"))
+    func existing(_ track: OnlineTrack, timeout: TimeInterval = 180) async throws -> CloudTrack? {
+        if track.kind == .telegram { return try JSONDecoder().decode(CloudTrack.self, from: await request("/api/tracks/\(track.id)", timeout: timeout)) }
+        let list = try JSONDecoder().decode(TrackList.self, from: await request("/api/tracks?source_id=\(track.id)", timeout: timeout))
         return list.items.first
     }
 
@@ -112,7 +112,8 @@ struct CloudConnection: Codable, Sendable {
     }
 
     func download(_ track: OnlineTrack, directory: URL) async throws -> URL? {
-        guard let saved = try await existing(track) else { return nil }
+        // A stalled metadata lookup must not hold YouTube recovery for 180 seconds.
+        guard let saved = try await existing(track, timeout: track.kind == .telegram ? 180 : 5) else { return nil }
         guard let audio = saved.files.first(where: \.available) else {
             if !saved.files.isEmpty { throw CloudMusicError(message: "Warehouse audio is not available. Check file status or size limits.") }
             return nil

@@ -27,7 +27,7 @@ final class OnDeviceDownloader: AudioDownloading, @unchecked Sendable {
                         do {
                             try self.initialize()
                             let cookieData = try JSONEncoder().encode(cookies)
-                            let parameters = ["video_id": track.id, "directory": directory.path, "cookies": String(decoding: cookieData, as: UTF8.self)]
+                            let parameters = ["video_id": track.id, "directory": directory.path, "cookies": String(decoding: cookieData, as: UTF8.self), "extractor_cache": URL.cachesDirectory.appending(path: "YouTubeExtractor").path]
                             let response = try self.execute(parameters)
                             if FileManager.default.fileExists(atPath: cancel.path) { throw CancellationError() }
                             if let error = response.error { throw DownloadError(message: error) }

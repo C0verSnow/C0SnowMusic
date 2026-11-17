@@ -12,6 +12,10 @@ from urllib.parse import urlsplit
 
 _configured = False
 _active_directory = None
+_session = None
+_session_cookies = None
+_session_cache = None
+_last_progress = 0
 
 
 def run(request, navigation_callback):
@@ -99,26 +103,39 @@ def _configure(navigation_callback):
 
 
 def _download(request, directory):
-    from http.cookiejar import Cookie
-    from yt_dlp import YoutubeDL
     from yt_dlp.utils import DownloadError
 
-    last_progress = 0
+    global _active_directory, _last_progress
+    _active_directory = directory
+    _last_progress = 0
+    if (directory / "cancel").exists():
+        raise DownloadError("Download cancelled")
+    downloader = _download_session(request, directory)
+    downloader.params["outtmpl"]["default"] = str(directory / "audio.%(ext)s")
+    try:
+        info = downloader.extract_info("https://m.youtube.com/watch?v=" + request["video_id"], download=True)
+        if not (directory / "audio.m4a").is_file():
+            raise DownloadError("No compatible M4A audio was downloaded")
+        return info["duration"]
+    except Exception:
+        _close_session()
+        raise
 
-    def progress(status):
-        nonlocal last_progress
-        if (directory / "cancel").exists():
-            raise DownloadError("Download cancelled")
-        if status.get("downloaded_bytes", 0) > 500_000_000:
-            raise DownloadError("Audio exceeds 500 MB")
-        now = time.monotonic()
-        if now - last_progress >= 1 or status.get("status") == "finished":
-            downloaded = status.get("downloaded_bytes", 0)
-            total = status.get("total_bytes") or status.get("total_bytes_estimate")
-            _diagnostic(directory, "Downloading audio", f"{downloaded} bytes received" + (f" / {total} bytes" if total else ""))
-            last_progress = now
 
-    options = {
+def _download_session(request, directory):
+    global _session, _session_cookies, _session_cache
+    from http.cookiejar import Cookie
+    from yt_dlp import YoutubeDL
+
+    records = json.loads(request.get("cookies", "[]"))
+    cache = request["extractor_cache"]
+    if _session is not None and records == _session_cookies and cache == _session_cache:
+        _diagnostic(directory, "Extractor session", "Reusing player JavaScript and challenge runtime")
+        return _session
+    _close_session()
+    # yt-dlp keeps player source in the extractor instance, not its disk cache.
+    # Reference: yt-dlp/yt-dlp 2026.10.26, YoutubeIE._load_player.
+    downloader = YoutubeDL({
         "format": "bestaudio[ext=m4a][vcodec=none]",
         "outtmpl": str(directory / "audio.%(ext)s"),
         "noplaylist": True,
@@ -126,14 +143,14 @@ def _download(request, directory):
         "socket_timeout": 20,
         "retries": 2,
         "fragment_retries": 2,
-        "cachedir": False,
+        "cachedir": cache,
         "quiet": True,
         "noprogress": True,
-        "progress_hooks": [progress],
-        "logger": _DiagnosticLogger(directory),
-    }
-    with YoutubeDL(options) as downloader:
-        for record in json.loads(request.get("cookies", "[]")):
+        "progress_hooks": [_download_progress],
+        "logger": _DiagnosticLogger(),
+    })
+    try:
+        for record in records:
             expires = record.get("expires")
             downloader.cookiejar.set_cookie(Cookie(
                 version=0, name=record["name"], value=record["value"],
@@ -144,10 +161,36 @@ def _download(request, directory):
                 discard=expires is None, comment=None, comment_url=None,
                 rest={"HttpOnly": None} if record["httpOnly"] else {},
             ))
-        info = downloader.extract_info("https://m.youtube.com/watch?v=" + request["video_id"], download=True)
-    if not (directory / "audio.m4a").is_file():
-        raise DownloadError("No compatible M4A audio was downloaded")
-    return info["duration"]
+    except Exception:
+        downloader.close()
+        raise
+    _session, _session_cookies, _session_cache = downloader, records, cache
+    _diagnostic(directory, "Extractor session", "Created session with persistent extractor cache")
+    return downloader
+
+
+def _close_session():
+    global _session, _session_cookies, _session_cache
+    previous = _session
+    _session = _session_cookies = _session_cache = None
+    if previous is not None:
+        previous.close()
+
+
+def _download_progress(status):
+    global _last_progress
+    from yt_dlp.utils import DownloadError
+
+    if (_active_directory / "cancel").exists():
+        raise DownloadError("Download cancelled")
+    if status.get("downloaded_bytes", 0) > 500_000_000:
+        raise DownloadError("Audio exceeds 500 MB")
+    now = time.monotonic()
+    if now - _last_progress >= 1 or status.get("status") == "finished":
+        downloaded = status.get("downloaded_bytes", 0)
+        total = status.get("total_bytes") or status.get("total_bytes_estimate")
+        _diagnostic(_active_directory, "Downloading audio", f"{downloaded} bytes received" + (f" / {total} bytes" if total else ""))
+        _last_progress = now
 
 
 def _diagnostic(directory, stage, message):
@@ -160,8 +203,12 @@ def _diagnostic(directory, stage, message):
 
 
 class _DiagnosticLogger:
-    def __init__(self, directory):
-        self.directory = directory
+    def __init__(self, directory=None):
+        self._directory = directory
+
+    @property
+    def directory(self):
+        return self._directory or _active_directory
 
     def debug(self, message):
         if not message.startswith("[debug]"):

@@ -1,0 +1,31 @@
+{
+  "timestamp": 1794927316,
+  "commit": "9b189dfbffaea96aeb46110a1947d649e420bf8f",
+  "build_run": 44100444847,
+  "validation_run": 44100444557,
+  "unit_integration_tests": 59,
+  "ui_tests": 7,
+  "worker_tests": 17,
+  "python_logger_redaction_tests": 1,
+  "all_passed": true,
+  "ipa_artifact": {
+    "id": 14336172605,
+    "archive_sha256": "53a9b142d8d94adc50e5a1922d763b48d55e72b641849030705bb3f794706125",
+    "ipa": {
+      "CFBundleVersion": "18",
+      "CFBundleShortVersionString": "1.2.0",
+      "CFBundleIdentifier": "org.c0versnow.C0SnowMusic",
+      "CFBundleDisplayName": "c0versnow music",
+      "bytes": 25219072,
+      "sha256": "5e23580800c80dae9d1924e3b732e5e5badcce7534cd586191bdf0ea50c0aff5"
+    }
+  },
+  "evidence_artifact": {
+    "id": 14336623367,
+    "archive_sha256": "2fdb78a3cd981c489bdea3835fb3866dcfd0597a317d3035658bb3ef6c5a0d8a"
+  },
+  "archive_crc_verified": true,
+  "device_build_confirmed_from_copied_diagnostic_header": 18,
+  "local_build_performed": false,
+  "temporary_ipa_server_stopped": true
+}

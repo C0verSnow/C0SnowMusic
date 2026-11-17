@@ -1,4 +1,5 @@
 import XCTest
+import Synchronization
 @testable import C0SnowMusic
 
 final class YouTubeMusicTests: XCTestCase {
@@ -95,6 +96,65 @@ final class YouTubeMusicTests: XCTestCase {
         XCTAssertEqual(items.map(\.kind), [.playlist, .playlist])
     }
 
+    func testBootstrapIsReusedAcrossReadsAndReplacedAfterAccountChange() async throws {
+        let fixture = musicSession()
+        defer { fixture.session.invalidateAndCancel() }
+        _ = try await fixture.client.search("First", cookies: [])
+        _ = try await fixture.client.browse("VLLM", cookies: [])
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/" }.count, 1)
+        let cookie = WebCookie(try XCTUnwrap(HTTPCookie(properties: [.name: "SAPISID", .value: "new-account", .domain: ".youtube.com", .path: "/", .secure: "TRUE"])))
+        _ = try await fixture.client.search("Second", cookies: [cookie])
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/" }.count, 2)
+        _ = try await fixture.client.search("Signed out", cookies: [])
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/" }.count, 3)
+    }
+
+    func testExpiredBootstrapIsReloaded() async throws {
+        let fixture = musicSession(bootstrap: YouTubeMusicBootstrap(lifetime: 0))
+        defer { fixture.session.invalidateAndCancel() }
+        _ = try await fixture.client.search("First", cookies: [])
+        _ = try await fixture.client.search("Second", cookies: [])
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/" }.count, 2)
+    }
+
+    func testRejectedReadRefreshesBootstrapOnceAndLikeIsNeverRetried() async throws {
+        let fixture = musicSession()
+        defer { fixture.session.invalidateAndCancel() }
+        _ = try await fixture.client.search("reject-first", cookies: [])
+        let paths = BootstrapProtocol.paths(host: fixture.host)
+        XCTAssertEqual(paths.filter { $0 == "/" }.count, 2)
+        XCTAssertEqual(paths.filter { $0 == "/youtubei/v1/search" }.count, 2)
+        do {
+            try await fixture.client.setLiked(true, id: "abcdefghijk", cookies: [])
+            XCTFail("Rejected likes must propagate the original failure")
+        } catch { }
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/youtubei/v1/like/like" }.count, 1)
+    }
+
+    func testFailedBootstrapCanBeRetriedAndConcurrentReadsShareOneLoad() async throws {
+        let fixture = musicSession()
+        defer { fixture.session.invalidateAndCancel() }
+        BootstrapProtocol.failNextBootstrap(host: fixture.host)
+        do {
+            _ = try await fixture.client.search("Failure", cookies: [])
+            XCTFail("Failed bootstrap must not be cached")
+        } catch { }
+        async let first = fixture.client.search("First", cookies: [])
+        async let second = fixture.client.browse("VLLM", cookies: [])
+        _ = try await (first, second)
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/" }.count, 2)
+    }
+
+    private func musicSession(bootstrap: YouTubeMusicBootstrap = YouTubeMusicBootstrap()) -> (client: YouTubeMusicClient, session: URLSession, host: String) {
+        let host = UUID().uuidString
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [BootstrapProtocol.self]
+        configuration.httpAdditionalHeaders = ["X-Test-Session": host]
+        configuration.httpShouldSetCookies = false
+        let session = URLSession(configuration: configuration)
+        return (YouTubeMusicClient(session: session, bootstrap: bootstrap), session, host)
+    }
+
     func testOldAudioCacheMetadataStillDecodes() throws {
         let original = Data(#"{"id":"abcdefghijk","title":"Existing song","artist":"Existing artist"}"#.utf8)
         let track = try JSONDecoder().decode(OnlineTrack.self, from: original)
@@ -112,6 +172,47 @@ final class YouTubeMusicTests: XCTestCase {
         let hostCookie = WebCookie(try XCTUnwrap(HTTPCookie(properties: [.name: "SID", .value: "test", .domain: "m.youtube.com", .path: "/"])))
         XCTAssertFalse(hostCookie.matches(URL(string: "https://music.youtube.com/")!))
     }
+}
+
+private final class BootstrapProtocol: URLProtocol, @unchecked Sendable {
+    private struct State {
+        var paths: [String: [String]] = [:]
+        var failedBootstraps: Set<String> = []
+    }
+    private static let state = Mutex(State())
+    static func paths(host: String) -> [String] { state.withLock { $0.paths[host] ?? [] } }
+    static func failNextBootstrap(host: String) { state.withLock { _ = $0.failedBootstraps.insert(host) } }
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let url = request.url!
+        let host = request.value(forHTTPHeaderField: "X-Test-Session")!
+        let result = Self.state.withLock { state -> (Int, String) in
+            state.paths[host, default: []].append(url.path)
+            if url.path == "/" {
+                if state.failedBootstraps.remove(host) != nil { return (503, "Unavailable") }
+                return (200, #"<script>ytcfg.set({"INNERTUBE_CONTEXT":{"client":{"clientVersion":"test"}}});</script>"#)
+            }
+            let body = request.httpBody ?? request.httpBodyStream.map { stream -> Data in
+                stream.open(); defer { stream.close() }
+                var data = Data(); var bytes = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let count = stream.read(&bytes, maxLength: bytes.count)
+                    if count <= 0 { break }
+                    data.append(contentsOf: bytes.prefix(count))
+                }
+                return data
+            } ?? Data()
+            if url.path.contains("like/like") || (String(decoding: body, as: UTF8.self).contains("reject-first") && state.paths[host]!.filter { $0 == url.path }.count == 1) {
+                return (403, #"{"error":{"code":403}}"#)
+            }
+            return (200, #"{"contents":{"musicShelfRenderer":{"contents":[]}}}"#)
+        }
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: result.0, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(result.1.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() { }
 }
 
 private final class LibraryCollectionProtocol: URLProtocol, @unchecked Sendable {

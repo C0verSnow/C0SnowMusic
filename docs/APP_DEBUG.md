@@ -19,3 +19,12 @@ Swift 会话日志只保存在内存。Python 使用当前下载暂存目录内�
 实现复用现有 URLSession、yt-dlp 与固定的 [yt-dlp-apple-webkit-jsi v0.1.1](https://github.com/grqz/yt-dlp-apple-webkit-jsi/blob/v0.1.1/yt_dlp_plugins/extractor/ytjsc.py)。本轮在 GitHub 核对 `_get_webview_lazy` 与 `_run_js_runtime` 的实际接口，仅在 App 自有适配层加入阶段记录；未修改下载请求、会话材料、上游插件或签名处理算法，没有新增依赖。
 
 远端验证沿用现有 CI：新增 4 项日志/脱敏/进度文件测试，已有 AudioRepository 回退回归增加真实链路阶段断言；新增 Debug 入口与复制 UI 用例；Python 的实际 logger 落盘脱敏由远端执行。原有运行时连续调用、真实音频与 UI 测试继续运行。本地只做代码、语法、plist、YAML 和差异静态检查，没有本地编译或测试执行。build 18 的 CI、安装和真机复现结果见 [验收记录](VERIFICATION.md)。
+
+
+## 首播优化的观察口径（build 19）
+
+build 18 后续已完成四首歌曲的有声确认，旧 Preparing 的历史等待状态见 [验收记录](VERIFICATION.md)。本轮搁置新的真机测试。build 19 的 Python 日志新增 Extractor session 阶段，区分新建会话与复用播放器 JS、挑战运行时；没有出现第二次 Downloading player 才能证明相同播放器版本确实命中内存缓存。提取器磁盘缓存不是完整播放器 JS 的磁盘缓存，也不缓存签名媒体 URL。
+
+比较时分别记录本机缓存、云端命中、云端缺失后首次提取，以及同一账户另一首歌的提取；从 Prepare 开始，分别读取云端查询、Python、规范化与 Starting local playback 的时间。Prepare 完成表示已经交给播放器，不能等同扬声器已经出声；真机验收应另外记录首次有声和进度开始推进的时刻。记录构建号、冷启动或已复用、网络环境和多次样本，不把合成音 CI 或单次快结果写成所有歌曲 1–2 秒保证。
+
+YouTube Music 首页上下文复用时不会出现新的 YouTube bootstrap HTTP 事件；5 分钟到期、账户 Cookie 变化、读接口配置被拒绝后会重新加载。音频仓库元数据查询显示 5 秒超时配置；URLSession 的该配置针对无数据等待，不是整条下载的总时限。完整音频请求仍保留原超时。

@@ -64,6 +64,11 @@ jobs:
           npm test 2>&1 | tee test-results.log
       - name: Verify downloader diagnostic file redaction (remote CI only)
         run: python3 scripts/test_downloader_diagnostics.py
+      - name: Verify real yt-dlp session and player cache reuse (remote CI only)
+        run: |
+          head -n 1 scripts/online-requirements.txt > build/yt-dlp-test-requirements.txt
+          python3 -m pip install --require-hashes --only-binary=:all: --no-deps -r build/yt-dlp-test-requirements.txt
+          python3 scripts/test_downloader_latency.py
       - name: Upload API evidence and synthetic audio for deployed verification
         if: always()
         uses: actions/upload-artifact@v4

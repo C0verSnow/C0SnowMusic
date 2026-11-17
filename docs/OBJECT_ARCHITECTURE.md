@@ -81,3 +81,10 @@ YouTube 音乐信息查询由 App 的 YouTubeMusicClient 承担。D1 按已知�
 ## TG-S3 存储升级
 
 音乐接口和本机 AudioRepository 保持原契约。Worker 通过 `TgS3Store` 及 SigV4 对接真实固定版本 gps949/tg-s3，新文件使用对象服务、独立 D1 与 R2 缓存；旧 Telegram 副本保留。对象映射、幂等任务、迁移、回退和远端验证见 [升级说明](TG_S3_UPGRADE.md)。上表与原播放链路中的 Telegram 角色现由该对象适配器及旧文件回退共同承担。
+
+
+## 后续验收与首播优化更新
+
+上面的“三首真机搁置”记录属于最初实现阶段。build 18 已完成指定三首及追加龙卷风的用户有声确认，并用原已在云端、手机未缓存的合成音覆盖 TG-S3 取回；本轮沿用已有证据，详情见 [验收记录](VERIFICATION.md)。用户现要求继续首播优化，同时再次搁置真机测试；PR #16 继续保持草稿。
+
+build 19 的对象职责保持不变。OnDeviceDownloader 的串行 Python 队列拥有可复用的 yt-dlp 会话；会话只跨相同 Cookie 快照复用，播放器 JS 缓存由上游管理，文件、日志和进度随每次暂存目录切换。YouTubeMusicBootstrap actor 持有短期内存上下文并合并同会话的并发加载；账户变化和上下文过期重新获取，写操作不自动重放。CloudMusicStore 的前台 YouTube 索引查询改为 5 秒无数据超时，错误仍由 AudioRepository 按已有流程回退。播放器继续只接收完整并验证的本地文件；没有把 Worker 的 Range 支持写成 App 已渐进播放。来源、方案与限制见 [首播调研](PLAYBACK_LATENCY_RESEARCH.md)。
