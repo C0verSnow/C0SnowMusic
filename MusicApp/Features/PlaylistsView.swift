@@ -157,7 +157,7 @@ struct PlaylistCreationView: View {
                 .padding(.bottom, 10).overlay(alignment: .bottom) { Divider() }.padding(.horizontal, 16)
             Spacer()
         }
-        .background(Color(uiColor: .systemGroupedBackground))
+        .background(Color(uiColor: .systemBackground))
         .navigationTitle("New Playlist").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

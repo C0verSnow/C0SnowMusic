@@ -46,7 +46,7 @@ struct OnlineSearchView: View {
                                 }.buttonStyle(.plain)
                             }
                         }
-                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
                         .listRowSeparator(.hidden)
                     }
                     }
