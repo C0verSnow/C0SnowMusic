@@ -103,7 +103,7 @@ The comparison still found visible details for build 14 to correct:
 - New Playlist artwork started about 10 window pixels too low; reduce its top padding from 30 to 20 points and adjust the artwork-to-title spacing to 70 points.
 - The physical system volume slider inherited the pink app accent; explicitly set its UIKit tint to white.
 
-Build 14 contains only these visual corrections. Its remote checks and a fresh installation are pending. Native navigation-title/search-field leading margins still differ slightly from Apple's private app layout; final visual acceptance must assess the new captures rather than treating build 13's functional checks as pixel identity.
+Build 14 contains only these visual corrections. Its final remote checks and physical installation are recorded below. Native navigation-title/search-field leading margins still differ slightly from Apple's private app layout; final visual acceptance must assess the new captures rather than treating build 13's functional checks as pixel identity.
 
 ## Build 14 remote file-selection failure
 
@@ -113,11 +113,33 @@ The original evidence archive matches SHA-256 `0322ca81199af08c698d5a3429220acbd
 
 The follow-up changes only the UI test. It waits for the real file-browser navigation bar to disappear after selecting a file and, only while that browser remains present, permits one further selection attempt. Failure after both attempts still fails the test. The actual synchronized-lyrics import, line seeking, and current-line assertion remain required, and the 120-second per-test limit is unchanged. A missing lyric now stops that scenario before attempting to tap an absent line. No importer, file filter, product UI, or app build number changes in this follow-up.
 
-The disappearance check uses Apple's public [waitForNonExistence(timeout:)](https://developer.apple.com/documentation/xcuiautomation/xcuielement/waitfornonexistence(timeout:)) API. Fresh remote validation and the final build 14 device comparison remain pending.
+The disappearance check uses Apple's public [waitForNonExistence(timeout:)](https://developer.apple.com/documentation/xcuiautomation/xcuielement/waitfornonexistence(timeout:)) API. The final remote validation passed; its physical comparison is recorded below.
+
+## Final build 14 remote verification
+
+Run [43990026426](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43990026426), commit `d4dfb2a31ac3779ff704a28c1616ff8005bae19b`, passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI scenarios, and API checks. Static validation also passed; the tag-only Release job was correctly skipped. The real LRC scenario passed in 53.894 seconds with one file selection, confirmed browser dismissal, imported synchronized lyrics, and line seeking. The second selection attempt was not needed in this run.
+
+The final downloaded IPA archive matches GitHub SHA-256 `4aa808addfc78160970a168d57c1bab9fce325dfc5ed119b4413158194344454`. The extracted IPA is 25,154,715 bytes, version 1.2.0/build 14, bundle `org.c0versnow.C0SnowMusic`, SHA-256 `52206a6123ccf4a138714da451c5e8774ae4f9cb1663ee72893c8cd639afdf4a`. It is prepared locally as `C0SnowMusic-device/issue-13-build14/build14.ipa` for an unambiguous phone download.
+
+The resumed mirror required a fresh Mac login. The user supplied it through the secure input card; that input was used only for the current unlock and its temporary file was deleted. No previous password was read. After reconnecting, the verified `build14.ipa` was downloaded to the phone, imported into its existing signing app, and signed with the existing certificate. Both the signing configuration and log confirmed build 14 before the installation prompt was accepted. The temporary download server was stopped.
+
+## Build 14 physical comparison and build 15 follow-up
+
+Fresh light-appearance Apple Music references and build 14 captures use the same physical iPhone and 368 x 808 mirror window. Private captures remain outside the repository under `C0SnowMusic-device/issue-13-comparison/reference-light` and `build14`.
+
+- Account's primary-color close button and shorter profile row now match the reference geometry. Dismissal works and the original signed-in avatar remains.
+- Library's edit circles have the intended larger size. The original local songs remain visible, including the recovered One of the Girls artwork. Editing can be entered and exited.
+- New Playlist's artwork now starts at y=162 window pixels, matching the current Apple reference. Its close button is black in light appearance and cancellation works. Its overall sheet was still gray while Apple's was white.
+- Search's category side edges and column gap now match the reference: x=26 and x=189, with the right edge at x=342. The first row still started at y=187 rather than Apple's y=177. The explicit 12-point top row inset added this remaining gap; build 15 removes it.
+- The full player shows the recovered cover and white native volume slider. Playback remains paused. The app was returned to Home, with the original account, selected track, and artwork retained.
+
+Build 15 changes only the search category row's top inset from 12 to 0 and the New Playlist background from grouped system background to ordinary system background, plus its build number. Semantic system colors preserve appearance adaptation. No search behavior, account data, playlist storage, importer, or UI test is changed. Source review, plist linting, and whitespace checks pass; build 15 remote compilation and installation remain pending.
+
+Native navigation-title and search-field leading edges still differ by about four window pixels from Apple's private layout. The reference service content and Apple-only destinations also differ. The PR remains draft; full pixel identity and final acceptance are not claimed.
 
 ## Acceptance still required
 
-- Run build 14 remote checks, install the verified new artifact, and recheck the listed visual adjustments in the same appearance, device size, and scroll state.
+- Validate build 15 remotely, install its verified artifact, and recheck Search top spacing and the New Playlist background in the same appearance, device size, and scroll state.
 - Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
 - Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.
 - Merge and close the issue only after the requested device acceptance.
