@@ -127,7 +127,7 @@ struct NowPlayingView: View {
 enum PlayerPanel: String, Identifiable { case lyrics, queue; var id: String { rawValue } }
 
 struct SystemVolumeView: UIViewRepresentable {
-    func makeUIView(context: Context) -> MPVolumeView { let view = MPVolumeView(); view.showsRouteButton = false; return view }
+    func makeUIView(context: Context) -> MPVolumeView { let view = MPVolumeView(); view.showsRouteButton = false; view.tintColor = .white; return view }
     func updateUIView(_ uiView: MPVolumeView, context: Context) { }
 }
 

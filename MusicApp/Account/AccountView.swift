@@ -35,6 +35,7 @@ struct AccountView: View {
             }.sharedBackgroundVisibility(.hidden)
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Close Account", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)
+                    .tint(.primary)
                     .accessibilityIdentifier("closeAccount")
             }
         }
@@ -50,7 +51,7 @@ struct AccountView: View {
                 Text(account.isSignedIn ? "Account and connection settings" : "Bring your YouTube music with you")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }.padding(.vertical, 6)
+        }.padding(.vertical, 2)
     }
 }
 

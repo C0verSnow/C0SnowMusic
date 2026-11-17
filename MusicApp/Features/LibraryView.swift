@@ -69,6 +69,7 @@ struct LibraryView: View {
                             } label: {
                                 HStack(spacing: 20) {
                                     Image(systemName: visible.contains(category.rawValue) ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3).frame(width: 20)
                                         .foregroundStyle(visible.contains(category.rawValue) ? Color.pink : .secondary)
                                     Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
                                 }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)

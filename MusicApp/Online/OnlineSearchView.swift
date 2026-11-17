@@ -34,7 +34,7 @@ struct OnlineSearchView: View {
                     }
                     if !isActive {
                     Section {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
                             ForEach(Array(Self.categories.enumerated()), id: \.offset) { index, category in
                                 Button { query = category } label: {
                                     ZStack(alignment: .bottomLeading) {
@@ -45,7 +45,9 @@ struct OnlineSearchView: View {
                                     }.frame(height: 94).clipShape(.rect(cornerRadius: 12))
                                 }.buttonStyle(.plain)
                             }
-                        }.listRowSeparator(.hidden)
+                        }
+                        .listRowInsets(EdgeInsets(top: 12, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparator(.hidden)
                     }
                     }
                 } else {
@@ -66,7 +68,7 @@ struct OnlineSearchView: View {
                         Button("Show More Results") { online.search(query, cookies: account.downloadCookies(), more: true) }.disabled(online.searching)
                     }
                 }
-            }.listStyle(.plain)
+            }.listStyle(.plain).contentMargins(.top, 0, for: .scrollContent)
         }
         .task(id: query) {
             warehouse = []

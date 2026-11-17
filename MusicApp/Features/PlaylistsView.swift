@@ -142,7 +142,7 @@ struct PlaylistCreationView: View {
 
     var body: some View {
         let selectedArtwork = artwork
-        VStack(spacing: 64) {
+        VStack(spacing: 70) {
             PhotosPicker(selection: $cover, matching: .images) {
                 ZStack {
                     if let selectedArtwork, let image = UIImage(data: selectedArtwork) { Image(uiImage: image).resizable().scaledToFill() }
@@ -152,7 +152,7 @@ struct PlaylistCreationView: View {
                             .frame(width: 64, height: 64).background(.tint, in: .circle)
                     }
                 }.frame(width: 180, height: 180).clipShape(.rect(cornerRadius: 8))
-            }.padding(.top, 30).accessibilityLabel("Choose Playlist Artwork")
+            }.padding(.top, 20).accessibilityLabel("Choose Playlist Artwork")
             TextField("Playlist Title", text: $name).font(.title3.bold()).multilineTextAlignment(.center)
                 .padding(.bottom, 10).overlay(alignment: .bottom) { Divider() }.padding(.horizontal, 16)
             Spacer()
@@ -161,7 +161,7 @@ struct PlaylistCreationView: View {
         .navigationTitle("New Playlist").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)
+                Button("Cancel", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly).tint(.primary)
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Create Playlist", systemImage: "checkmark") {
