@@ -20,7 +20,7 @@ struct NowPlayingView: View {
             if let song = playback.currentSong {
                 ScrollView {
                     VStack(spacing: max(12, min(26, geometry.size.height * 0.025))) {
-                        Button("收起播放器", systemImage: "chevron.down") { dismiss() }
+                        Button("Collapse player", systemImage: "chevron.down") { dismiss() }
                             .labelStyle(.iconOnly).font(.title3.bold()).frame(width: 64, height: 44)
                             .accessibilityIdentifier("collapsePlayer")
                         ArtworkView(id: song.artworkID, thumbnail: false, cornerRadius: 14)
@@ -33,41 +33,41 @@ struct NowPlayingView: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(song.title).font(.title2.bold()).lineLimit(3)
                                 Text(song.artist).font(.title3).foregroundStyle(.white.opacity(0.8)).lineLimit(2)
-                                if song.albumTitle != "未知专辑" {
+                                if song.albumTitle != "Unknown album" {
                                     Text(song.albumTitle).font(.subheadline).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
                                         .accessibilityIdentifier("playerAlbum")
                                 }
                             }.frame(maxWidth: .infinity, alignment: .leading)
                             if !playback.isCachedSong {
-                            Button(song.isFavorite ? "取消收藏" : "收藏", systemImage: song.isFavorite ? "star.fill" : "star") { library.toggleFavorite(song) }
+                            Button(song.isFavorite ? "Unfavorite" : "Favorite", systemImage: song.isFavorite ? "star.fill" : "star") { library.toggleFavorite(song) }
                                 .labelStyle(.iconOnly).font(.title3).frame(width: 44, height: 44)
                             Menu {
-                                Button("添加到播放列表", systemImage: "text.badge.plus") { addingToPlaylist = true }
-                                Button("下一首播放", systemImage: "text.line.first.and.arrowtriangle.forward") { playback.enqueue(song, next: true) }
-                                Button("编辑歌曲信息", systemImage: "pencil") { editMetadata = true }
-                                ShareLink(item: playback.audioURL(for: song)) { Label("分享音频", systemImage: "square.and.arrow.up") }
+                                Button("Add to playlist", systemImage: "text.badge.plus") { addingToPlaylist = true }
+                                Button("Play next", systemImage: "text.line.first.and.arrowtriangle.forward") { playback.enqueue(song, next: true) }
+                                Button("Edit song information", systemImage: "pencil") { editMetadata = true }
+                                ShareLink(item: playback.audioURL(for: song)) { Label("Share audio", systemImage: "square.and.arrow.up") }
                             } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44).glassEffect(.regular.interactive(), in: .circle) }
-                            .accessibilityLabel("歌曲操作")
+                            .accessibilityLabel("Song actions")
                             }
                         }
                         progress
                         HStack {
-                            Button("上一首", systemImage: "backward.fill") { playback.previous() }.font(.system(size: controlSize))
+                            Button("Previous", systemImage: "backward.fill") { playback.previous() }.font(.system(size: controlSize))
                             Spacer()
-                            Button(playback.isPlaying ? "暂停" : "播放", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
+                            Button(playback.isPlaying ? "Pause" : "Play", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
                                 .font(.system(size: controlSize * 1.55)).frame(minWidth: 72, minHeight: 64)
                                 .accessibilityIdentifier("playerPlayPause")
                                 .disabled(playback.isLoading)
                             Spacer()
-                            Button("下一首", systemImage: "forward.fill") { playback.next() }.font(.system(size: controlSize))
+                            Button("Next", systemImage: "forward.fill") { playback.next() }.font(.system(size: controlSize))
                         }.labelStyle(.iconOnly).padding(.horizontal, 20)
-                        SystemVolumeView().frame(height: 44).accessibilityLabel("系统音量")
+                        SystemVolumeView().frame(height: 44).accessibilityLabel("System volume")
                         HStack {
-                            Button("歌词", systemImage: "quote.bubble") { panel = .lyrics }.accessibilityIdentifier("showLyrics")
+                            Button("Lyrics", systemImage: "quote.bubble") { panel = .lyrics }.accessibilityIdentifier("showLyrics")
                             Spacer()
-                            AirPlayView().frame(width: 44, height: 44).accessibilityLabel("选择音频输出设备")
+                            AirPlayView().frame(width: 44, height: 44).accessibilityLabel("Choose audio output")
                             Spacer()
-                            Button("播放队列", systemImage: "list.bullet") { panel = .queue }.accessibilityIdentifier("showQueue")
+                            Button("Playback queue", systemImage: "list.bullet") { panel = .queue }.accessibilityIdentifier("showQueue")
                         }.labelStyle(.iconOnly).font(.title2).frame(minHeight: 44)
                     }
                     .padding(.horizontal, 32).padding(.bottom, 28)
@@ -98,8 +98,12 @@ struct NowPlayingView: View {
         .sheet(item: $panel) { panel in
             NavigationStack {
                 Group { if panel == .lyrics { LyricsView() } else { QueueView() } }
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { self.panel = nil } } }
-            }.presentationDetents([.large])
+                    .toolbar {
+                        if panel == .queue {
+                            ToolbarItem(placement: .confirmationAction) { Button("Done") { self.panel = nil } }
+                        }
+                    }
+            }.presentationDetents([.large]).presentationDragIndicator(.visible)
         }
         .sensoryFeedback(.selection, trigger: playback.currentSong?.id)
     }
@@ -109,7 +113,7 @@ struct NowPlayingView: View {
             Slider(value: Binding(get: { scrubPosition ?? playback.currentTime }, set: { scrubPosition = $0 }), in: 0...max(playback.duration, 1)) { editing in
                 if !editing, let position = scrubPosition { playback.seek(to: position); scrubPosition = nil }
             }
-            .tint(.white.opacity(0.85)).accessibilityLabel("播放位置")
+            .tint(.white.opacity(0.85)).accessibilityLabel("Playback position")
             .accessibilityValue(playbackTime(scrubPosition ?? playback.currentTime))
             HStack {
                 Text(playbackTime(scrubPosition ?? playback.currentTime))
@@ -123,7 +127,7 @@ struct NowPlayingView: View {
 enum PlayerPanel: String, Identifiable { case lyrics, queue; var id: String { rawValue } }
 
 struct SystemVolumeView: UIViewRepresentable {
-    func makeUIView(context: Context) -> MPVolumeView { let view = MPVolumeView(); view.showsRouteButton = false; return view }
+    func makeUIView(context: Context) -> MPVolumeView { let view = MPVolumeView(); view.showsRouteButton = false; view.tintColor = .white; return view }
     func updateUIView(_ uiView: MPVolumeView, context: Context) { }
 }
 

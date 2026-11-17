@@ -3,7 +3,7 @@ import XCTest
 
 final class MusicLookupTests: XCTestCase {
     func testFilenameFallbackAndEditionMatching() throws {
-        let query = SongLookupQuery(title: "The Weeknd – Die For You", artist: "未知艺术家", album: "未知专辑", duration: 260)
+        let query = SongLookupQuery(title: "The Weeknd – Die For You", artist: "Unknown artist", album: "Unknown album", duration: 260)
         XCTAssertEqual(query.title, "Die For You")
         XCTAssertEqual(query.artist, "The Weeknd")
         XCTAssertEqual(query.album, "")

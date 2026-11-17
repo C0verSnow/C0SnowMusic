@@ -38,7 +38,7 @@ import Foundation
         let item = AVPlayerItem(asset: asset)
         player.replaceCurrentItem(with: item)
         itemObserver = item.observe(\.status, options: [.initial, .new]) { [weak self] observed, _ in
-            let message = observed.status == .failed ? observed.error?.localizedDescription ?? "播放失败" : nil
+            let message = observed.status == .failed ? observed.error?.localizedDescription ?? "Playback failed" : nil
             Task { @MainActor [weak self, weak observed] in
                 guard let self, self.player.currentItem === observed, let message else { return }
                 self.onError?(message)
@@ -51,7 +51,7 @@ import Foundation
             }
         }
         failureObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self, weak item] notification in
-            let message = (notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)?.localizedDescription ?? "音频解码失败"
+            let message = (notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error)?.localizedDescription ?? "Audio decoding failed"
             Task { @MainActor [weak self, weak item] in
                 guard let self, self.player.currentItem === item else { return }
                 self.onError?(message)

@@ -9,26 +9,26 @@ struct YouTubeLoginView: View {
     var body: some View {
         @Bindable var account = account
         YouTubeLoginBrowser(data: account.websiteData, view: $webView)
-            .localizedNavigationTitle("登录 YouTube").navigationBarTitleDisplayMode(.inline)
+            .localizedNavigationTitle("Sign in to YouTube").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("保存登录") {
+                    Button("Save session") {
                         guard let webView else { return }
                         Task { if await account.capture(from: webView) { await account.refreshProfile(); dismiss() } }
                     }.disabled(account.checking)
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
-                    Button("返回", systemImage: "chevron.left") { webView?.goBack() }
+                    Button("Back", systemImage: "chevron.left") { webView?.goBack() }
                     Spacer()
-                    Button("返回 YouTube") { webView?.load(URLRequest(url: URL(string: "https://m.youtube.com/")!)) }
+                    Button("Return to YouTube") { webView?.load(URLRequest(url: URL(string: "https://m.youtube.com/")!)) }
                     Spacer()
-                    Button("刷新", systemImage: "arrow.clockwise") { webView?.reload() }
+                    Button("Refresh", systemImage: "arrow.clockwise") { webView?.reload() }
                 }
             }
-            .alert("登录状态", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {
-                Button("好") { account.error = nil }
-            } message: { Text(account.error ?? "") }
+            .alert("Sign-in status", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {
+                Button("OK") { account.error = nil }
+            } message: { Text("Complete sign-in on the website, return to YouTube, then save your session again.") }
     }
 }
 

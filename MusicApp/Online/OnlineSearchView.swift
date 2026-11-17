@@ -3,67 +3,92 @@ import SwiftUI
 struct OnlineSearchView: View {
     @Environment(OnlineMusicStore.self) private var online
     @Environment(YouTubeAccountStore.self) private var account
-    @State private var query = ""
+    @Environment(CloudMusicStore.self) private var cloud
+    @Binding var query: String
+    var isActive = false
+    @State private var warehouse: [OnlineTrack] = []
 
     var body: some View {
-        @Bindable var online = online
-        List {
-            Section {
-                Picker("搜索分类", selection: $online.filter) {
-                    ForEach(MusicSearchFilter.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
-                }
-                Button("重置搜索") { query = ""; online.resetSearch() }
-            }
-            if online.searching { ProgressView("正在搜索 YouTube…") }
-            if let message = online.error {
-                Text(message).foregroundStyle(.red)
-                Button("重试搜索") { submit() }
-            }
-            if online.results.isEmpty, !online.searching {
-                if query.isEmpty, !online.searchHistory.isEmpty {
-                    Section("搜索历史") {
-                        ForEach(online.searchHistory, id: \.self) { value in
-                            Button(value) { query = value; submit() }
+        VStack(spacing: 0) {
+            if !query.isEmpty {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(MusicSearchFilter.allCases) { filter in
+                            Button(filter == .all ? "Top Results" : filter.rawValue) { online.filter = filter }
+                                .font(.subheadline.bold()).buttonStyle(.bordered)
+                                .tint(online.filter == filter ? .pink : .secondary)
+                                .buttonBorderShape(.capsule)
                         }
-                        Button("清除搜索历史", role: .destructive) { online.clearSearchHistory() }
+                    }.padding(.horizontal, 20).padding(.vertical, 8)
+                }.scrollIndicators(.hidden)
+            }
+            List {
+                if query.isEmpty {
+                    if isActive && !online.searchHistory.isEmpty {
+                        Section("Recently Searched") {
+                            ForEach(online.searchHistory, id: \.self) { value in
+                                Button { query = value } label: { Label(value, systemImage: "magnifyingglass") }
+                            }
+                            Button("Clear", role: .destructive) { online.clearSearchHistory() }
+                        }
+                    }
+                    if !isActive {
+                    Section {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())], spacing: 12) {
+                            ForEach(Array(Self.categories.enumerated()), id: \.offset) { index, category in
+                                Button { query = category } label: {
+                                    ZStack(alignment: .bottomLeading) {
+                                        LinearGradient(colors: [Self.colors[index], Self.colors[index].opacity(0.45)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        Image(systemName: "music.note").font(.system(size: 62)).rotationEffect(.degrees(-15))
+                                            .foregroundStyle(.white.opacity(0.15)).frame(maxWidth: .infinity, alignment: .trailing).padding(10)
+                                        Text(category).font(.headline).foregroundStyle(.white).padding(14)
+                                    }.frame(height: 94).clipShape(.rect(cornerRadius: 12))
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                        .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                        .listRowSeparator(.hidden)
+                    }
                     }
                 } else {
-                    ContentUnavailableView("搜索 YouTube", systemImage: "network", description: Text("输入歌名或歌手，提交后联网搜索。"))
+                    if online.searching && online.results.isEmpty { MusicPlaceholderRows() }
+                    ForEach(online.sections) { section in
+                        Section(section.title) { ForEach(section.items) { OnlineTrackRow(track: $0) } }
+                    }
+                    if !warehouseResults.isEmpty {
+                        Section("From Your Collection") { ForEach(warehouseResults) { OnlineTrackRow(track: $0) } }
+                    }
+                    if online.results.isEmpty && warehouseResults.isEmpty && !online.searching {
+                        if online.searchError != nil {
+                            ContentUnavailableView("Couldn't Load Results", systemImage: "magnifyingglass", description: Text("Check your connection and try again."))
+                            Button("Try Again") { submit() }
+                        } else { ContentUnavailableView.search(text: query) }
+                    }
+                    if online.continuation != nil {
+                        Button("Show More Results") { online.search(query, cookies: account.downloadCookies(), more: true) }.disabled(online.searching)
+                    }
                 }
-            }
-            ForEach(online.sections) { section in
-                Section(section.title) { ForEach(section.items) { OnlineTrackRow(track: $0) } }
-            }
-            if online.continuation != nil {
-                Button("加载更多") { online.search(query, cookies: account.downloadCookies(), more: true) }.disabled(online.searching)
-            }
-            if !online.cached.isEmpty {
-                Section("音频缓存 · 从新到旧") {
-                    ForEach(online.cached) { OnlineTrackRow(track: $0.track) }
-                }
-            }
+            }.listStyle(.plain).contentMargins(.top, 0, for: .scrollContent)
         }
-        .listStyle(.plain)
-        .searchable(text: $query, prompt: "YouTube 歌名、歌手")
         .task(id: query) {
-            do { try await Task.sleep(for: .milliseconds(400)) } catch { return }
-            if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { online.resetSearch() }
-            else { submit() }
+            warehouse = []
+            do { try await Task.sleep(for: .milliseconds(350)) } catch { return }
+            submit()
+            if cloud.connected && !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let tracks = try? await cloud.search(query)
+                if !Task.isCancelled { warehouse = tracks?.map(\.onlineTrack) ?? [] }
+            }
         }
         .onChange(of: online.filter) { _, _ in if !query.isEmpty { submit() } }
-        .task { await online.refresh() }
-        .safeAreaInset(edge: .bottom) {
-            if online.downloadingID != nil {
-                HStack {
-                    ProgressView()
-                    Text("正在准备音频…").font(.caption)
-                    Spacer()
-                    Button("取消") { online.cancelDownload() }
-                }.padding().background(.bar)
-            }
-        }
+    }
+
+    private var warehouseResults: [OnlineTrack] {
+        let ids = Set(online.results.map(\.id))
+        return warehouse.filter { !ids.contains($0.id) && (online.filter == .all || online.filter == .songs) }
     }
     private func submit() { online.search(query, cookies: account.downloadCookies()) }
+    private static let categories = ["Pop", "Hip-Hop", "R&B", "Rock", "Dance", "Classical", "Jazz", "Country"]
+    private static let colors: [Color] = [.pink, .purple, .indigo, .red, .teal, .orange, .blue, .brown]
 }
 
 struct OnlineTrackRow: View {
@@ -79,20 +104,24 @@ struct OnlineTrackRow: View {
             if track.isPlayable {
                 Button { prepare(play: true) } label: { label }.buttonStyle(.plain)
                     .disabled(online.downloadingID != nil)
-                    .accessibilityLabel("播放 \(track.title)，\(track.artist)")
+                    .accessibilityLabel("Play \(track.title), \(track.artist)")
+                if online.downloadingID == track.id {
+                    Button("Cancel") { online.cancelDownload() }.font(.caption)
+                } else {
                 Menu {
-                    Button("播放", systemImage: "play.fill") { prepare(play: true) }
-                    Button("预下载", systemImage: "arrow.down.circle") { prepare() }
-                    Button("下载到资料库", systemImage: "square.and.arrow.down") { prepare(save: true) }
+                    Button("Play", systemImage: "play.fill") { prepare(play: true) }
+                    Button("Download", systemImage: "arrow.down.circle") { prepare() }
+                    Button("Add to Library", systemImage: "square.and.arrow.down") { prepare(save: true) }
                     if account.isSignedIn, track.kind != .telegram {
                         let liked = online.liked.contains { $0.id == track.id }
-                        Button(liked ? "取消 YouTube 收藏" : "收藏到 YouTube", systemImage: liked ? "heart.slash" : "heart") {
+                        Button(liked ? "Unlike on YouTube" : "Like on YouTube", systemImage: liked ? "heart.slash" : "heart") {
                             Task { await online.setLiked(track, liked: !liked, cookies: account.downloadCookies(), cloud: cloud) }
                         }.disabled(online.syncing)
                     }
                     if let album = track.albumTitle { Text(album) }
                 } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                    .disabled(online.downloadingID != nil).accessibilityLabel("歌曲操作")
+                    .disabled(online.downloadingID != nil).accessibilityLabel("Song actions")
+                }
             } else if let browseID = track.browseID {
                 NavigationLink { MusicCollectionView(browseID: browseID, title: track.title) } label: { label }
             }
@@ -104,17 +133,23 @@ struct OnlineTrackRow: View {
 
     private var label: some View {
         HStack(spacing: 12) {
-            AsyncImage(url: track.coverURL) { image in image.resizable().scaledToFill() } placeholder: {
-                Image("AppLogo").resizable().scaledToFill()
-            }.frame(width: 52, height: 52).clipShape(.rect(cornerRadius: 4)).accessibilityHidden(true)
+            OnlineArtworkView(track: track).frame(width: 52, height: 52)
             VStack(alignment: .leading, spacing: 5) {
                 Text(track.title).font(.body.weight(.medium)).lineLimit(2)
-                Text(track.artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                if online.cached.contains(where: { $0.id == track.id }) {
-                    Label("已缓存", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
-                }
+                Text(online.downloadingID == track.id ? "Preparing…" : subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.contentShape(.rect)
+    }
+
+    private var subtitle: String {
+        let kind = switch track.kind {
+        case .album: "Album"
+        case .artist: "Artist"
+        case .playlist: "Playlist"
+        case .video: "Video"
+        default: "Song"
+        }
+        return track.artist.isEmpty ? kind : "\(kind) · \(track.artist)"
     }
 
     private func prepare(play: Bool = false, save: Bool = false) {
@@ -129,15 +164,15 @@ struct OnlineCacheView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("缓存上限", value: "500 MB")
-                LabeledContent("已用空间", value: ByteCountFormatter.string(fromByteCount: online.cacheBytes, countStyle: .file))
-                Text("超过上限先删除最旧缓存。下载到资料库的歌曲不计入缓存，也不会被自动清理。")
+                LabeledContent("Cache limit", value: "500 MB")
+                LabeledContent("Storage used", value: ByteCountFormatter.string(fromByteCount: online.cacheBytes, countStyle: .file))
+                Text("The oldest cached audio is removed when the limit is reached. Songs downloaded to your library are excluded and never removed automatically.")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button("清空音频缓存", role: .destructive) {
+                Button("Clear audio cache", role: .destructive) {
                     Task { await online.clearCache(playback: playback) }
                 }.disabled(online.downloadingID != nil)
             }
-            Section("从新到旧") {
+            Section("Newest first") {
                 ForEach(online.cached) { entry in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(entry.track.title)
@@ -145,12 +180,30 @@ struct OnlineCacheView: View {
                         Text(ByteCountFormatter.string(fromByteCount: entry.byteCount, countStyle: .file)).font(.caption2)
                     }
                     .swipeActions {
-                        Button("删除", role: .destructive) {
+                        Button("Delete", role: .destructive) {
                             Task { await online.remove(entry, playback: playback) }
                         }.disabled(online.downloadingID != nil)
                     }
                 }
             }
-        }.localizedNavigationTitle("音频缓存").task { await online.refresh() }
+        }.localizedNavigationTitle("Audio cache").task { await online.refresh() }
+    }
+}
+
+struct OnlineArtworkView: View {
+    let track: OnlineTrack
+    @State private var useFallback = false
+    var body: some View {
+        GeometryReader { geometry in
+            AsyncImage(url: useFallback ? track.fallbackCoverURL : track.coverURL ?? track.fallbackCoverURL) { phase in
+                if let image = phase.image { image.resizable().scaledToFill() }
+                else {
+                    ZStack {
+                        Color.secondary.opacity(0.12)
+                        Image(systemName: track.kind == .artist ? "person.fill" : "music.note").font(.title).foregroundStyle(.tertiary)
+                    }.onAppear { if case .failure = phase { useFallback = true } }
+                }
+            }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+        }.clipShape(.rect(cornerRadius: track.kind == .artist ? 100 : 6)).accessibilityHidden(true)
     }
 }

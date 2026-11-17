@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct LyricsView: View {
     @Environment(PlaybackStore.self) private var playback
     @Environment(LibraryStore.self) private var library
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var importing = false
     @State private var onlineSearch = false
@@ -29,25 +30,20 @@ struct LyricsView: View {
                                     }
                                     .buttonStyle(.plain).id(line.id)
                                     .accessibilityIdentifier("lyric-line-\(line.id)")
-                                    .accessibilityValue(activeID == line.id ? "当前歌词" : "")
-                                    .accessibilityLabel("\(line.text)，跳到 \(playbackTime(timeline.playbackTime(for: line)))")
+                                    .accessibilityValue(activeID == line.id ? "Current lyric" : "")
+                                    .accessibilityLabel("\(line.text), skip to \(playbackTime(timeline.playbackTime(for: line)))")
                                 }
                             }.padding(28)
                         } else if !song.lyrics.isEmpty {
                             VStack(alignment: .leading, spacing: 20) {
-                                Text("纯文本歌词 · 此版本没有同步时间戳").font(.caption).foregroundStyle(.secondary)
+                                Text("Plain lyrics · No synchronized timestamps").font(.caption).foregroundStyle(.secondary)
                                 Text(song.lyrics).font(.title2).lineSpacing(14)
                             }.frame(maxWidth: .infinity, alignment: .leading).padding(28)
                         } else {
                             ContentUnavailableView {
-                                Label("暂无歌词", systemImage: "quote.bubble")
+                                Label("No lyrics", systemImage: "quote.bubble")
                             } description: {
-                                if playback.isEnriching { ProgressView("正在自动加载歌词与专辑…") }
-                                else if let message = playback.enrichmentMessage { Text(message) }
-                                else { Text("可在线查找同步歌词、导入 LRC 文件，或读取音频内嵌歌词。") }
-                            } actions: {
-                                Button("在线查找歌词与封面", systemImage: "magnifyingglass") { onlineSearch = true }
-                                    .buttonStyle(.borderedProminent)
+                                Text("Lyrics aren't available for this song. You can find or add lyrics in Lyrics Settings.")
                             }
                         }
                     }
@@ -62,12 +58,12 @@ struct LyricsView: View {
                         if calibrating, !lines.isEmpty {
                             VStack(spacing: 10) {
                                 Stepper(value: $offset, in: -30...30, step: 0.5) {
-                                    Text(offset == 0 ? "与原时间戳一致" : "歌词\(offset > 0 ? "延后" : "提前") \(String(format: "%.1f", abs(offset))) 秒")
+                                    Text(offset == 0 ? "Original timing" : "Lyrics \(offset > 0 ? "later" : "earlier") by \(String(format: "%.1f", abs(offset))) seconds")
                                 }
                                 HStack {
-                                    Button("恢复原时间戳") { offset = 0 }
+                                    Button("Reset timing") { offset = 0 }
                                     Spacer()
-                                    Button("跟随当前播放") { manualUntil = .distantPast; if let activeID { proxy.scrollTo(activeID, anchor: .center) } }
+                                    Button("Follow playback") { manualUntil = .distantPast; if let activeID { proxy.scrollTo(activeID, anchor: .center) } }
                                 }.font(.caption)
                             }.padding().background(.bar)
                         }
@@ -81,17 +77,24 @@ struct LyricsView: View {
                     .onChange(of: offset) { _, value in UserDefaults.standard.set(value, forKey: "lyricsOffset.\(song.id)") }
                 }
                 .sheet(isPresented: $onlineSearch) { NavigationStack { MusicLookupView(song: song) } }
-            } else { ContentUnavailableView("尚未选择歌曲", systemImage: "music.note") }
+            } else { ContentUnavailableView("No song selected", systemImage: "music.note") }
         }
-        .localizedNavigationTitle("歌词").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("Lyrics").navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) { Button("导入 LRC", systemImage: "plus") { importing = true } }
             ToolbarItemGroup(placement: .bottomBar) {
-                Button("查找歌词与封面", systemImage: "magnifyingglass") { onlineSearch = true }
-                    .disabled(playback.currentSong == nil)
-                    .accessibilityIdentifier("lookupLyrics")
                 Spacer()
-                if !lines.isEmpty { Button("歌词时间校准", systemImage: "slider.horizontal.3") { calibrating.toggle() } }
+                Menu {
+                    Button("Find Lyrics and Artwork", systemImage: "magnifyingglass") { onlineSearch = true }
+                        .accessibilityIdentifier("lookupLyrics")
+                    Button("Import LRC", systemImage: "plus") { importing = true }
+                    if !lines.isEmpty {
+                        Button("Lyrics Timing", systemImage: "slider.horizontal.3") { calibrating.toggle() }
+                    }
+                    Button("Close Lyrics", systemImage: "xmark") { dismiss() }
+                } label: { Image(systemName: "gearshape").frame(width: 44, height: 44) }
+                    .disabled(playback.currentSong == nil)
+                    .accessibilityLabel("Lyrics Settings")
+                    .accessibilityIdentifier("lyricsSettings")
             }
         }
         .sheet(isPresented: $importing) {

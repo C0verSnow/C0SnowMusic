@@ -48,11 +48,11 @@ enum MusicError: LocalizedError {
     case unsupportedAudio, unreadableFile, insufficientSpace, invalidLyrics, emptyName
     var errorDescription: String? {
         switch self {
-        case .unsupportedAudio: "系统无法解码这份音频。请尝试转换为 ALAC、M4A 或 WAV 后导入。"
-        case .unreadableFile: "无法读取文件，请确认文件已下载到设备且没有损坏。"
-        case .insufficientSpace: "设备空间不足，请清理存储后重试。"
-        case .invalidLyrics: "无法读取歌词，请选择 UTF-8 或 UTF-16 编码的 LRC 文件。"
-        case .emptyName: "名称不能为空。"
+        case .unsupportedAudio: "The system cannot decode this audio. Convert it to ALAC, M4A, or WAV and import again."
+        case .unreadableFile: "Cannot read this file. Make sure it is downloaded to your device and is not damaged."
+        case .insufficientSpace: "Not enough storage. Free some space and retry."
+        case .invalidLyrics: "Cannot read these lyrics. Choose an LRC file encoded as UTF-8 or UTF-16."
+        case .emptyName: "Name cannot be empty."
         }
     }
 }

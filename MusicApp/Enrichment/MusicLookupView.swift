@@ -20,40 +20,40 @@ struct MusicLookupView: View {
     var body: some View {
         Form {
             Section {
-                TextField("歌曲名称", text: $title).accessibilityIdentifier("lookupTitle")
-                TextField("艺术家", text: $artist).accessibilityIdentifier("lookupArtist")
-                TextField("专辑（可选）", text: $album)
+                TextField("Song title", text: $title).accessibilityIdentifier("lookupTitle")
+                TextField("Artists", text: $artist).accessibilityIdentifier("lookupArtist")
+                TextField("Album (optional)", text: $album)
                 Button { requestID += 1 } label: {
-                    HStack { Text("搜索歌词"); Spacer(); if searching { ProgressView() } }
+                    HStack { Text("Search lyrics"); Spacer(); if searching { ProgressView() } }
                 }.disabled(searching || downloading != nil || title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                Toggle("同时下载缺失的封面", isOn: $includeCover)
+                Toggle("Also download missing artwork", isOn: $includeCover)
             } footer: {
-                Text("搜索会将歌名、艺术家和专辑发给 LRCLIB；封面查询使用 MusicBrainz 和 Cover Art Archive，不发送音频文件。")
+                Text("Search sends the title, artist, and album to LRCLIB. Artwork uses MusicBrainz and Cover Art Archive. Audio files are never sent.")
             }
             .disabled(downloading != nil)
-            if let error { Section { Text(error).foregroundStyle(.red) } }
+            if error != nil { Section { Text("Couldn’t update this song. Check your connection and try again.").foregroundStyle(.secondary) } }
             if let notice { Section { Text(notice) } }
-            Section("选择歌曲版本 · 本地时长 \(playbackTime(song.duration))") {
-                if !searching, results.isEmpty { Text("修改搜索信息后重试。可清空专辑扩大搜索范围。").foregroundStyle(.secondary) }
+            Section("Choose a version · Duration \(playbackTime(song.duration))") {
+                if !searching, results.isEmpty { Text("Edit the search fields and retry. Clear the album to broaden the search.").foregroundStyle(.secondary) }
                 ForEach(results) { match in
                     VStack(alignment: .leading, spacing: 8) {
                         Text(match.trackName).font(.headline)
                         Text("\(match.artistName) · \(match.albumName)").font(.subheadline)
                         HStack {
-                            Label(match.isSynced ? "同步歌词" : (match.instrumental ? "纯音乐" : "纯文本歌词"), systemImage: match.isSynced ? "clock" : "text.alignleft")
+                            Label(match.isSynced ? "Synchronized lyrics" : (match.instrumental ? "Instrumental" : "Plain lyrics"), systemImage: match.isSynced ? "clock" : "text.alignleft")
                             Spacer()
-                            Text(match.duration.map(playbackTime) ?? "时长未知").monospacedDigit()
+                            Text(match.duration.map(playbackTime) ?? "Unknown duration").monospacedDigit()
                         }.font(.caption).foregroundStyle(.secondary)
                         if let duration = match.duration, abs(duration - song.duration) > 2 {
-                            Text("时长相差 \(Int(abs(duration - song.duration))) 秒，请核对录音版本。").font(.caption).foregroundStyle(.orange)
+                            Text("Duration differs by \(Int(abs(duration - song.duration))) seconds. Check the recording version.").font(.caption).foregroundStyle(.orange)
                         } else if match.duration == nil {
-                            Text("此版本未提供时长，请核对录音版本。").font(.caption).foregroundStyle(.orange)
+                            Text("No duration is provided. Check the recording version.").font(.caption).foregroundStyle(.orange)
                         }
                         Button {
                             downloadTask = Task { await apply(match) }
                         } label: {
                             HStack {
-                                Text(match.text == nil ? (song.artworkID == nil ? "下载封面" : "已有封面") : "使用此版本")
+                                Text(match.text == nil ? (song.artworkID == nil ? "Download artwork" : "Artwork available") : "Use this version")
                                 if downloading == match.id { ProgressView() }
                             }
                         }.disabled(downloading != nil || (match.text == nil && (!includeCover || song.artworkID != nil)))
@@ -61,13 +61,13 @@ struct MusicLookupView: View {
                 }
             }
             Section {
-                Link("歌词来源：LRCLIB", destination: URL(string: "https://lrclib.net")!)
-                Link("封面来源：MusicBrainz / CAA", destination: URL(string: "https://musicbrainz.org/doc/Cover_Art_Archive")!)
-                Text("先核对专辑和录音版本。下载后保存在本地；纯文本歌词不会伪造播放时间。").font(.footnote).foregroundStyle(.secondary)
+                Link("Lyrics source: LRCLIB", destination: URL(string: "https://lrclib.net")!)
+                Link("Artwork source: MusicBrainz / CAA", destination: URL(string: "https://musicbrainz.org/doc/Cover_Art_Archive")!)
+                Text("Check the album and recording version. Downloads are stored locally. Plain lyrics have no generated timestamps.").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .localizedNavigationTitle("歌词与封面").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+        .localizedNavigationTitle("Lyrics and artwork").navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         .onAppear {
             let query = SongLookupQuery(title: song.title, artist: song.artist, album: song.albumTitle, duration: song.duration)
             title = query.title; artist = query.artist; album = query.album
@@ -96,9 +96,9 @@ struct MusicLookupView: View {
         }
         title = match.trackName; artist = match.artistName
         playback.refreshMediaInfo()
-        notice = "歌名和艺术家已更新。"
+        notice = "Title and artist updated."
         if match.text != nil {
-            notice = (notice ?? "") + (match.isSynced ? "同步歌词已保存，可离线显示并跟随播放。" : "纯文本歌词已保存；这一版本没有可用时间戳。")
+            notice = (notice ?? "") + (match.isSynced ? "Synchronized lyrics saved for offline playback." : "Plain lyrics saved. This version has no timestamps.")
         }
         if includeCover, song.artworkID == nil {
             do {
@@ -107,9 +107,9 @@ struct MusicLookupView: View {
                 if playback.isCachedSong { try await playback.setCachedCover(data, for: song) }
                 else { try await library.setDownloadedCover(song, data: data) }
                 playback.refreshMediaInfo()
-                notice = (notice.map { $0 + "\n" } ?? "") + "专辑封面已保存。"
+                notice = (notice.map { $0 + "\n" } ?? "") + "Album artwork saved."
             } catch {
-                if !Task.isCancelled { self.error = "\(match.text != nil ? "歌词已保存。" : "")封面：\(error.localizedDescription)" }
+                if !Task.isCancelled { self.error = "\(match.text != nil ? "Lyrics saved. " : "")Artwork: \(error.localizedDescription)" }
             }
         }
         if match.text == nil, !includeCover { error = MusicLookupError.noLyrics.localizedDescription }

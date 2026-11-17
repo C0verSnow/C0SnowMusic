@@ -2,49 +2,89 @@ import SwiftUI
 
 struct AccountView: View {
     @Environment(YouTubeAccountStore.self) private var account
-    @Environment(OnlineMusicStore.self) private var online
     @Environment(\.dismiss) private var dismiss
     @State private var login = false
-    @AppStorage("appLanguage") private var language = "system"
 
     var body: some View {
-        @Bindable var account = account
         List {
             Section {
-                HStack(spacing: 16) {
-                    AccountAvatar().frame(width: 52, height: 52)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(account.profile?.name ?? (account.isSignedIn ? "YouTube" : AppLanguage.text("未登录", language: language))).font(.title3.bold())
-                        Text(AppLanguage.text(account.isSignedIn ? (account.sessionVerified ? "已连接 YouTube Music" : "会话待验证，请刷新账户") : "登录 YouTube 账户", language: language))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        if let handle = account.profile?.handle { Text(handle).font(.caption).foregroundStyle(.secondary) }
-                    }
-                }.padding(.vertical, 12)
-                if !account.isSignedIn {
-                    Button("YouTube 网页登录", systemImage: "person.badge.key") { login = true }
-                        .accessibilityIdentifier("googleSignIn")
+                if account.isSignedIn {
+                    NavigationLink { AccountConnectionView() } label: { profile }
                 } else {
-                    Button("刷新账户", systemImage: "arrow.clockwise") { Task { await account.refreshProfile() } }.disabled(account.checking)
-                    Button("重新登录") { login = true }
-                    Button("退出登录", role: .destructive) { online.resetSession(); Task { await account.signOut() } }
+                    Button { login = true } label: { profile }.buttonStyle(.plain)
+                        .accessibilityIdentifier("googleSignIn")
                 }
             }
             Section {
-                NavigationLink { SettingsView() } label: { Label("Music Settings", systemImage: "gearshape") }
-                    .accessibilityIdentifier("musicSettings")
-            }
-            Section {
-                Text("通过 Google 网页登录 YouTube，搜索和下载会使用该账户。登录状态只保存在此设备。")
-                    .font(.footnote).foregroundStyle(.secondary)
+                NavigationLink { SettingsView() } label: {
+                    Label("Music Settings", systemImage: "gearshape").foregroundStyle(.pink)
+                }.accessibilityIdentifier("musicSettings")
+            } footer: {
+                Text("Your music, playlists, and favorites. Free and open source.")
             }
         }
-        .localizedNavigationTitle("账户").navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { dismiss() } } }
+        .listStyle(.insetGrouped)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                HStack(spacing: 8) {
+                    Image("AppLogo").resizable().scaledToFit().frame(width: 24, height: 24)
+                        .clipShape(.circle).accessibilityHidden(true)
+                    Text("c0vermusic Account")
+                }.font(.headline).fixedSize()
+            }.sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Close Account", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)
+                    .tint(.primary)
+                    .accessibilityIdentifier("closeAccount")
+            }
+        }
         .task { if !account.sessionVerified { await account.refreshProfile() } }
         .sheet(isPresented: $login) { NavigationStack { YouTubeLoginView() } }
-        .alert("登录状态", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {
-            Button("好") { account.error = nil }
-        } message: { Text(account.error ?? "") }
+    }
+
+    private var profile: some View {
+        HStack(spacing: 12) {
+            AccountAvatar().frame(width: 52, height: 52)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(account.profile?.name ?? "Sign In").font(.headline)
+                Text(account.isSignedIn ? "Account and connection settings" : "Bring your YouTube music with you")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }.padding(.vertical, 2)
+    }
+}
+
+private struct AccountConnectionView: View {
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(CloudMusicStore.self) private var cloud
+    @State private var login = false
+    var body: some View {
+        List {
+            Section {
+                HStack(spacing: 14) {
+                    AccountAvatar().frame(width: 52, height: 52)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(account.profile?.name ?? "YouTube").font(.headline)
+                        if let handle = account.profile?.handle { Text(handle).font(.subheadline).foregroundStyle(.secondary) }
+                    }
+                }
+            }
+            Section {
+                Button("Refresh Account") { Task { await account.refreshProfile() } }.disabled(account.checking)
+                Button("Refresh Library") { Task { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) } }.disabled(online.loadingLibrary)
+                Button("Sign In Again") { login = true }
+                Button("Sign Out", role: .destructive) { online.resetSession(); Task { await account.signOut() } }
+            } footer: {
+                Text("Your YouTube sign-in is stored securely on this iPhone.")
+            }
+        }
+        .navigationTitle("YouTube Account").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $login) { NavigationStack { YouTubeLoginView() } }
+        .alert("Couldn't Update Your Account", isPresented: Binding(get: { account.error != nil }, set: { if !$0 { account.error = nil } })) {
+            Button("OK") { account.error = nil }
+        } message: { Text("Complete sign-in and try again. Your saved music is still available.") }
     }
 }
 
@@ -52,7 +92,12 @@ struct AccountAvatar: View {
     @Environment(YouTubeAccountStore.self) private var account
     var body: some View {
         AsyncImage(url: account.profile?.avatarURL) { image in image.resizable().scaledToFill() } placeholder: {
-            Image(systemName: "person.crop.circle.fill").resizable().scaledToFit().foregroundStyle(.secondary)
+            ZStack {
+                Color.secondary.opacity(0.25)
+                if let name = account.profile?.name {
+                    Text(name.split(separator: " ").prefix(2).compactMap { $0.first.map(String.init) }.joined()).font(.headline)
+                } else { Image(systemName: "person.fill").foregroundStyle(.secondary) }
+            }
         }.clipShape(.circle).accessibilityHidden(true)
     }
 }

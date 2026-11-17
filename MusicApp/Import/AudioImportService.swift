@@ -16,7 +16,7 @@ struct FileFingerprint: Sendable {
 }
 
 enum DuplicatePolicy: String, CaseIterable, Identifiable, Sendable {
-    case skip = "跳过重复文件", keepCopy = "保留副本"
+    case skip = "Skip duplicates", keepCopy = "Keep a copy"
     var id: String { rawValue }
 }
 

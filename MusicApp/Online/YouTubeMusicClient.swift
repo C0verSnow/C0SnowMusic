@@ -20,7 +20,7 @@ struct YouTubeProfile: Codable, Sendable, Equatable {
 }
 
 enum MusicSearchFilter: String, CaseIterable, Identifiable {
-    case all = "全部", songs = "歌曲", videos = "视频", albums = "专辑", artists = "艺术家", playlists = "播放列表"
+    case all = "All", songs = "Songs", videos = "Videos", albums = "Albums", artists = "Artists", playlists = "Playlists"
     var id: String { rawValue }
     var params: String? {
         switch self {
@@ -50,17 +50,21 @@ struct YouTubeMusicClient: Sendable {
     }
 
     func likedTracks(cookies: [WebCookie]) async throws -> [OnlineTrack] {
-        var page = try await browse("VLLM", cookies: cookies)
-        var tracks = page.tracks
-        var seen: Set<String> = []
+        try await collectionItems("VLLM", cookies: cookies).filter(\.isPlayable)
+    }
+
+    func collectionItems(_ browseID: String, cookies: [WebCookie]) async throws -> [OnlineTrack] {
+        var page = try await browse(browseID, cookies: cookies)
+        var items = page.sections.flatMap(\.items)
+        var seenTokens: Set<String> = []
         while let token = page.continuation {
-            guard seen.insert(token).inserted else { throw OnlineMusicError.searchLayoutChanged }
+            guard seenTokens.insert(token).inserted else { throw OnlineMusicError.searchLayoutChanged }
             try Task.checkCancellation()
-            page = try await browse("VLLM", continuation: token, cookies: cookies)
-            tracks += page.tracks
+            page = try await browse(browseID, continuation: token, cookies: cookies)
+            items += page.sections.flatMap(\.items)
         }
         var ids: Set<String> = []
-        return tracks.filter { ids.insert($0.id).inserted }
+        return items.filter { ids.insert($0.id).inserted }
     }
 
     func profile(cookies: [WebCookie]) async throws -> YouTubeProfile {
@@ -81,10 +85,14 @@ struct YouTubeMusicClient: Sendable {
         let (page, response) = try await session.data(for: bootstrap)
         guard (response as? HTTPURLResponse)?.statusCode == 200, let html = String(data: page, encoding: .utf8) else { throw OnlineMusicError.invalidResponse }
         let config = try Self.configuration(html)
-        guard let context = config["INNERTUBE_CONTEXT"] as? [String: Any] else { throw OnlineMusicError.searchLayoutChanged }
+        guard var context = config["INNERTUBE_CONTEXT"] as? [String: Any] else { throw OnlineMusicError.searchLayoutChanged }
         var components = URLComponents(string: "https://music.youtube.com/youtubei/v1/\(endpoint)")!
         components.queryItems = [URLQueryItem(name: "prettyPrint", value: "false")]
         if let continuation { components.queryItems?.append(URLQueryItem(name: "continuation", value: continuation)) }
+        if var client = context["client"] as? [String: Any] {
+            client["hl"] = "en"
+            context["client"] = client
+        }
         var payload = body
         payload["context"] = context
         var request = URLRequest(url: components.url!)
@@ -105,6 +113,7 @@ struct YouTubeMusicClient: Sendable {
 
     private func headers(_ request: inout URLRequest, cookies: [WebCookie]) {
         request.timeoutInterval = 30
+        request.setValue("en-US,en;q=0.9", forHTTPHeaderField: "Accept-Language")
         request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
         request.setValue("https://music.youtube.com", forHTTPHeaderField: "Origin")
         let eligible = cookies.filter { $0.isYouTube && $0.matches(request.url!) }
@@ -164,11 +173,11 @@ struct YouTubeMusicClient: Sendable {
                     // Current search responses use one itemSection per result, without shelf titles.
                     let title: String
                     switch items[0].kind {
-                    case .song: title = AppLanguage.text("歌曲")
-                    case .video: title = AppLanguage.text("视频")
-                    case .album: title = AppLanguage.text("专辑")
-                    case .artist: title = AppLanguage.text("艺术家")
-                    default: title = AppLanguage.text("播放列表")
+                    case .song: title = AppLanguage.text("Songs")
+                    case .video: title = AppLanguage.text("Videos")
+                    case .album: title = AppLanguage.text("Albums")
+                    case .artist: title = AppLanguage.text("Artists")
+                    default: title = AppLanguage.text("Playlists")
                     }
                     if let last = sections.last, last.title == title {
                         sections[sections.count - 1] = MusicSection(id: last.id, title: title, items: last.items + items)
@@ -179,28 +188,28 @@ struct YouTubeMusicClient: Sendable {
             if let action = object["appendContinuationItemsAction"] as? [String: Any], let contents = action["continuationItems"] as? [[String: Any]] {
                 recognized = true
                 let items = contents.compactMap { content -> OnlineTrack? in
-                    guard let value = content["musicResponsiveListItemRenderer"] as? [String: Any] else { visit(content); return nil }
+                    guard let value = (content["musicResponsiveListItemRenderer"] ?? content["musicTwoRowItemRenderer"]) as? [String: Any] else { visit(content); return nil }
                     return item(value)
                 }
-                if !items.isEmpty { sections.append(MusicSection(id: "section-\(sections.count)", title: AppLanguage.text("歌曲"), items: items)) }
+                if !items.isEmpty { sections.append(MusicSection(id: "section-\(sections.count)", title: AppLanguage.text("Songs"), items: items)) }
                 return
             }
             if let next = object["nextContinuationData"] as? [String: Any] { continuation = next["continuation"] as? String }
             if let next = object["continuationCommand"] as? [String: Any] { continuation = next["token"] as? String }
-            if object["musicShelfRenderer"] != nil || object["musicShelfContinuation"] != nil || object["musicPlaylistShelfRenderer"] != nil || object["musicPlaylistShelfContinuation"] != nil || object["musicCardShelfRenderer"] != nil || object["musicCarouselShelfRenderer"] != nil { recognized = true }
-            for name in ["musicShelfRenderer", "musicShelfContinuation", "musicPlaylistShelfRenderer", "musicPlaylistShelfContinuation", "musicCardShelfRenderer", "musicCarouselShelfRenderer"] {
+            for name in ["musicShelfRenderer", "musicShelfContinuation", "musicPlaylistShelfRenderer", "musicPlaylistShelfContinuation", "musicCardShelfRenderer", "musicCarouselShelfRenderer", "gridRenderer", "gridContinuation"] {
                 if let shelf = object[name] as? [String: Any] {
+                    recognized = true
                     var items: [OnlineTrack] = []
                     if let top = item(shelf) { items.append(top) }
-                    for content in shelf["contents"] as? [[String: Any]] ?? [] {
+                    for content in (shelf["contents"] ?? shelf["items"]) as? [[String: Any]] ?? [] {
                         if content["continuationItemRenderer"] != nil { visit(content); continue }
                         for renderer in ["musicResponsiveListItemRenderer", "musicTwoRowItemRenderer"] {
                             if let value = content[renderer] as? [String: Any], let parsed = item(value) { items.append(parsed) }
                         }
                     }
                     let header = (shelf["header"] as? [String: Any])?["musicCarouselShelfBasicHeaderRenderer"] as? [String: Any]
-                    let title = name == "musicCardShelfRenderer" ? AppLanguage.text("最佳结果") : text(shelf["title"] ?? header?["title"])
-                    if !items.isEmpty { sections.append(MusicSection(id: "section-\(sections.count)", title: title.isEmpty ? AppLanguage.text("歌曲") : title, items: items)) }
+                    let title = name == "musicCardShelfRenderer" ? AppLanguage.text("Top result") : text(shelf["title"] ?? header?["title"])
+                    if !items.isEmpty { sections.append(MusicSection(id: "section-\(sections.count)", title: title.isEmpty ? AppLanguage.text("Songs") : title, items: items)) }
                     if let next = (shelf["continuations"] as? [[String: Any]])?.first?["nextContinuationData"] as? [String: Any] { continuation = next["continuation"] as? String }
                     return
                 }
@@ -234,8 +243,8 @@ struct YouTubeMusicClient: Sendable {
         let musicConfig = (watch?["watchEndpointMusicSupportedConfigs"] as? [String: Any])?["watchEndpointMusicConfig"] as? [String: Any]
         let videoType = musicConfig?["musicVideoType"] as? String ?? ""
         let kind: MusicItemKind
-        if page.contains("ARTIST") { kind = .artist }
-        else if page.contains("ALBUM") { kind = .album }
+        if page.contains("ARTIST") || browseID?.hasPrefix("UC") == true { kind = .artist }
+        else if page.contains("ALBUM") || browseID?.hasPrefix("MPRE") == true { kind = .album }
         else if browseID != nil { kind = .playlist }
         else if let videoID, YouTubeSearchClient.validID(videoID) { kind = videoType.contains("ATV") ? .song : .video }
         else { return nil }

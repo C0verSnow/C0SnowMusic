@@ -25,33 +25,33 @@ struct SongRow: View {
                 }.contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("播放 \(song.title)，\(song.artist)")
+            .accessibilityLabel("Play \(song.title), \(song.artist)")
             Menu { actions } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
-                .accessibilityLabel("\(song.title) 的更多操作")
+                .accessibilityLabel("More options for \(song.title)")
         }
         .contextMenu { actions }
         .sheet(isPresented: $editing) { NavigationStack { MetadataEditor(song: song) } }
         .sheet(isPresented: $addingToPlaylist) { NavigationStack { AddToPlaylistView(song: song) } }
-        .confirmationDialog("移除「\(song.title)」", isPresented: $removing, titleVisibility: .visible) {
-            Button("仅移除记录，保留音频文件") { library.remove(song, deleteFile: false, playback: playback) }
-            Button("同时删除应用内音频文件", role: .destructive) { library.remove(song, deleteFile: true, playback: playback) }
-        } message: { Text("仅移除记录的文件可以在设置中重新导入。不会修改文件应用中的原始文件。") }
+        .confirmationDialog("Remove “\(song.title)”", isPresented: $removing, titleVisibility: .visible) {
+            Button("Remove record, keep audio file") { library.remove(song, deleteFile: false, playback: playback) }
+            Button("Also delete the in-app audio file", role: .destructive) { library.remove(song, deleteFile: true, playback: playback) }
+        } message: { Text("Files whose records were removed can be reimported in Music Settings. Originals in Files remain unchanged.") }
     }
 
     @ViewBuilder private var actions: some View {
-        Button("下一首播放", systemImage: "text.line.first.and.arrowtriangle.forward") { playback.enqueue(song, next: true) }
-        Button("添加到队列", systemImage: "text.append") { playback.enqueue(song, next: false) }
-        Button(song.isFavorite ? "取消收藏" : "收藏", systemImage: song.isFavorite ? "star.slash" : "star") { library.toggleFavorite(song) }
-        Button("添加到播放列表", systemImage: "text.badge.plus") { addingToPlaylist = true }
+        Button("Play next", systemImage: "text.line.first.and.arrowtriangle.forward") { playback.enqueue(song, next: true) }
+        Button("Add to queue", systemImage: "text.append") { playback.enqueue(song, next: false) }
+        Button(song.isFavorite ? "Unfavorite" : "Favorite", systemImage: song.isFavorite ? "star.slash" : "star") { library.toggleFavorite(song) }
+        Button("Add to playlist", systemImage: "text.badge.plus") { addingToPlaylist = true }
         if let album = library.albums.first(where: { $0.id == song.albumID }) {
-            NavigationLink("查看专辑", value: LibraryRoute.album(album.id))
+            NavigationLink("View album", value: LibraryRoute.album(album.id))
         }
         if let artist = library.artists.first(where: { $0.id == song.artistID }) {
-            NavigationLink("查看艺术家", value: LibraryRoute.artist(artist.id))
+            NavigationLink("View artist", value: LibraryRoute.artist(artist.id))
         }
-        Button("编辑歌曲信息", systemImage: "pencil") { editing = true }
-        ShareLink(item: library.files.url(for: song.fileRelativePath)) { Label("分享音频文件", systemImage: "square.and.arrow.up") }
-        Button("从资料库移除", systemImage: "trash", role: .destructive) { removing = true }
+        Button("Edit song information", systemImage: "pencil") { editing = true }
+        ShareLink(item: library.files.url(for: song.fileRelativePath)) { Label("Share audio file", systemImage: "square.and.arrow.up") }
+        Button("Remove from library", systemImage: "trash", role: .destructive) { removing = true }
     }
 }
 
@@ -65,27 +65,27 @@ struct MetadataEditor: View {
     @State private var genre = ""
     var body: some View {
         Form {
-            Section("歌曲信息") {
-                TextField("标题", text: $title)
-                TextField("艺术家", text: $artist)
-                TextField("专辑", text: $album)
-                TextField("流派", text: $genre)
+            Section("Song information") {
+                TextField("Title", text: $title)
+                TextField("Artists", text: $artist)
+                TextField("Albums", text: $album)
+                TextField("Genres", text: $genre)
             }
-            Section("音频文件") {
-                LabeledContent("格式", value: song.format)
-                LabeledContent("时长", value: playbackTime(song.duration))
-                LabeledContent("采样率", value: "\(Int(song.sampleRate)) Hz")
-                LabeledContent("声道", value: "\(song.channels)")
-                if let depth = song.bitDepth { LabeledContent("位深度", value: "\(depth) bit") }
-                LabeledContent("文件大小", value: ByteCountFormatter.string(fromByteCount: song.fileSize, countStyle: .file))
-                Text("编辑只修改本地资料库，不改写音频文件。").font(.footnote).foregroundStyle(.secondary)
+            Section("Audio files") {
+                LabeledContent("Format", value: song.format)
+                LabeledContent("Duration", value: playbackTime(song.duration))
+                LabeledContent("Sample rate", value: "\(Int(song.sampleRate)) Hz")
+                LabeledContent("Channels", value: "\(song.channels)")
+                if let depth = song.bitDepth { LabeledContent("Bit depth", value: "\(depth) bit") }
+                LabeledContent("File size", value: ByteCountFormatter.string(fromByteCount: song.fileSize, countStyle: .file))
+                Text("Edits affect the local library only and do not rewrite audio files.").font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .localizedNavigationTitle("编辑歌曲信息").navigationBarTitleDisplayMode(.inline)
+        .localizedNavigationTitle("Edit song information").navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
+            ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {
-                Button("保存") { library.edit(song, title: title, artist: artist, album: album, genre: genre); if library.error == nil { dismiss() } }
+                Button("Save") { library.edit(song, title: title, artist: artist, album: album, genre: genre); if library.error == nil { dismiss() } }
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }

@@ -4,11 +4,11 @@
 
 ## 操作
 
-1. 右上角头像打开账户页，点 Music Settings 进入原设置。语言选系统、简体中文或 English；界面直接切换，选择保存在设备上。
+1. 右上角头像打开 c0vermusic Account，点 Music Settings 进入设置。应用界面统一英文，不再提供语言切换；当前行为与验证范围见 [PRODUCT_UI.md](PRODUCT_UI.md)。
 2. 账户页可选 YouTube 网页登录、恢复和退出。本地音乐和公开在线功能不强制登录。
-3. 搜索 Tab 选择 YouTube，输入歌名/歌手并提交。使用 YouTube Music 综合/分类搜索，按最佳结果、歌曲、视频等分组；歌手、专辑、歌单进入对应内容页。实际接口结构与许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
+3. 搜索 Tab 选择 c0vermusic，输入歌名/歌手自动搜索。使用 YouTube Music 综合/分类搜索，按最佳结果、歌曲、视频等分组；歌手、专辑、歌单进入对应内容页。已连接仓库的匹配结果合入同一搜索。实际接口结构与许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
 4. 点卡片后才准备音频；菜单可预下载或下载到资料库，同一时间一个下载，可取消。连接音乐仓库后的查重、上传与 Telegram 取回流程见 [音乐仓库](TELEGRAM_MUSIC.md)。
-5. 在线缓存复用现有 AVPlayer、锁屏控制、后台播放和队列。缓存歌曲先完整下载并验证纯音频，再开始播放。收藏、编辑元数据和歌词功能需先下载到资料库。临时缓存播放队列不在重启后自动恢复，可从缓存列表重新播放。
+5. 在线缓存复用现有 AVPlayer、锁屏控制、后台播放和队列。缓存歌曲先完整下载并验证纯音频，再开始播放。缓存歌曲支持自动歌词、专辑和封面补齐，也可从 Lyrics Settings 手动查找或导入歌词；本地播放列表和元数据编辑使用保存到资料库的副本。临时缓存播放队列不在重启后自动恢复，可从缓存列表重新播放。
 
 ## 缓存
 
@@ -48,7 +48,7 @@ iPhone 的 WKNavigationDelegate 不具有 Android WebView 的所有请求拦截�
 
 新增测试覆盖手机页面解析与去重、错误页识别、真实 M4A 缓存淘汰、重启清单恢复、手动导入副本保留、拒绝 HTML、Python/SSL/WebKit 执行、设置入口与语言切换。CI 的通过状态须以 PR checks 为准；测试不使用用户音乐。
 
-真实 Google/YouTube 网页登录需要在设备上完成认证后验收。真实 YouTube 下载会受平台页面/签名变化、地区、PO Token 和机器人验证影响；不声称支持所有视频，也不把合成文件测试当作真实网站下载成功。搜索目前只取第一页，没有 continuation 分页。WebKit 插件使用 yt-dlp 私有 provider 接口，升级时须一起验证固定版本组合。
+真实 Google/YouTube 网页登录需要在设备上完成认证后验收。真实 YouTube 下载会受平台页面/签名变化、地区、PO Token 和机器人验证影响；不声称支持所有视频，也不把合成文件测试当作真实网站下载成功。Search and library collections support continuation pagination.WebKit 插件使用 yt-dlp 私有 provider 接口，升级时须一起验证固定版本组合。
 
 ### DASH 音频容器
 

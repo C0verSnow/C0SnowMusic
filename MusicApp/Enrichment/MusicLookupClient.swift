@@ -8,8 +8,8 @@ struct SongLookupQuery: Equatable, Sendable {
 
     init(title: String, artist: String, album: String, duration: Double) {
         self.title = title
-        self.artist = artist == "未知艺术家" ? "" : artist
-        self.album = album == "未知专辑" ? "" : album
+        self.artist = artist == "Unknown artist" ? "" : artist
+        self.album = album == "Unknown album" ? "" : album
         self.duration = duration
         if self.artist.isEmpty {
             for separator in [" – ", " — ", " - "] {
@@ -102,11 +102,11 @@ enum MusicLookupError: LocalizedError {
     case unavailable(Int), retryLater(Int), invalidResponse, noLyrics, noCover
     var errorDescription: String? {
         switch self {
-        case .unavailable(let status): "在线服务暂时不可用（\(status)），请稍后重试。"
-        case .retryLater(let seconds): "在线服务繁忙，请在 \(seconds) 秒后重试。"
-        case .invalidResponse: "在线服务返回了无法读取的数据。"
-        case .noLyrics: "这一版本没有可下载的歌词。"
-        case .noCover: "未找到这个专辑的封面。歌词仍可单独保存。"
+        case .unavailable(let status): "The music service is temporarily unavailable (\(status)). Try again later."
+        case .retryLater(let seconds): "The music service is busy. Try again in \(seconds) seconds."
+        case .invalidResponse: "The online service returned unreadable data."
+        case .noLyrics: "This version has no downloadable lyrics."
+        case .noCover: "No artwork found for this album. Lyrics can still be saved."
         }
     }
 }

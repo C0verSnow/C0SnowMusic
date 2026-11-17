@@ -12,7 +12,10 @@ struct ArtworkView: View {
             Group {
                 if let image { Image(uiImage: image).resizable().scaledToFill() }
                 else {
-                    Image("AppLogo").resizable().scaledToFill()
+                    ZStack {
+                        Color.secondary.opacity(0.12)
+                        Image(systemName: "music.note").font(.largeTitle).foregroundStyle(.tertiary)
+                    }
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -45,9 +48,9 @@ struct AlbumCard: View {
 struct EmptyLibraryView: View {
     var body: some View {
         ContentUnavailableView {
-            Label("你的音乐，从这里开始", systemImage: "music.note.house")
+            Label("Your Music Starts Here", systemImage: "music.note.house")
         } description: {
-            Text("搜索 YouTube 开始聆听；本地文件可从账户的 Music Settings 导入。")
+            Text("Find something you love in Search, or add your music from c0vermusic Account → Music Settings.")
         }
     }
 }
@@ -55,4 +58,18 @@ struct EmptyLibraryView: View {
 func playbackTime(_ seconds: Double) -> String {
     let value = max(0, Int(seconds.isFinite ? seconds : 0))
     return "\(value / 60):\(String(format: "%02d", value % 60))"
+}
+
+struct MusicPlaceholderRows: View {
+    var body: some View {
+        ForEach(0..<5, id: \.self) { _ in
+            HStack(spacing: 12) {
+                RoundedRectangle(cornerRadius: 6).frame(width: 52, height: 52)
+                VStack(alignment: .leading, spacing: 10) {
+                    RoundedRectangle(cornerRadius: 3).frame(width: 160, height: 12)
+                    RoundedRectangle(cornerRadius: 3).frame(width: 110, height: 10)
+                }
+            }.foregroundStyle(.quaternary).padding(.vertical, 8).accessibilityHidden(true)
+        }
+    }
 }

@@ -1,3 +1,7 @@
+# Issue #13 验证范围
+
+本次功能与新增回归见 [PRODUCT_UI.md](PRODUCT_UI.md)。build 10 已通过远端编译和 46 项单元/集成，两项 UI 通过、一项组合 UI 超时；已签名覆盖安装并发现布局差异及本地歌曲缺封面。build 11 已据此修改，正在准备远端和真机复验。逐页对比见 [DEVICE_UI_COMPARISON.md](DEVICE_UI_COMPARISON.md)。本地仅静态和差异检查，不能沿用下方旧版本的通过结果。
+
 # 测试与验收
 
 ## Issue #11 搜索、账户与 Telegram 音乐仓库证据

@@ -29,6 +29,7 @@ import SwiftData
         context.autosaveEnabled = false
         try files.createDirectories()
         try refresh()
+        try translateLegacyPlaceholders()
     }
 
     func refresh() throws {
@@ -40,6 +41,25 @@ import SwiftData
         revision += 1
     }
 
+    private func translateLegacyPlaceholders() throws {
+        for song in songs {
+            song.artist = LegacyMetadata.english(song.artist)
+            song.albumArtist = LegacyMetadata.english(song.albumArtist)
+            song.albumTitle = LegacyMetadata.english(song.albumTitle)
+            song.genre = LegacyMetadata.english(song.genre)
+        }
+        for artist in artists { artist.name = LegacyMetadata.english(artist.name) }
+        for album in albums {
+            album.title = LegacyMetadata.english(album.title)
+            album.artist = LegacyMetadata.english(album.artist)
+        }
+        if context.hasChanges { try context.save() }
+    }
+
+    var genres: [String] {
+        Array(Set(songs.map(\.genre))).filter { !$0.isEmpty && $0 != "Uncategorized" }.sorted()
+    }
+
     func startImport(_ urls: [URL]) {
         guard importTask == nil else { deferredImports += urls; return }
         importProgress = 0; importFailures = []
@@ -47,16 +67,16 @@ import SwiftData
             var imported = 0; var skipped = 0
             for (index, url) in urls.enumerated() {
                 if Task.isCancelled { break }
-                importStatus = "正在导入 \(index + 1)/\(urls.count)：\(url.lastPathComponent)"
+                importStatus = "Importing \(index + 1)/\(urls.count): \(url.lastPathComponent)"
                 do {
                     if try await importOne(url) { imported += 1 } else { skipped += 1 }
                 } catch is CancellationError { break }
                 catch { importFailures.append("\(url.lastPathComponent)：\(error.localizedDescription)") }
                 importProgress = Double(index + 1) / Double(urls.count)
             }
-            importStatus = "\(Task.isCancelled ? "已取消。" : "")已导入 \(imported) 首，跳过 \(skipped) 首，失败 \(importFailures.count) 首。"
+            importStatus = "\(Task.isCancelled ? "Canceled. " : "")Imported \(imported), skipped \(skipped), failed \(importFailures.count)."
             importProgress = nil; importTask = nil
-            if !importFailures.isEmpty { error = importFailures.prefix(5).joined(separator: "\n") + "\n完整明细可在设置中查看。" }
+            if !importFailures.isEmpty { error = importFailures.prefix(5).joined(separator: "\n") + "\nView details in Music Settings." }
             let pending = deferredImports; deferredImports = []
             if !Task.isCancelled, !pending.isEmpty { startImport(pending) }
         }
@@ -101,9 +121,9 @@ import SwiftData
         transaction {
             guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw MusicError.emptyName }
             song.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-            song.artist = artist.isEmpty ? "未知艺术家" : artist
-            song.albumTitle = album.isEmpty ? "未知专辑" : album
-            song.genre = genre.isEmpty ? "未分类" : genre
+            song.artist = artist.isEmpty ? "Unknown artist" : artist
+            song.albumTitle = album.isEmpty ? "Unknown album" : album
+            song.genre = genre.isEmpty ? "Uncategorized" : genre
             song.albumArtist = song.artist
             assignGroups(song)
             pruneGroups(excluding: nil)
@@ -222,7 +242,7 @@ import SwiftData
         guard try await ArtworkCache.shared.save(data, id: id, files: files) else { throw MusicLookupError.invalidResponse }
         transaction {
             song.artworkID = id
-            if song.albumTitle != "未知专辑", let album = albums.first(where: { $0.id == song.albumID }) {
+            if song.albumTitle != "Unknown album", let album = albums.first(where: { $0.id == song.albumID }) {
                 album.artworkID = id
             }
         }

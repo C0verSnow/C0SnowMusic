@@ -1,4 +1,4 @@
-# C0SnowMusic
+# c0vermusic (C0SnowMusic)
 
 [下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/C0SnowMusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1)
 
@@ -7,6 +7,10 @@ IPA 未签名，须用自己的 Apple 证书签名安装。
 iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不自动上传本地音乐；可选 Google 登录、YouTube Music 搜索和 Telegram 音乐仓库。
 
 本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
+
+## 当前界面
+
+Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图整理原生界面，统一英文、搜索和资料库；YouTube 歌单、专辑、艺人直接进入对应分类，不再另设 Online Library。歌词页只保留右下角设置入口，旧缓存缺封面会独立恢复。行为、来源与验证范围见 [产品界面说明](docs/PRODUCT_UI.md)。
 
 ## 打开与运行
 
@@ -22,9 +26,9 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 ## 功能
 
-- 首页、发现、资料库、搜索四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。
-- 右上角账户页包含 YouTube 网页登录和 Music Settings；原设置移动到 Music Settings，新增系统/简体中文/English 语言选择及缓存管理。
-- 搜索可切换本地资料库与 YouTube。请求 m.youtube.com 后只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
+- Home、Radio、Library、Search 四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。Radio 使用真实 YouTube 电台歌单，空队列显示 Not Playing。
+- 右上角 c0vermusic Account 包含 YouTube 网页登录和 Music Settings；界面统一英文，含导入和缓存管理，旧语言偏好不再影响显示。
+- 搜索采用 c0vermusic / Library 两档，直接读取 YouTube Music 和已连接仓库；只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
 - 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。
@@ -47,7 +51,7 @@ iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI�
 
 ## 下载歌词、封面和校准时间
 
-全屏播放器打开「歌词」，点击「在线查找歌词与封面」或底部搜索按钮。歌名和艺术家可编辑；缺少标签但文件名形如 `艺术家 – 歌名` 时会预填这两个字段。
+全屏播放器打开 Lyrics，点击右下角 Lyrics Settings，在菜单选择 Find Lyrics and Artwork。导入 LRC 和时间校准也在同一菜单。歌名和艺术家可编辑；缺少标签但文件名形如 `艺术家 – 歌名` 时会预填这两个字段。
 
 1. 点击「搜索歌词」。优先按歌名、歌手、专辑和音频真实时长精确查询 LRCLIB，找不到合适同步版本再列出搜索候选。
 2. 核对专辑和录音版本，选择「使用此版本」。匹配结果中的标准歌名和艺术家会自动写回资料库，更新艺人分组和系统播放信息，无须逐项手改；其他标签保留。同步歌词保存为带时间戳的 LRC；没有时间戳时显示纯文本，不伪造同步。

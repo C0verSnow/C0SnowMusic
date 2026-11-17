@@ -1,64 +1,175 @@
 import SwiftUI
 
-enum SongFilter: String, Hashable { case all = "歌曲", recent = "最近添加", history = "最近播放", favorites = "收藏歌曲" }
+enum SongFilter: String, Hashable { case all = "Songs", recent = "Recently Added", history = "Recently Played", favorites = "Favorite Songs" }
 enum LibraryRoute: Hashable {
     case songs(SongFilter), albums, artists, genres, playlists
     case album(UUID), artist(UUID), genre(String), playlist(UUID)
 }
 
+enum LibraryCategory: String, CaseIterable, Identifiable {
+    case playlists, artists, albums, songs, genres, history, favorites
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .playlists: "Playlists"
+        case .artists: "Artists"
+        case .albums: "Albums"
+        case .songs: "Songs"
+        case .genres: "Genres"
+        case .history: "Recently Played"
+        case .favorites: "Favorite Songs"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .playlists: "music.note.list"
+        case .artists: "music.mic"
+        case .albums: "square.stack"
+        case .songs: "music.note"
+        case .genres: "guitars"
+        case .history: "clock"
+        case .favorites: "star"
+        }
+    }
+    var route: LibraryRoute {
+        switch self {
+        case .playlists: .playlists
+        case .artists: .artists
+        case .albums: .albums
+        case .songs: .songs(.all)
+        case .genres: .genres
+        case .history: .songs(.history)
+        case .favorites: .songs(.favorites)
+        }
+    }
+}
+
 struct LibraryView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(YouTubeAccountStore.self) private var account
+    @Environment(CloudMusicStore.self) private var cloud
+    @AppStorage("libraryCategoryOrder") private var categoryOrder = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
+    @AppStorage("libraryVisibleCategories") private var visibleCategories = LibraryCategory.allCases.map(\.rawValue).joined(separator: ",")
+    @Binding var editing: Bool
+    private var orderedCategories: [LibraryCategory] { categoryOrder.split(separator: ",").compactMap { LibraryCategory(rawValue: String($0)) } }
+    private var visible: Set<String> { Set(visibleCategories.split(separator: ",").map(String.init)) }
+
     var body: some View {
+        let separatorLeading: CGFloat = editing ? 84 : 44
         List {
             Section {
-                NavigationLink { OnlineLibraryView() } label: { Label("在线资料库", systemImage: "network") }
-                NavigationLink(value: LibraryRoute.playlists) { Label("播放列表", systemImage: "music.note.list") }
-                NavigationLink(value: LibraryRoute.artists) { Label("艺术家", systemImage: "music.mic") }
-                NavigationLink(value: LibraryRoute.albums) { Label("专辑", systemImage: "square.stack") }
-                NavigationLink(value: LibraryRoute.songs(.all)) { Label("歌曲", systemImage: "music.note") }
-                NavigationLink(value: LibraryRoute.genres) { Label("流派", systemImage: "guitars") }
-                NavigationLink(value: LibraryRoute.songs(.history)) { Label("最近播放", systemImage: "clock") }
-                NavigationLink(value: LibraryRoute.songs(.favorites)) { Label("收藏歌曲", systemImage: "star") }
+                ForEach(orderedCategories.filter { editing || visible.contains($0.rawValue) }) { category in
+                    Group {
+                        if editing {
+                            Button {
+                                var next = visible
+                                if !next.insert(category.rawValue).inserted { next.remove(category.rawValue) }
+                                visibleCategories = orderedCategories.map(\.rawValue).filter { next.contains($0) }.joined(separator: ",")
+                            } label: {
+                                HStack(spacing: 20) {
+                                    Image(systemName: visible.contains(category.rawValue) ? "checkmark.circle.fill" : "circle")
+                                        .font(.title3).frame(width: 20)
+                                        .foregroundStyle(visible.contains(category.rawValue) ? Color.pink : .secondary)
+                                    Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
+                                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(.rect)
+                            }.buttonStyle(.plain)
+                                .accessibilityIdentifier("libraryCategory-\(category.rawValue)")
+                                .accessibilityValue(visible.contains(category.rawValue) ? "Shown" : "Hidden")
+                        } else {
+                            NavigationLink(value: category.route) {
+                                Label(category.title, systemImage: category.icon).labelStyle(LibraryLabelStyle())
+                            }
+                        }
+                    }
+                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
+                    .listRowSeparator(.hidden, edges: .top)
+                    .listRowSeparator(.visible, edges: .bottom)
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in separatorLeading }
+                    .moveDisabled(!editing)
+                }
+                .onMove { offsets, destination in
+                    var order = orderedCategories
+                    order.move(fromOffsets: offsets, toOffset: destination)
+                    categoryOrder = order.map(\.rawValue).joined(separator: ",")
+                }
             }
-            Section("最近添加") {
-                if library.songs.isEmpty { EmptyLibraryView().listRowSeparator(.hidden) }
-                else {
-                    ForEach(library.songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(12)) { song in SongRow(song: song) }
-                    NavigationLink("查看全部", value: LibraryRoute.songs(.recent))
+            if !editing && (!library.songs.isEmpty || !online.songs(for: .recent, cloud: cloud).isEmpty) {
+                Section {
+                    ForEach(library.songs.sorted { $0.dateAdded > $1.dateAdded }.prefix(8)) { SongRow(song: $0) }
+                    ForEach(online.songs(for: .recent, cloud: cloud).prefix(8)) { OnlineTrackRow(track: $0) }
+                } header: {
+                    Text("Recently Added").font(.title2.bold()).foregroundStyle(.primary).textCase(nil)
                 }
             }
         }
         .listStyle(.plain)
-        .localizedNavigationTitle("资料库")
+        .environment(\.editMode, .constant(editing ? .active : .inactive))
+        .navigationTitle("Library")
+        .refreshable {
+            if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
+            else { await cloud.refresh() }
+        }
+    }
+}
+
+struct LibraryLabelStyle: LabelStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 18) {
+            configuration.icon.font(.title3).foregroundStyle(.pink).frame(width: 24)
+            configuration.title.foregroundStyle(.primary)
+        }.font(.body).frame(minHeight: 52)
     }
 }
 
 struct LibraryRouteView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(OnlineMusicStore.self) private var online
+    @Environment(CloudMusicStore.self) private var cloud
     let route: LibraryRoute
     var body: some View {
         switch route {
-        case .songs(let filter): SongListView(title: filter.rawValue, songs: filtered(filter))
+        case .songs(let filter): SongListView(title: filter.rawValue, songs: filtered(filter), onlineSongs: online.songs(for: filter, cloud: cloud))
         case .albums:
-            AlbumGridView(albums: library.albums).localizedNavigationTitle("专辑")
+            List {
+                if !library.albums.isEmpty {
+                    Section {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 145), spacing: 20)], spacing: 24) {
+                            ForEach(library.albums) { album in
+                                NavigationLink(value: LibraryRoute.album(album.id)) { AlbumCard(album: album) }.buttonStyle(.plain)
+                            }
+                        }.padding(.vertical).listRowSeparator(.hidden)
+                    }
+                }
+                ForEach(online.albums) { OnlineTrackRow(track: $0) }
+            }.listStyle(.plain).navigationTitle("Albums")
+                .overlay { if library.albums.isEmpty && online.albums.isEmpty { ContentUnavailableView("No Albums Yet", systemImage: "square.stack") } }
         case .artists:
-            List(library.artists) { artist in NavigationLink(artist.name, value: LibraryRoute.artist(artist.id)) }.localizedNavigationTitle("艺术家")
+            List {
+                ForEach(library.artists) { artist in
+                    NavigationLink(value: LibraryRoute.artist(artist.id)) {
+                        Label(artist.name, systemImage: "music.mic").padding(.vertical, 8)
+                    }
+                }
+                ForEach(online.artists) { OnlineTrackRow(track: $0) }
+            }.listStyle(.plain).navigationTitle("Artists")
+                .overlay { if library.artists.isEmpty && online.artists.isEmpty { ContentUnavailableView("No Artists Yet", systemImage: "music.mic") } }
         case .genres:
-            List(Array(Set(library.songs.map(\.genre))).sorted(), id: \.self) { genre in
+            List(library.genres, id: \.self) { genre in
                 NavigationLink(genre, value: LibraryRoute.genre(genre))
-            }.localizedNavigationTitle("流派")
+            }.localizedNavigationTitle("Genres")
         case .playlists: PlaylistsView()
         case .album(let id):
             if let album = library.albums.first(where: { $0.id == id }) { AlbumDetailView(album: album) }
-            else { ContentUnavailableView("专辑已移除", systemImage: "square.stack") }
+            else { ContentUnavailableView("Album removed", systemImage: "square.stack") }
         case .artist(let id):
             if let artist = library.artists.first(where: { $0.id == id }) {
                 SongListView(title: artist.name, songs: library.songs.filter { $0.artistID == id })
-            } else { ContentUnavailableView("艺术家已移除", systemImage: "music.mic") }
+            } else { ContentUnavailableView("Artist removed", systemImage: "music.mic") }
         case .genre(let genre): SongListView(title: genre, songs: library.songs.filter { $0.genre == genre })
         case .playlist(let id):
             if let playlist = library.playlists.first(where: { $0.id == id }) { PlaylistDetailView(playlist: playlist) }
-            else { ContentUnavailableView("播放列表已移除", systemImage: "music.note.list") }
+            else { ContentUnavailableView("Playlist removed", systemImage: "music.note.list") }
         }
     }
 
@@ -73,7 +184,7 @@ struct LibraryRouteView: View {
 }
 
 enum SongSort: String, CaseIterable, Identifiable {
-    case original = "默认顺序", title = "标题", artist = "艺术家", added = "添加时间"
+    case original = "Default order", title = "Title", artist = "Artists", added = "Date added"
     var id: String { rawValue }
 }
 
@@ -81,6 +192,7 @@ struct SongListView: View {
     @Environment(PlaybackStore.self) private var playback
     let title: String
     let songs: [Song]
+    var onlineSongs: [OnlineTrack] = []
     @State private var sort = SongSort.original
     private var sortedSongs: [Song] {
         switch sort {
@@ -90,27 +202,35 @@ struct SongListView: View {
         case .added: songs.sorted { $0.dateAdded > $1.dateAdded }
         }
     }
+    private var sortedOnlineSongs: [OnlineTrack] {
+        switch sort {
+        case .title: onlineSongs.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+        case .artist: onlineSongs.sorted { $0.artist.localizedStandardCompare($1.artist) == .orderedAscending }
+        case .original, .added: onlineSongs
+        }
+    }
     var body: some View {
         List {
             if !songs.isEmpty {
                 Section {
                     HStack {
-                        Button("播放", systemImage: "play.fill") { playback.play(sortedSongs) }
+                        Button("Play", systemImage: "play.fill") { playback.play(sortedSongs) }
                         Spacer()
-                        Button("随机播放", systemImage: "shuffle") { playback.play(sortedSongs.shuffled(), shuffled: true) }
+                        Button("Shuffle", systemImage: "shuffle") { playback.play(sortedSongs.shuffled(), shuffled: true) }
                     }.buttonStyle(.bordered).listRowSeparator(.hidden)
                 }
             }
             ForEach(Array(sortedSongs.enumerated()), id: \.element.id) { index, song in
                 SongRow(song: song, play: { playback.play(sortedSongs, startingAt: index) })
             }
+            ForEach(sortedOnlineSongs) { OnlineTrackRow(track: $0) }
         }
         .listStyle(.plain)
-        .overlay { if songs.isEmpty { ContentUnavailableView("这里还没有歌曲", systemImage: "music.note") } }
+        .overlay { if songs.isEmpty && onlineSongs.isEmpty { ContentUnavailableView("No songs here yet", systemImage: "music.note") } }
         .navigationTitle(title)
         .toolbar {
-            Menu("排序", systemImage: "arrow.up.arrow.down") {
-                Picker("排序", selection: $sort) { ForEach(SongSort.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) } }
+            Menu("Sort", systemImage: "arrow.up.arrow.down") {
+                Picker("Sort", selection: $sort) { ForEach(SongSort.allCases) { Text(LocalizedStringKey($0.rawValue)).tag($0) } }
             }
         }
     }
@@ -126,7 +246,7 @@ struct AlbumGridView: View {
                 }
             }.padding()
         }
-        .overlay { if albums.isEmpty { ContentUnavailableView("还没有专辑", systemImage: "square.stack") } }
+        .overlay { if albums.isEmpty { ContentUnavailableView("No albums yet", systemImage: "square.stack") } }
     }
 }
 
@@ -151,15 +271,15 @@ struct AlbumDetailView: View {
                     Text(album.artist).font(.title3).foregroundStyle(.pink)
                     if let year = album.releaseYear { Text(String(year)).font(.caption).foregroundStyle(.secondary) }
                     HStack {
-                        Button("播放", systemImage: "play.fill") { playback.play(songs) }.frame(maxWidth: .infinity)
-                        Button("随机播放", systemImage: "shuffle") { playback.play(songs.shuffled(), shuffled: true) }.frame(maxWidth: .infinity)
+                        Button("Play", systemImage: "play.fill") { playback.play(songs) }.frame(maxWidth: .infinity)
+                        Button("Shuffle", systemImage: "shuffle") { playback.play(songs.shuffled(), shuffled: true) }.frame(maxWidth: .infinity)
                     }.buttonStyle(.bordered).disabled(songs.isEmpty)
                 }.frame(maxWidth: .infinity).padding(.vertical).listRowSeparator(.hidden)
             }
             ForEach(Array(songs.enumerated()), id: \.element.id) { index, song in
                 SongRow(song: song, play: { playback.play(songs, startingAt: index) })
             }
-            Text("\(songs.count) 首歌曲 · \(playbackTime(songs.reduce(0) { $0 + $1.duration }))")
+            Text("\(songs.count) songs · \(playbackTime(songs.reduce(0) { $0 + $1.duration }))")
                 .font(.footnote).foregroundStyle(.secondary).listRowSeparator(.hidden)
         }.listStyle(.plain).navigationBarTitleDisplayMode(.inline)
     }

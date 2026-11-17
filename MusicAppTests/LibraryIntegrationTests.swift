@@ -19,6 +19,34 @@ import UIKit
         try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: ext, subdirectory: "Fixtures"))
     }
 
+    func testLegacyPlaceholdersBecomeEnglishWithoutChangingMusicOrGroups() async throws {
+        let library = try makeLibrary()
+        defer { try? FileManager.default.removeItem(at: library.files.root) }
+        try await library.importOne(fixture("Test Tone", ext: "wav"))
+        let song = try XCTUnwrap(library.songs.first)
+        let artistID = song.artistID
+        let albumID = song.albumID
+        let hash = song.fileHash
+        library.transaction {
+            song.title = "中文歌名"; song.lyrics = "原始歌词"
+            song.artist = "未知艺术家"; song.albumArtist = "未知艺术家"; song.albumTitle = "未知专辑"; song.genre = "未分类"
+            library.artists.first?.name = "未知艺术家"
+            library.albums.first?.title = "未知专辑"
+            library.albums.first?.artist = "未知艺术家"
+        }
+        let reopened = try LibraryStore(context: library.context, files: library.files)
+        let restored = try XCTUnwrap(reopened.songs.first)
+        XCTAssertEqual(restored.artist, "Unknown artist")
+        XCTAssertEqual(restored.albumTitle, "Unknown album")
+        XCTAssertEqual(restored.genre, "Uncategorized")
+        XCTAssertTrue(reopened.genres.isEmpty)
+        XCTAssertEqual(restored.artistID, artistID)
+        XCTAssertEqual(restored.albumID, albumID)
+        XCTAssertEqual(restored.fileHash, hash)
+        XCTAssertEqual(restored.title, "中文歌名")
+        XCTAssertEqual(restored.lyrics, "原始歌词")
+    }
+
     func testImportEveryTargetFormatAndHighResolutionPCM() async throws {
         let library = try makeLibrary()
         defer { try? FileManager.default.removeItem(at: library.files.root) }
@@ -81,7 +109,7 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         let song = try XCTUnwrap(library.songs.first)
         XCTAssertEqual(song.title, "Test Tone")
-        XCTAssertEqual(song.artist, "未知艺术家")
+        XCTAssertEqual(song.artist, "Unknown artist")
         XCTAssertNil(song.artworkID)
     }
 
@@ -91,11 +119,11 @@ import UIKit
         defer { try? FileManager.default.removeItem(at: root) }
         var first: LibraryStore? = try makeLibrary(root: root)
         try await first!.importOne(fixture("Test Tone", ext: "wav"))
-        let player = try PlaybackStore(library: first!, systemIntegration: false)
+        let player = try PlaybackStore(library: first!, systemIntegration: false, lookupClient: nil)
         player.enqueue(try XCTUnwrap(first?.songs.first), next: false)
         player.pause(); player.seek(to: 1.25); player.cycleRepeat(); player.toggleShuffle(); player.saveSession()
         let second = try makeLibrary(root: root)
-        let restored = try PlaybackStore(library: second, systemIntegration: false)
+        let restored = try PlaybackStore(library: second, systemIntegration: false, lookupClient: nil)
         XCTAssertEqual(second.songs.count, 1)
         XCTAssertEqual(restored.currentSong?.title, "Test Tone")
         XCTAssertEqual(restored.currentTime, 1.25, accuracy: 0.01)
@@ -125,7 +153,7 @@ import UIKit
         library.toggleFavorite(first)
         XCTAssertTrue(first.isFavorite)
         XCTAssertTrue(library.albums.contains { $0.title == "新专辑" && $0.id == first.albumID })
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         let path = library.files.url(for: first.fileRelativePath)
         library.remove(first, deleteFile: true, playback: player)
         XCTAssertFalse(FileManager.default.fileExists(atPath: path.path))
@@ -144,7 +172,7 @@ import UIKit
         try await library.importOne(fixture("Test Tone", ext: "wav"))
         try await library.importOne(fixture("Fixture", ext: "flac"))
         let songs = library.songs
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         player.play(songs)
         let deadline = ContinuousClock.now.advanced(by: .seconds(12))
         while player.currentSong?.id != songs[1].id, player.playbackError == nil, ContinuousClock.now < deadline {
@@ -199,14 +227,14 @@ import UIKit
         XCTAssertEqual(song.title, "Correct title")
         XCTAssertEqual(song.artist, "Correct artist")
         XCTAssertEqual(song.albumArtist, "Correct artist")
-        XCTAssertEqual(song.albumTitle, "未知专辑")
+        XCTAssertEqual(song.albumTitle, "Unknown album")
         XCTAssertFalse(library.artists.contains { $0.id == originalArtistID })
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         let cover = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 64), format: format).jpegData(withCompressionQuality: 0.9) { context in
             UIColor.systemBlue.setFill(); context.fill(CGRect(x: 0, y: 0, width: 64, height: 64))
         }
         try await library.setDownloadedCover(song, data: cover)
-        let player = try PlaybackStore(library: library, systemIntegration: false)
+        let player = try PlaybackStore(library: library, systemIntegration: false, lookupClient: nil)
         player.currentSong = song
         player.refreshMediaInfo()
         defer { player.pause(); MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }

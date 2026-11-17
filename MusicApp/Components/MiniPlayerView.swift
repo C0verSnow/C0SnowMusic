@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFAudio
 
 struct MiniPlayerView: View {
     @Environment(PlaybackStore.self) private var playback
@@ -19,20 +20,32 @@ struct MiniPlayerView: View {
                         }.contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel("打开播放器：\(song.title)，\(song.artist)")
+                    .accessibilityLabel("Open player: \(song.title), \(song.artist)")
                     .accessibilityIdentifier("miniPlayer")
-                    if playback.isLoading { ProgressView().frame(width: 44, height: 44) }
-                    else {
-                        Button(playback.isPlaying ? "暂停" : "播放", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
-                            .labelStyle(.iconOnly).frame(width: 44, height: 44)
+                    Group {
+                        Button(playback.isPlaying ? "Pause" : "Play", systemImage: playback.isPlaying ? "pause.fill" : "play.fill") { playback.toggle() }
+                            .labelStyle(.iconOnly).frame(width: 44, height: 44).disabled(playback.isLoading)
                     }
                     if placement != .inline {
-                        Button("下一首", systemImage: "forward.fill") { playback.next() }.labelStyle(.iconOnly).frame(width: 44, height: 44)
+                        Button("Next", systemImage: "forward.fill") { playback.next() }.labelStyle(.iconOnly).frame(width: 44, height: 44)
                     }
                 }
-                ProgressView(value: playback.currentTime, total: max(playback.duration, 1)).tint(.primary).accessibilityLabel("播放进度")
             }
-            .padding(.horizontal, 12).padding(.vertical, 4)
+            .padding(.horizontal, 12).padding(.vertical, 4).tint(.primary)
+        } else {
+            HStack(spacing: 10) {
+                Image(systemName: "music.note").font(.title3).foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32).background(.quaternary, in: .rect(cornerRadius: 6))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? "iPhone")
+                        .font(.system(size: 10)).foregroundStyle(.secondary).lineLimit(1)
+                    Text("Not Playing").font(.caption.bold())
+                }.frame(maxWidth: .infinity, alignment: .leading)
+                Button("Play", systemImage: "play.fill") { }.labelStyle(.iconOnly).disabled(true).frame(width: 32, height: 36)
+                if placement != .inline {
+                    Button("Next", systemImage: "forward.fill") { }.labelStyle(.iconOnly).disabled(true).frame(width: 32, height: 36)
+                }
+            }.padding(.horizontal, 12).padding(.vertical, 4).accessibilityIdentifier("emptyMiniPlayer")
         }
     }
 }
