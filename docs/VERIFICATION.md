@@ -251,4 +251,13 @@ YouTube Music 的首页上下文仅在内存保留 5 分钟，并按 Cookie 快�
 
 远端回归新增实际 yt-dlp + 本机 HTTP 合成音传输，确认两次下载只取一次播放器 JS、目录切换、Cookie 会话重建、磁盘缓存与取消恢复；Swift HTTP 边界回归检查上下文复用、账户切换、过期、拒绝后刷新、失败重试与并发共享，已有 AudioRepository 回归增加云端超时回退。真实 WebKit 回归改为同一 provider 连续执行，再跨两次 Swift 调用复用；音频封装、缓存和播放回归继续沿用完整 iOS CI。
 
-本地仅阅读源码、解析 Python 语法、检查 plist、JSON 与差异；没有编译、构建或测试执行。build 19 远端结果尚待确认。用户本轮明确搁置真机测试，因此没有新的首播实测，不能声称达到 1–2 秒。当前仍先完整下载再本地播放；渐进播放的接口约束与取舍记录在 [首播调研](PLAYBACK_LATENCY_RESEARCH.md)。PR #16 保持草稿，不合并、不关闭 Issue #15。
+本地仅阅读源码、解析 Python 语法、检查 plist、JSON 与差异；没有编译、构建或测试执行。build 19 的 [完整 CI 44145269857](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269857) 与 [静态 CI 44145269782](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269782) 已全通过；提交为 `f7761ae19f606e1270e76ca7f2edcf56f890815c`，63 项单元/集成、7 项 UI、17 项 Worker、1 项 Python 日志脱敏与 3 项真实 yt-dlp 回归零失败。真实 WebKit provider 连续执行、跨两次 Swift 调用复用与 DASH 时长/播放回归均通过模拟器；iPhone Release、图标和 IPA 打包通过，非标签发布正常跳过。用户本轮明确搁置真机测试，因此没有新的首播实测，不能声称达到 1–2 秒。当前仍先完整下载再本地播放；渐进播放的接口约束与取舍记录在 [首播调研](PLAYBACK_LATENCY_RESEARCH.md)。PR #16 保持草稿，不合并、不关闭 Issue #15。
+
+
+#### build 19 产物与本轮收尾
+
+已下载 [未签名 IPA 产物](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269857/artifacts/14357600257)，归档 SHA-256 `7cca61c31eaa086a7f33fe90f3264ce1cf3c05676c55f1f93fef78d836eee0b2` 与 GitHub 一致，归档和 IPA 内部 CRC 均通过。IPA 为 25,229,696 字节，SHA-256 `0da899ff2a0acb2880d398f18f55715e91db7267c1532a315f518bc4fb916f89`；1.2.0/build 19、原 Bundle ID、显示名 c0versnow music、AppIcon 与 Assets.car 正确。文件和远端日志保存在仓库外 `C0SnowMusic-device/issue-15/build19/`，脱敏结果见 [build 19 证据](evidence/issue-15-ci-build19.json)。没有安装、签名或开启临时下载服务。
+
+测试证据归档 14358215864 的 GitHub 摘要已记录；本轮没有修改产品布局，不下载和逐张复验该截图归档，也不宣称本地验证过它的 CRC。完整 CI 日志已读取并保存，新增网页上下文四项回归、AudioRepository 超时回退、WebKit 连续复用和音频容器回归均通过。日志仍有原有 WebKit delegate 签名、旧系统音量控件等编译警告，不能把零失败写成零警告；本轮未扩大范围修改旧接口。
+
+本轮实现、首播调研、build 18 历史证据补齐与 build 19 自动验证已完成。收尾提交只修改文档和脱敏 JSON，应用与测试代码与已验证的 `f7761ae` 相同；本地仍只做静态检查，最终文档沿用既有静态 CI。用户搁置的真机复测、未实现的渐进播放与 1–2 秒目标继续明确保留，不合并 PR #16，不关闭 Issue #15。
