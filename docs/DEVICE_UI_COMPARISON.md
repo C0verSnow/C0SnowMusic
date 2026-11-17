@@ -65,12 +65,49 @@ Run [43907719088](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43907719
 
 The remaining failures are at the shared document-selection helper's initial file-existence assertion. In both cases the same query found the real file afterward, and the subsequent audio/LRC import assertions passed. The failure hierarchies show the presenting sheet before its remote file browser had finished appearing; the recorded files became actionable more than 20 seconds after the opening tap. Build 13 separately waits up to 30 seconds for the actual file-browser navigation bar, then uses the existing 15-second wait for the document cell (`Fixture.lrc, lrc` and `Test Tone, wav` in the recorded events). It narrows the broad `descendants(matching: .any)` query to actual cells and stops the helper after a missing-target failure. The real picker interaction, resulting import assertions, and overall per-test limits remain.
 
-Two warnings in the touched UI code are addressed by passing immutable values into the sendable layout/PhotosPicker closures instead of reading main-actor view state inside them. The account screenshot also showed a missing title icon; it now uses the existing bundled AppLogo. No new workflow, dependency, mock picker, or local compilation was introduced. Fresh build 13 remote checks and device acceptance remain pending.
+Two warnings in the touched UI code are addressed by passing immutable values into the sendable layout/PhotosPicker closures instead of reading main-actor view state inside them. The account screenshot also showed a missing title icon; it now uses the existing bundled AppLogo. No new workflow, dependency, mock picker, or local compilation was introduced.
+
+## Build 13 verified artifacts
+
+Run [43911966701](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43911966701) passed simulator and unsigned iPhone Release compilation, all 47 unit/integration tests, all six UI tests, and the API job for commit `7040ce1a5f6854863f07fabeafa85342631a6251`. The separate validate job was initially cancelled before receiving a runner; GitHub reported macOS arm64 capacity constraints. Its targeted rerun passed. The tag-only Release job was correctly skipped.
+
+Both original artifact archives were downloaded and compared with GitHub's SHA-256 values:
+
+- iPhone archive: `2baed2efa83c86088ffae4fd67827a168e98017ac14c42ca9a7dc8c3953ed09f`.
+- Test-evidence archive: `9676109107aedbaedc53a73c0142c1629859f6c44f892481bdd0a5beafefa358`.
+- Extracted unsigned IPA: 25,151,102 bytes; SHA-256 `2bbf26cbe7c87dae0294c2365877484709f4fb0af5d1bfb65f86c857ee8f1aa4`; display name c0vermusic; version 1.2.0/build 13; bundle `org.c0versnow.C0SnowMusic`.
+
+The exported Home, account, Search, Library, playlist, player, and lyrics screenshots are available locally for inspection. The account title icon is now present. Simulator screenshots use a different device size and appearance from the physical reference, so they do not establish same-device visual acceptance.
+
+## Build 13 physical comparison and build 14 adjustments
+
+After the user resumed, iPhone Mirroring was already unlocked. The verified IPA was downloaded on the phone under the distinct name `build13.ipa`, imported into the existing signing app, and signed with the existing certificate. The signing log showed BundleVer 13. It was installed over the existing application; both local songs, account avatar, connected playlists, and playback position remained. The temporary download server was stopped afterward.
+
+Fresh Apple Music Home, Library, Search, search results, and Account references and build 13 captures use the same current 368 x 808 mirroring window and dark appearance. They remain outside the public repository in `C0SnowMusic-device/issue-13-comparison/reference-current` and `build13`.
+
+Verified on the physical device:
+
+- Home's title and avatar share a row; the four tabs and persistent mini player are present. The featured card has the reference's overall geometry while using the app's free discovery action.
+- Account dismisses; its existing signed-in profile is retained. Search scopes appear after focus, and inactive Search presents the category grid first.
+- Library category hiding and restoration work across leaving edit mode. Reordering Artists and Albums works; the original order and visible categories were restored.
+- The New Playlist sheet created an empty `UICheck` playlist. The new playlist appeared alongside the existing connected playlists; only this temporary playlist was deleted afterward.
+- Playing the previously coverless local One of the Girls restored its The Idol artwork, refreshed the mini/full player, and played successfully. After dismissing its app-switcher card and reopening, the cover, account avatar, selected track, and paused state remained. Playback was paused after the check.
+- Radio loaded real provider playlists. Apple's successful live-station screen remains unavailable as a like-for-like service reference.
+
+The comparison still found visible details for build 14 to correct:
+
+- Account and New Playlist close icons inherited the pink accent; use the primary foreground color.
+- Account profile row was taller than the source; reduce its added vertical padding from 6 to 2 points.
+- Library edit selection circles were too small; use title3 symbols within a 20-point slot.
+- Search category tiles were wider and started lower than the reference; explicitly use 20-point row side insets, a 12-point column gap, and remove automatic top content margins while keeping a 12-point row top inset.
+- New Playlist artwork started about 10 window pixels too low; reduce its top padding from 30 to 20 points and adjust the artwork-to-title spacing to 70 points.
+- The physical system volume slider inherited the pink app accent; explicitly set its UIKit tint to white.
+
+Build 14 contains only these visual corrections. Its remote checks and a fresh installation are pending. Native navigation-title/search-field leading margins still differ slightly from Apple's private app layout; final visual acceptance must assess the new captures rather than treating build 13's functional checks as pixel identity.
 
 ## Acceptance still required
 
-- Build 13 remote checks, including all UI tests.
-- Install the verified new artifact and compare the same shared pages in the same appearance, device size, and scroll state.
+- Run build 14 remote checks, install the verified new artifact, and recheck the listed visual adjustments in the same appearance, device size, and scroll state.
 - Exercise account dismissal, category visibility/order, playlist creation, search focus/filter/results, mini/full player transitions, lyrics settings/import/timing, and saved-song artwork recovery/reopening.
 - Record remaining intentional content differences separately from layout or interaction defects. Do not claim global pixel identity while a source page is unavailable or a screen has not been compared.
 - Merge and close the issue only after the requested device acceptance.
