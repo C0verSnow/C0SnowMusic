@@ -30,14 +30,14 @@ import Observation
         return id
     }
 
-    func step(_ id: UUID?, _ stage: String, detail: String = "") {
+    func step(_ id: UUID?, _ stage: String, detail: String = "", at date: Date = Date()) {
         guard let id, let index = active.firstIndex(where: { $0.id == id }) else { return }
         if active[index].stage != stage {
             active[index].stage = Self.redact(stage)
-            active[index].stageStarted = Date()
+            active[index].stageStarted = date
         }
         active[index].detail = Self.redact(detail)
-        append(active[index].name, detail.isEmpty ? stage : "\(stage): \(detail)")
+        append(active[index].name, detail.isEmpty ? stage : "\(stage): \(detail)", at: date)
     }
 
     func finish(_ id: UUID, error: Error? = nil, detail: String = "") {
@@ -56,7 +56,8 @@ import Observation
         let offset = importedLines[operation] ?? 0
         for line in lines.dropFirst(offset) {
             if let event = try? JSONDecoder().decode(DownloadEvent.self, from: Data(line.utf8)) {
-                step(operation, event.stage, detail: event.message)
+                let date = event.timestamp.map { Date(timeIntervalSince1970: $0) } ?? Date()
+                step(operation, event.stage, detail: event.message, at: date)
             }
         }
         importedLines[operation] = lines.count
@@ -69,7 +70,8 @@ import Observation
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
         let header = "c0versnow music \(version) (\(build)) — diagnostics\n"
         let current = active.map { "ACTIVE \($0.name): \($0.stage), \($0.detail), \(Int(Date().timeIntervalSince($0.started))) s total" }.joined(separator: "\n")
-        let history = events.map { "\($0.date.ISO8601Format()) [\($0.operation)] \($0.message)" }.joined(separator: "\n")
+        let format = Date.ISO8601FormatStyle(includingFractionalSeconds: true)
+        let history = events.map { "\($0.date.formatted(format)) [\($0.operation)] \($0.message)" }.joined(separator: "\n")
         return header + current + "\n" + history
     }
 
@@ -107,12 +109,13 @@ import Observation
         return String(result.prefix(800))
     }
 
-    private func append(_ operation: String, _ message: String) {
-        events.append(Event(date: Date(), operation: Self.redact(operation), message: Self.redact(message)))
+    private func append(_ operation: String, _ message: String, at date: Date = Date()) {
+        events.append(Event(date: date, operation: Self.redact(operation), message: Self.redact(message)))
         if events.count > 300 { events.removeFirst(events.count - 300) }
     }
     private struct DownloadEvent: Decodable {
         let stage: String
         let message: String
+        let timestamp: TimeInterval?
     }
 }

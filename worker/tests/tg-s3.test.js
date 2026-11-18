@@ -93,21 +93,22 @@ beforeEach(() => {
     TGS3_ENDPOINT: 'https://s3.test', TGS3_BUCKET: 'c0snow-audio', TGS3_ACCESS_KEY_ID: 'test-access', TGS3_SECRET_ACCESS_KEY: 'test-secret',
     TGS3: { async fetch(request) {
       if (failure === 'reject' && request.method === 'PUT') return new Response(null, { status: 429, headers: { 'Retry-After': '60' } });
+      if (failure === 'cache-warm' && request.method === 'GET') return new Response(null, { status: 503 });
       const response = await upstream.fetch(request, storageEnv, { waitUntil(promise) { pending.push(promise); } });
       if (failure === 'lost-receipt' && request.method === 'PUT' && response.ok) throw new Error('Connection closed after persistence');
       return response;
     } },
   };
 });
-function call(path, { method = 'GET', body, headers = {} } = {}) {
+function call(path, { method = 'GET', body, headers = {}, ctx } = {}) {
   if (body && !(body instanceof FormData)) { body = JSON.stringify(body); headers['Content-Type'] = 'application/json'; }
-  return music.fetch(new Request(`https://music.test${path}`, { method, body, headers: { Authorization: 'Bearer device', ...headers } }), env);
+  return music.fetch(new Request(`https://music.test${path}`, { method, body, headers: { Authorization: 'Bearer device', ...headers } }), env, ctx);
 }
-async function upload(metadata = track) {
+async function upload(metadata = track, ctx) {
   const form = new FormData();
   form.set('track', JSON.stringify(metadata)); form.set('sha256', hash);
   form.set('audio', new File([audio], 'tone.mp3', { type: 'audio/mpeg' }));
-  return call('/api/tracks', { method: 'POST', body: form });
+  return call('/api/tracks', { method: 'POST', body: form, ctx });
 }
 async function content(options) { return call('/api/tracks/yt_abcdefghijk/content', options); }
 
@@ -138,6 +139,35 @@ test('actual upstream GET, CDN and R2 cache hits preserve the complete MP3', asy
     await Promise.all(pending); pending = [];
   }
   assert.equal(downloads, 1); assert.equal(r2.size, 1);
+});
+test('a new upload warms shared R2 before a listener in a cold edge needs its first GET', async () => {
+  const background = [];
+  const ctx = { waitUntil(promise) { background.push(promise); } };
+  assert.equal((await upload(track, ctx)).status, 201);
+  assert.equal(background.length, 1);
+  await Promise.all(background);
+  await Promise.all(pending);
+  edge.clear();
+
+  const response = await content();
+  assert.equal(response.headers.get('X-Cache'), 'R2-HIT');
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), audio);
+  assert.equal(downloads, 1, 'only the background warm-up reads from Telegram');
+  assert.equal((await upload({ ...track, source_id: '12345678901' }, ctx)).status, 201);
+  assert.equal(background.length, 1, 'an existing object does not trigger another warm-up');
+});
+test('cache warm-up failure preserves a ready upload and ordinary cold playback', async () => {
+  failure = 'cache-warm';
+  const background = [];
+  const uploaded = await upload(track, { waitUntil(promise) { background.push(promise); } });
+  assert.equal(uploaded.status, 201);
+  assert.equal((await uploaded.json()).files[0].available, true);
+  await Promise.all(background);
+
+  failure = '';
+  const response = await content();
+  assert.equal(response.headers.get('X-Cache'), 'MISS');
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), audio);
 });
 test('Range, HEAD and invalid ranges retain the music API contract through real upstream', async () => {
   await upload();

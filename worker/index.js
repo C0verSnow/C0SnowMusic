@@ -2,11 +2,13 @@ import { TgS3Store, TgS3Error } from './tg-s3-store.js';
 
 const MAX_AUDIO_BYTES = 20_000_000;
 const MAX_JSON_BYTES = 4_000_000;
+// The pinned gps949/tg-s3 only populates shared R2 for full GETs of at least 64 KiB.
+const TG_S3_SHARED_CACHE_MIN_BYTES = 64 * 1024;
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
 export default {
-  async fetch(request, env) {
-    try { return await route(request, env); }
+  async fetch(request, env, ctx) {
+    try { return await route(request, env, ctx); }
     catch (error) {
       if (error instanceof APIError || error instanceof TgS3Error) return json({ error: error.message }, error.status, error.headers);
       // Upstream exceptions can contain the Bot token in their URL.
@@ -16,7 +18,7 @@ export default {
   },
 };
 
-async function route(request, env) {
+async function route(request, env, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path === '/api/telegram/webhook' && request.method === 'POST') return webhook(request, env);
@@ -31,7 +33,7 @@ async function route(request, env) {
       : await all(env, 'SELECT * FROM tracks WHERE title LIKE ? OR artist LIKE ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?', `%${search}%`, `%${search}%`, limit, offset);
     return json({ items: await presentTracks(env, rows) });
   }
-  if (path === '/api/tracks' && request.method === 'POST') return upload(request, env);
+  if (path === '/api/tracks' && request.method === 'POST') return upload(request, env, ctx);
   if (path === '/api/favorites/snapshots' && request.method === 'POST') {
     const id = crypto.randomUUID();
     await env.DB.batch([
@@ -134,7 +136,7 @@ async function route(request, env) {
     if (!response.ok) fail(502, 'Original audio could not be read.');
     const bytes = await limitedBody(response, MAX_AUDIO_BYTES);
     if (bytes.byteLength !== row.size_bytes || await sha256(bytes) !== row.sha256) fail(502, 'Original audio does not match its index.');
-    await storeTgS3Audio(env, row.id, row.sha256, bytes, row.mime_type);
+    await storeTgS3Audio(env, row.id, row.sha256, bytes, row.mime_type, ctx);
     return json({ id: row.id, storage: 'tg-s3' });
   }
   const job = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)(?:\/(reconcile))?$/);
@@ -164,7 +166,7 @@ async function route(request, env) {
   fail(404, 'Not found.');
 }
 
-async function upload(request, env) {
+async function upload(request, env, ctx) {
   if (Number(request.headers.get('Content-Length')) > MAX_AUDIO_BYTES + 65536) fail(413, 'Cloud Bot delivery is limited to 20 MB.');
   const form = await new Response(await limitedBody(request, MAX_AUDIO_BYTES + 65536), { headers: { 'Content-Type': request.headers.get('Content-Type') ?? '' } }).formData();
   const audio = form.get('audio');
@@ -185,7 +187,7 @@ async function upload(request, env) {
     stmt(env, 'INSERT OR IGNORE INTO track_files VALUES (?, ?)', track.id, fileID),
   ]);
   if (env.AUDIO_STORAGE_BACKEND === 'tg-s3') {
-    await storeTgS3Audio(env, fileID, hash, bytes, audio.type);
+    await storeTgS3Audio(env, fileID, hash, bytes, audio.type, ctx);
     return json(await presentTrack(env, await first(env, 'SELECT * FROM tracks WHERE id = ?', track.id)), 201);
   }
   const existing = await first(env, "SELECT id FROM telegram_objects WHERE audio_file_id = ? AND status = 'active'", fileID);
@@ -303,7 +305,7 @@ async function content(request, env, id) {
   return new Response(sliceStream(upstream.body, range?.start ?? 0, range?.end ?? size - 1), { status: range ? 206 : 200, headers });
 }
 
-async function storeTgS3Audio(env, fileID, hash, bytes, mimeType) {
+async function storeTgS3Audio(env, fileID, hash, bytes, mimeType, ctx) {
   const storage = new TgS3Store(env);
   const existing = await storage.head(hash);
   if (existing) {
@@ -327,6 +329,9 @@ async function storeTgS3Audio(env, fileID, hash, bytes, mimeType) {
     // Migration failures must leave an existing readable Telegram copy available.
     if (rejected) await stmt(env, "UPDATE audio_files SET status = 'failed' WHERE id = ? AND status != 'ready'", fileID).run();
     throw error;
+  }
+  if (bytes.byteLength >= TG_S3_SHARED_CACHE_MIN_BYTES) {
+    ctx?.waitUntil(storage.warmCache(hash).catch(() => console.warn('TG-S3 cache warm-up failed')));
   }
 }
 

@@ -23,6 +23,7 @@ class DownloaderDiagnosticsTests(unittest.TestCase):
             self.assertEqual(len(events), 3)
             self.assertIn('Downloading webpage', events[0]['message'])
             self.assertEqual(events[1]['stage'], 'YouTube warning')
+            self.assertGreater(events[0]['timestamp'], 0)
             self.assertIn('media.test', raw)
             for value in ['password', 'private-signature', 'device-secret', 'cookie-secret']:
                 self.assertNotIn(value, raw)

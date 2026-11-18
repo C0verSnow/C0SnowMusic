@@ -40,7 +40,7 @@ import XCTest
         let diagnostics = AppDiagnostics()
         let id = diagnostics.begin("On-device download")
         let first = #"{"stage":"YouTube extraction","message":"Downloading webpage"}"#
-        let second = #"{"stage":"Downloading audio","message":"65536 bytes received"}"#
+        let second = #"{"stage":"Downloading audio","message":"65536 bytes received","timestamp":1700000000.25}"#
         try (first + "\n" + second).write(to: file, atomically: true, encoding: .utf8)
         diagnostics.collectDownloadEvents(from: file, operation: id)
         XCTAssertEqual(diagnostics.active.first?.detail, "Downloading webpage")
@@ -52,6 +52,10 @@ import XCTest
         XCTAssertEqual(diagnostics.active.first?.stage, "Downloading audio")
         XCTAssertEqual(diagnostics.active.first?.detail, "65536 bytes received")
         XCTAssertEqual(diagnostics.events.count, count + 1)
+        let occurredAt = Date(timeIntervalSince1970: 1_700_000_000.25)
+        XCTAssertEqual(diagnostics.active.first?.stageStarted, occurredAt)
+        XCTAssertEqual(diagnostics.events.last?.date, occurredAt)
+        XCTAssertTrue(diagnostics.report.contains("2023-11-14T22:13:20.250Z"))
     }
 
     func testSessionHistoryIsBoundedAndCanBeCleared() {

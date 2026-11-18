@@ -4,6 +4,23 @@ Research snapshot: **2026-11-17 UTC**, Unix Timestamp **1794938756**. This is ba
 
 The comparison baseline is committed build18, `9b189dfbffaea96aeb46110a1947d649e420bf8f`. Other work began changing downloader/client files during this investigation; those uncommitted changes are not evidence of completed optimization. The [latest tasklist](../tasklist.md) remains the source for measured device results. Read-only GitHub verification found [PR16](https://github.com/C0verSnow/c0versnowmusic/pull/16) open, draft, unmerged, with that same head. **Continue the remaining implementation and remote-CI work, defer real-device testing, and keep PR16 draft/unmerged until device acceptance.** This report does not change PR state.
 
+## build 21 首播复核
+
+**真机基线。** iPhone 13 两首无本机或云端音频的新歌，点播到交给播放器分别为 **36.8 秒、25.3 秒**。第二首复用了播放器 JS。两首仍各取网页、`web embedded` 配置、两次 player API 和 HLS 清单，最终都走直连 M4A（itag 140）。删除本机缓存后重播，TG-S3 完整 GET 均为 `200 / MISS`，约 4.4 MB 的内容接口分别耗时 **14.2 秒、6.6 秒**，交给播放器分别是 **14.7 秒、7.1 秒**。这些是各两次观察，交给播放器的时间与录音确认有声分别记录。 [build 21 真机记录 `1794967093`、`1794967688`](../tasklist.md#做完)、[远端 CI](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44213849736)
+
+**YouTube 可少取两类请求。** 固定版的 `player_skip=configs` 跳过额外客户端配置，仍使用网页内配置和所需的 player API、JS。`skip=hls` 跳过 m3u8 清单提取，也会丢掉清单提供的格式和字幕。直连 M4A 仍可参与选轨，但上游明确提示缺格式或元数据的可能。可按默认、单独跳配置、单独跳 HLS、两者同时跳做对照，核对实际请求、M4A、时长和回退次数。若提取阶段没有合格音轨，可用原参数回退一次。 [固定版 README][yt-readme]、[配置分支](https://github.com/yt-dlp/yt-dlp/blob/f264a6cbd1f630894da0f368df00f8aae50140e0/yt_dlp/extractor/youtube/_video.py#L3061-L3093)、[HLS 分支](https://github.com/yt-dlp/yt-dlp/blob/f264a6cbd1f630894da0f368df00f8aae50140e0/yt_dlp/extractor/youtube/_video.py#L3684-L3724)
+
+**上游实报和测试。** #13052 的日志既记录了配置和 JS 请求，也实际选中了 HLS 视频。维护者指出播放器版本更新会让缓存失效。#12826 同时跳过网页、配置和清单，日志仍有额外的 `v1/next`，无法从该报告单独估算两项开关的收益。固定版带 `configs` 的 YouTube Music 用例标为 `only_matching`，只查 URL 匹配。build 21 的三项远端回归用真实 yt-dlp 和本地 HTTP 样本验证 JS 复用、账户隔离和取消，YouTube 元数据边界用替身。现有记录没有这两项开关的首播对照。 [上游 #13052](https://github.com/yt-dlp/yt-dlp/issues/13052)、[上游 #12826][yt-12826]、[固定版用例](https://github.com/yt-dlp/yt-dlp/blob/f264a6cbd1f630894da0f368df00f8aae50140e0/yt_dlp/extractor/youtube/_video.py#L1133-L1137)、[build 21 回归源码](https://github.com/C0verSnow/c0versnowmusic/blob/28c63420d2a670d067300f7d77a9f6f7d33305c0/scripts/test_downloader_latency.py)
+
+**TG-S3 固定版的整包与 Range。** 以本次约 4.4 MB 的音频为例，完整 GET 先查 CDN（`HIT`），再查 R2（`R2-HIT`）。R2 命中仍先 `arrayBuffer()`。小对象冷读也先读完 Telegram 正文，完整 `200 / MISS` 随后用 `waitUntil` 尝试写缓存，现有 R2 只缓存 **64 KiB–20 MiB**。Range 跳过两个缓存层和回填。这个大小的对象先从 Telegram 读完整文件，再切片回 `206`。此前记录的 190 字节 `206` 是网关交付量，上游读取量需单独测。上游另有大于 20 MiB 的 VPS 流式分支。 [固定版 GetObject](https://github.com/gps949/tg-s3/blob/82bff102498658fd462ad478229fc49cb2f44c47/src/handlers/get-object.ts#L197-L292)、[容量配置](https://github.com/gps949/tg-s3/blob/82bff102498658fd462ad478229fc49cb2f44c47/src/constants.ts#L13-L15)、[VPS 分支](https://github.com/gps949/tg-s3/blob/82bff102498658fd462ad478229fc49cb2f44c47/src/handlers/get-object.ts#L418-L448)、[既有 Range 与 R2 哈希证据](evidence/issue-15-tg-s3-upgrade.json)
+
+- **预热现有 R2。** 可在播放关键路径外，用原鉴权内容接口发一次不带 Range 或条件头的完整 GET。冷读仍花一趟 Telegram 整包流量，回填异步且可能失败。已有 `HIT` 只证明 CDN 命中，`R2-HIT` 或既有 R2 字节与哈希记录才指向 R2。后续完整 GET 命中可省 Telegram 回源，build 21 的 App 仍收齐全包才播放。HEAD 和 Range 都不触发这条回填路径。 [音乐网关](https://github.com/C0verSnow/c0versnowmusic/blob/28c63420d2a670d067300f7d77a9f6f7d33305c0/worker/index.js#L250-L264)、[App 下载](https://github.com/C0verSnow/c0versnowmusic/blob/28c63420d2a670d067300f7d77a9f6f7d33305c0/MusicApp/Online/CloudMusicStore.swift#L165-L188)、[固定版回填](https://github.com/gps949/tg-s3/blob/82bff102498658fd462ad478229fc49cb2f44c47/src/handlers/get-object.ts#L276-L292)
+- **端到端渐进交付。** 已缓存对象可评估在服务端走经鉴权的 R2 `body` 或原生 `range`，并让 App 用资源加载器按需交付字节。冷对象可另评估在网关后转发 Telegram 的顺序响应流，Bot API 文档未承诺可用的源站 Range。两条路都要验证容器能否尽早解码、定位、取消和完整缓存落盘。当前固定版单纯转发 Range 仍会读完整个冷对象。先对照冷读、预热后整包和渐进交付的首字节、可听首播和卡顿。现有样本无法推算可省秒数。 [R2 流与 Range](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/#ranged-reads)、[Workers Streams](https://developers.cloudflare.com/workers/runtime-apis/streams/)、[Telegram getFile](https://core.telegram.org/bots/api#getfile)、[Apple 增量交付][apple-respond]
+
+## build 22 实现
+
+YouTube 首次提取同时跳过额外配置和 HLS 清单，保留现有 M4A 选轨。提取报错且音频传输尚未开始时，用原参数重试一次，继续使用同一 yt-dlp 会话。诊断按 Python 事件发生时间记录，便于和 build 21 对照。音乐网关确认新 TG-S3 对象写入成功后，用 `waitUntil` 启动一次 SigV4 完整 GET，由上游填入已有缓存。预热额外读一次冷对象，已有对象和小于 64 KiB 的音频跳过。设备仍下载完整音频后播放。提速幅度待真机复测。 [下载器][app-python]、[音乐网关][app-worker]、[TG-S3 适配器][app-s3]
+
 ## 本轮采用的方案（build 19）
 
 本报告的一手资料支持三处改动：复用相同 Cookie 快照的 yt-dlp 与播放器 JS；YouTube Music 首页上下文在内存复用 5 分钟；YouTube 前台仓库索引改为 5 秒无数据等待超时，完整传输保留原配置。实际实现和验收以 [验收记录](VERIFICATION.md) 为准，下面的候选方案不代表全部已经实现。

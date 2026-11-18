@@ -41,6 +41,12 @@ export class TgS3Store {
     return response;
   }
 
+  async warmCache(hash) {
+    const response = await this.request('GET', hash);
+    checkResponse(response);
+    await response.body?.pipeTo(new WritableStream());
+  }
+
   async request(method, hash, { body, headers = {} } = {}) {
     const url = new URL(`/${this.env.TGS3_BUCKET}/audio/${hash}`, this.env.TGS3_ENDPOINT);
     const request = await signS3Request(url, method, this.env, body, headers);

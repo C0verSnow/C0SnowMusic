@@ -125,7 +125,7 @@ def _configure(navigation_callback):
 
 
 def _download(request, directory):
-    from yt_dlp.utils import DownloadError
+    from yt_dlp.utils import DownloadError, ExtractorError
 
     global _active_directory, _last_progress
     _active_directory = directory
@@ -134,14 +134,27 @@ def _download(request, directory):
         raise DownloadError("Download cancelled")
     downloader = _download_session(request, directory)
     downloader.params["outtmpl"]["default"] = str(directory / "audio.%(ext)s")
+    url = "https://m.youtube.com/watch?v=" + request["video_id"]
     try:
-        info = downloader.extract_info("https://m.youtube.com/watch?v=" + request["video_id"], download=True)
+        # The pinned yt-dlp README documents both options. Build 21 used a
+        # direct M4A after fetching a separate client config and HLS manifest.
+        downloader.params["extractor_args"] = {"youtube": {"player_skip": ["configs"], "skip": ["hls"]}}
+        try:
+            info = downloader.extract_info(url, download=True)
+        except DownloadError as error:
+            if not isinstance(error.__context__, ExtractorError) or _last_progress or (directory / "cancel").exists():
+                raise
+            _diagnostic(directory, "YouTube extraction fallback", "Retrying with the default client configuration and manifests")
+            del downloader.params["extractor_args"]
+            info = downloader.extract_info(url, download=True)
         if not (directory / "audio.m4a").is_file():
             raise DownloadError("No compatible M4A audio was downloaded")
         return info["duration"]
     except Exception:
         _close_session()
         raise
+    finally:
+        downloader.params.pop("extractor_args", None)
 
 
 def _download_session(request, directory):
@@ -221,7 +234,7 @@ def _diagnostic(directory, stage, message):
     message = re.sub(r"(?im)\b(authorization|cookie|set-cookie|x-api-key|x-admin-key)\s*[:=][^\r\n]*", "<redacted>", message)
     message = re.sub(r"(?i)\bBearer\s+[^\s,;]+", "<redacted>", message)
     with (directory / "diagnostics.jsonl").open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps({"stage": stage, "message": message[:800]}) + "\n")
+        stream.write(json.dumps({"stage": stage, "message": message[:800], "timestamp": time.time()}) + "\n")
 
 
 class _DiagnosticLogger:

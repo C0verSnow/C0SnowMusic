@@ -25,6 +25,7 @@ class DownloaderLatencyTests(unittest.TestCase):
         self.audio = (root / "MusicApp/Resources/Fixtures/Fixture-Online.m4a").read_bytes()
         (self.directory / "audio.m4a").write_bytes(self.audio)
         self.paths = []
+        self.extractions = []
         paths = self.paths
 
         class Handler(SimpleHTTPRequestHandler):
@@ -44,6 +45,7 @@ class DownloaderLatencyTests(unittest.TestCase):
         self.thread = Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
         base = f"http://127.0.0.1:{self.server.server_port}"
+        extractions = self.extractions
 
         # Replace only YouTube's remote metadata boundary. The app's _download,
         # yt-dlp player cache, format selection and HTTP downloader remain real.
@@ -53,9 +55,17 @@ class DownloaderLatencyTests(unittest.TestCase):
 
             def _real_extract(self, url):
                 video_id = self._match_id(url)
+                skip_configs = "configs" in self._configuration_arg("player_skip")
+                skip_hls = "hls" in self._configuration_arg("skip")
+                extractions.append((skip_configs, skip_hls))
                 self._load_player(video_id, base + "/s/player/abcdef12/player_ias.vflset/en_US/base.js")
-                return {"id": video_id, "title": "Synthetic audio", "url": base + "/audio.m4a",
+                info = {"id": video_id, "title": "Synthetic audio", "url": base + "/audio.m4a",
                         "ext": "m4a", "vcodec": "none", "acodec": "aac", "duration": 3}
+                if video_id == "12345678901" and (skip_configs or skip_hls):
+                    return {**info, "ext": "mp4", "vcodec": "avc1"}
+                if video_id == "00000000000":
+                    return {**info, "url": base + "/missing.m4a"}
+                return info
 
         self.extractor = YoutubeIE
 
@@ -86,8 +96,34 @@ class DownloaderLatencyTests(unittest.TestCase):
         self.assertEqual((second / "audio.m4a").read_bytes(), self.audio)
         self.assertEqual(sum(path.startswith("/s/player/") for path in self.paths), 1)
         self.assertEqual(self.paths.count("/audio.m4a"), 2)
+        self.assertEqual(self.extractions, [(True, True), (True, True)])
         self.assertEqual(len(session._progress_hooks), 1)
         self.assertIn("Downloading audio", (second / "diagnostics.jsonl").read_text())
+
+    def test_missing_compatible_format_retries_defaults_without_losing_cached_player(self):
+        request, first, session = self.request("fallback")
+        request["video_id"] = "12345678901"
+        session.add_info_extractor(self.extractor())
+        self.assertEqual(downloader._download(request, first), 3)
+        self.assertEqual((first / "audio.m4a").read_bytes(), self.audio)
+        self.assertIn("YouTube extraction fallback", (first / "diagnostics.jsonl").read_text())
+
+        request, second, reused = self.request("next")
+        self.assertIs(reused, session)
+        self.assertEqual(downloader._download(request, second), 3)
+        self.assertEqual(self.extractions, [(True, True), (False, False), (True, True)])
+        self.assertEqual(sum(path.startswith("/s/player/") for path in self.paths), 1)
+        self.assertEqual(self.paths.count("/audio.m4a"), 2)
+
+    def test_http_download_failure_does_not_retry_extraction(self):
+        request, directory, session = self.request("failed-transfer")
+        request["video_id"] = "00000000000"
+        session.add_info_extractor(self.extractor())
+        with self.assertRaises(DownloadError):
+            downloader._download(request, directory)
+        self.assertEqual(self.extractions, [(True, True)])
+        self.assertIn("/missing.m4a", self.paths)
+        self.assertIsNone(downloader._session)
 
     def test_account_change_closes_old_session_and_preserves_only_disk_extractor_cache(self):
         cookie = {"name": "SID", "value": "first-account", "domain": ".youtube.com", "path": "/",
