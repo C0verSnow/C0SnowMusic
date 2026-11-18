@@ -101,6 +101,7 @@ def _configure(navigation_callback):
 
     def webview(provider):
         _diagnostic(_active_directory, "WebKit challenge", "Creating the JavaScript runtime")
+        # In apple-webkit-jsi v0.1.1 this replaces the factory closed by the previous challenge.
         provider._try_init_factory()
         view = original(provider)
         restrict(view._wv)
@@ -115,10 +116,7 @@ def _configure(navigation_callback):
             result = original_runtime(provider, *args, **kwargs)
         finally:
             # A reused page can retain Trusted Types restrictions on iOS.
-            # grqz/yt-dlp-apple-webkit-jsi v0.1.1 closes its factory with the view.
-            if provider.ie.__yt_dlp_plugin__apple_webkit_jsi__webview is not None:
-                provider.close()
-                del provider.ie.__yt_dlp_plugin__apple_webkit_jsi__factory
+            provider.close()
         _diagnostic(_active_directory, "WebKit challenge finished", "JavaScript evaluation returned")
         return result
 
