@@ -1,16 +1,22 @@
-# c0vermusic (C0SnowMusic)
+# c0versnow music
 
-[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/C0SnowMusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1)
+[下载 v1.1.0-beta.1 IPA](https://github.com/C0verSnow/c0versnowmusic/releases/download/v1.1.0-beta.1/C0SnowMusic-unsigned.ipa) · [Release 与验收记录](https://github.com/C0verSnow/c0versnowmusic/releases/tag/v1.1.0-beta.1)
 
 IPA 未签名，须用自己的 Apple 证书签名安装。
 
 iPhone 上的原生音乐播放器，最低 iOS 26.0。使用 Swift 6、SwiftUI、SwiftData、AVFoundation 和系统 Liquid Glass。本地资料库离线使用，不自动上传本地音乐；可选 Google 登录、YouTube Music 搜索和 Telegram 音乐仓库。
 
-本分支按 [issue #7](https://github.com/C0verSnow/C0SnowMusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
+本分支按 [issue #7](https://github.com/C0verSnow/c0versnowmusic/issues/7) 整体替换旧 Electron/Vue/Android 代码。桌面端、Bilibili、在线解析及旧下载脚本已移除；旧实现仍可从 Git 历史获取。
+
+Issue #15 的对象职责、播放链路与恢复规则见 [面向对象架构核对](docs/OBJECT_ARCHITECTURE.md)。缓存优先；YouTube 曲目遇到云端缺失或故障时尝试手机重新获取，完成后后台补传。
+
+仓库地址现为 `C0verSnow/c0versnowmusic`，应用显示名为 `c0versnow music`。存储升级接入固定版本的 [gps949/tg-s3](https://github.com/gps949/tg-s3)，音乐 API、旧 Telegram 音频和手机缓存继续兼容；接入、部署和回退见 [TG-S3 升级说明](docs/TG_S3_UPGRADE.md)。Xcode 工程、Bundle ID 和已发布 IPA 文件名保留原标识，支持覆盖安装。
 
 ## 当前界面
 
-Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图整理原生界面，统一英文、搜索和资料库；YouTube 歌单、专辑、艺人直接进入对应分类，不再另设 Online Library。歌词页只保留右下角设置入口，旧缓存缺封面会独立恢复。行为、来源与验证范围见 [产品界面说明](docs/PRODUCT_UI.md)。
+应用显示名为 c0versnow music。Issue #13 按提供的 Apple Music 截图整理原生界面，统一英文、搜索和资料库；YouTube 歌单、专辑、艺人直接进入对应分类，不再另设 Online Library。歌词页只保留右下角设置入口，旧缓存缺封面会独立恢复。行为、来源与验证范围见 [产品界面说明](docs/PRODUCT_UI.md)。
+
+音频准备卡住时，可从账户 → Music Settings → Debug 查看实时阶段、耗时、网络状态和脱敏日志，并检查连接、复制或分享诊断。功能和隐私范围见 [应用内 Debug](docs/APP_DEBUG.md)。 首播提速的实现、基线与渐进播放取舍见 [首播调研](docs/PLAYBACK_LATENCY_RESEARCH.md)；build 19 复用提取器和网页上下文，真机复测继续搁置，不承诺所有新曲 1–2 秒。
 
 ## 打开与运行
 
@@ -18,7 +24,7 @@ Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图�
 2. 打开 `C0SnowMusic.xcodeproj`，选择共享 Scheme `C0SnowMusic`。
 3. 在 Signing & Capabilities 中选择自己的 Team；必要时把 Bundle Identifier 改成自己的唯一标识。
 4. 选择 iOS 26 iPhone 或模拟器，运行。
-5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 C0SnowMusic。
+5. 点击账户 → Music Settings →「从文件导入」，从「文件」选择音频；也可从其他 App 的「打开方式」交给 c0versnow music。
 
 在线下载内置 BeeWare Python 3.13、yt-dlp、EJS 和 Apple WebKit 插件，Google/YouTube 网页登录使用系统 WKWebView 与 Keychain。无需服务器、Node、CMake、XcodeGen 或 CocoaPods。首次打开工程前运行 `python3 scripts/prepare_online_runtime.py` 下载固定校验值的预编译运行时和纯 Python 包；该脚本不会编译。项目文件直接纳入版本管理，新增源码由 Xcode 的同步目录管理。
 
@@ -27,8 +33,8 @@ Issue #13 将应用显示名改为 c0vermusic，按提供的 Apple Music 截图�
 ## 功能
 
 - Home、Radio、Library、Search 四个原生 Tab；滚动收起的系统底栏和浮动 Mini Player。Radio 使用真实 YouTube 电台歌单，空队列显示 Not Playing。
-- 右上角 c0vermusic Account 包含 YouTube 网页登录和 Music Settings；界面统一英文，含导入和缓存管理，旧语言偏好不再影响显示。
-- 搜索采用 c0vermusic / Library 两档，直接读取 YouTube Music 和已连接仓库；只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
+- 右上角 c0versnow music Account 包含 YouTube 网页登录和 Music Settings；界面统一英文，含导入和缓存管理，旧语言偏好不再影响显示。
+- 搜索采用 c0versnow music / Library 两档，直接读取 YouTube Music 和已连接仓库；只显示封面、标题、作者卡片，不展示网页；综合结果按最佳结果、歌曲、视频等分组，可筛选、翻页和管理搜索历史；点歌后才获取音频。
 - 真正的手机本机 yt-dlp 下载完整 M4A 纯音频；500 MB 缓存按完成时间从新到旧显示，容量不足删除最旧缓存。手动下载到资料库的副本单独保存，不参与自动淘汰。
 - 全屏播放器、系统缩放转场、顶部下拉收起、进度预览和跳转、系统音量、AirPlay、收藏和分享。
 - 单个或批量导入、取消、失败明细、流式 SHA-256 重复检测、跳过或保留副本。

@@ -18,7 +18,7 @@ struct MusicRootView: View {
         TabView(selection: $selectedTab) {
             Tab("Home", systemImage: "house.fill", value: MusicTab.home) { navigation { HomeView(onSearch: { selectedTab = .search }) } }
             Tab("Radio", systemImage: "dot.radiowaves.left.and.right", value: MusicTab.radio) { navigation(titleDisplay: .inline) { RadioView() } }
-            Tab("Library", systemImage: "music.note", value: MusicTab.library) {
+            Tab("Library", systemImage: "music.note.square.stack", value: MusicTab.library) {
                 navigation(libraryControls: true) { LibraryView(editing: $editingLibrary) }
             }
             Tab("Search", systemImage: "magnifyingglass", value: MusicTab.search) { navigation { SearchView() } }
@@ -55,7 +55,7 @@ struct MusicRootView: View {
             Button("OK") { online.error = nil }
         } message: { Text("Check your connection and try again. Your saved music is still available.") }
         .task(id: "\(account.isSignedIn)-\(cloud.connected)") {
-            await online.refresh()
+            await online.refresh(playback: playback)
             guard !ProcessInfo.processInfo.arguments.contains("--ui-testing") else { return }
             if account.isSignedIn { await online.loadLibrary(cookies: account.downloadCookies(), cloud: cloud) }
             else if cloud.connected { await cloud.refresh() }
@@ -89,7 +89,7 @@ struct MusicRootView: View {
                         ToolbarItem(placement: .topBarTrailing) {
                             Button { settings = true } label: { AccountAvatar().frame(width: 40, height: 40) }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("c0vermusic Account")
+                                .accessibilityLabel("c0versnow music Account")
                                 .accessibilityIdentifier("accountSettings")
                         }.sharedBackgroundVisibility(.hidden)
                     }

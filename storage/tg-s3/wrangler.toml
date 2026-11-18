@@ -1,0 +1,18 @@
+name = "c0snow-tg-s3"
+main = "../../Vendor/tg-s3/worker.mjs"
+compatibility_date = "2026-03-15"
+workers_dev = false
+preview_urls = false
+
+[vars]
+S3_REGION = "us-east-1"
+WORKER_URL = "https://c0snow-tg-s3.f1515xcn.workers.dev"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "c0snow-tg-s3"
+database_id = "ffbfbcaf-b6e3-407b-8413-dcf499ef64ae"
+
+[[r2_buckets]]
+binding = "CACHE"
+bucket_name = "c0snow-tg-s3-cache"

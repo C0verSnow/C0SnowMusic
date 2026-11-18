@@ -8,23 +8,23 @@
 
 ### 最终缓存播放修正（1.1.1/build 9）
 
-- 产品提交 `933510d3bb171232a0401cd163977e4ebd90eeca` 的 [CI 43856527391](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43856527391) 全通过：41 项单元/集成、3 项 UI、10 项 Worker 零失败；模拟器、iPhone Release、图标检查与 IPA 打包通过，标签发布按条件跳过。[静态验证 43856527519](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43856527519) 也通过。测试计数与结果见 [CI 脱敏记录](evidence/issue-11-ci-build9.json)。
+- 产品提交 `933510d3bb171232a0401cd163977e4ebd90eeca` 的 [CI 43856527391](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43856527391) 全通过：41 项单元/集成、3 项 UI、10 项 Worker 零失败；模拟器、iPhone Release、图标检查与 IPA 打包通过，标签发布按条件跳过。[静态验证 43856527519](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43856527519) 也通过。测试计数与结果见 [CI 脱敏记录](evidence/issue-11-ci-build9.json)。
 - 缓存命中后先启动本地播放，再后台核对仓库、补传和记录播放。新增 `testCachedPlaybackStartsWhenTheConnectedWarehouseFails` 回归在远端 0.643 秒通过：真实缓存、Keychain 和 AVPlayer，HTTP 边界返回 503，错误可见、缓存文件保留且播放时间仍推进。没有用假播放器绕过真实实现。
-- [最终 IPA 产物 14221785543](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43856527391/artifacts/14221785543) 已下载，ZIP/IPA CRC 通过。归档 SHA-256 为 `c8759fe4dd447503dce64914e60603efb102c05560b7fb9a471924a777acc5d2`，与 GitHub 摘要一致；IPA 为 25,016,019 字节，SHA-256 为 `bfa2caa9b3b8fc01c23c0a11184e4c698901c2c54350401af3ba67b5c7b325ee`。核对 1.1.1/build 9、原 Bundle ID `org.c0versnow.C0SnowMusic`、AppIcon 和 Assets.car；详细记录见 [IPA 脱敏记录](evidence/issue-11-ipa-check-build9.json)。
+- [最终 IPA 产物 14221785543](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43856527391/artifacts/14221785543) 已下载，ZIP/IPA CRC 通过。归档 SHA-256 为 `c8759fe4dd447503dce64914e60603efb102c05560b7fb9a471924a777acc5d2`，与 GitHub 摘要一致；IPA 为 25,016,019 字节，SHA-256 为 `bfa2caa9b3b8fc01c23c0a11184e4c698901c2c54350401af3ba67b5c7b325ee`。核对 1.1.1/build 9、原 Bundle ID `org.c0versnow.C0SnowMusic`、AppIcon 和 Assets.car；详细记录见 [IPA 脱敏记录](evidence/issue-11-ipa-check-build9.json)。
 - build 9 已通过 Chrome 下载、心动签沿用既有证书与 Bundle ID 覆盖安装。原 2 首本地歌曲、头像/会话和仓库连接保留；旧缓存点击后约两秒截图已显示播放状态。缓存页确认仅本次 4.2 MB Die For You 后清到 Zero KB，Mini Player 同时移除。
 - 此次手机仓库访问曾超时；同一手机 Chrome 也报 ERR_FAILED，电脑在 5.16 秒收到 HTTP 200、4,207,300 字节且原 SHA-256 一致。用户调整手机网络后，Chrome 收到预期 API 鉴权响应；App 重试从仓库下载成功。没有为此改代码、重填密钥或重新部署。
 - 从零缓存重新下载后，Starboy 专辑和同步歌词自动出现；首轮图片请求较慢，重选缓存歌曲后自动出现清晰全屏封面，没有进入匹配页或手选封面。歌词点选跳至 1:00，滑条拖至 3:14 后继续播放；随后正常到自然结束并回零暂停；多任务界面划走 App 后重开，启动保持暂停，原 2 首歌曲和真实头像仍在。重新选取缓存歌曲后，清晰封面、Starboy 专辑和同步歌词立即恢复，播放正常；验收结束已暂停。细项见 [真机脱敏记录](evidence/issue-11-device-build9.json)。
 - 本地没有编译，服务器、D1、Bot 和频道没有重新部署。临时 8765 下载服务已关闭；手机私人画面和完整歌词保留在本机临时目录，未提交仓库。
 - 本轮 GitHub `cache playback` 检索命中并读取 MetroList 固定版本缓存说明，仅交叉核对设计，未复制 GPL 实现或引入新依赖，见 [调研补充](TELEGRAM_MUSIC_RESEARCH.md#缓存播放收尾核对)。
 
-- [PR #12](https://github.com/C0verSnow/C0SnowMusic/pull/12) 已转为待审核，[Issue #11](https://github.com/C0verSnow/C0SnowMusic/issues/11) 已按本期范围关闭；没有自动合并。超过 20 MB 的交付与真正远程即播留后续，Issue #7 的其他硬件与辅助功能矩阵继续独立保留。
+- [PR #12](https://github.com/C0verSnow/c0versnowmusic/pull/12) 已转为待审核，[Issue #11](https://github.com/C0verSnow/c0versnowmusic/issues/11) 已按本期范围关闭；没有自动合并。超过 20 MB 的交付与真正远程即播留后续，Issue #7 的其他硬件与辅助功能矩阵继续独立保留。
 
 ### 恢复时已通过的 CI 与 IPA（自动补齐改动前）
 
-- 产品提交 `caa95d0c4febdb3c252bf6c6ecd998c6656bb000` 的 [CI 43797997679](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679) 已通过：36 项单元/集成测试、3 项 UI 测试零失败；模拟器编译、未签名 iPhone Release 编译、图标检查和 IPA 打包全部通过；Worker 的 10 项真实 SQLite、HTTP 与音频测试通过。`release` job 因本次不是发布标签而跳过，不影响 Release 编译或 IPA 产物。
-- [IPA 产物 14195840405](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14195840405) 的 ZIP 已完整下载并通过 CRC 检查。归档 SHA-256 为 `2efe5f91dd246507e35345e9b806b295e9461cd5f6058ca44f9cf953d7f84c67`，与 GitHub 产物摘要和 CI 上传日志一致。
+- 产品提交 `caa95d0c4febdb3c252bf6c6ecd998c6656bb000` 的 [CI 43797997679](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43797997679) 已通过：36 项单元/集成测试、3 项 UI 测试零失败；模拟器编译、未签名 iPhone Release 编译、图标检查和 IPA 打包全部通过；Worker 的 10 项真实 SQLite、HTTP 与音频测试通过。`release` job 因本次不是发布标签而跳过，不影响 Release 编译或 IPA 产物。
+- [IPA 产物 14195840405](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43797997679/artifacts/14195840405) 的 ZIP 已完整下载并通过 CRC 检查。归档 SHA-256 为 `2efe5f91dd246507e35345e9b806b295e9461cd5f6058ca44f9cf953d7f84c67`，与 GitHub 产物摘要和 CI 上传日志一致。
 - 提取后的 `C0SnowMusic-unsigned.ipa` 为 24,994,905 字节，SHA-256 为 `9a71d5f9f7aa17ec6a2867a6185666016503a0f943f2eca194cb47f92c59df2f`；版本为 1.1.0/build 6，Bundle ID 为 `org.c0versnow.C0SnowMusic`，最低系统 26.0。`Info.plist` 的 AppIcon 与 `Assets.car` 均已静态核对。此构建沿用旧版版本号，必须靠上述产物哈希区分，不能只凭手机显示 1.1.0 就判定安装正确。
-- [iOS 测试证据](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14195234761) 包含构建/测试日志、xcresult 与 UI 截图；[Worker 测试证据](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43797997679/artifacts/14194699823) 包含测试日志与合成 MP3。
+- [iOS 测试证据](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43797997679/artifacts/14195234761) 包含构建/测试日志、xcresult 与 UI 截图；[Worker 测试证据](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43797997679/artifacts/14194699823) 包含测试日志与合成 MP3。
 - 本地没有编译、构建、配置 CMake 或执行会触发编译的测试。本轮只读取 CI、核对 ZIP/IPA、plist 与差异。前轮已在 GitHub 比较 MetroList、TeleMusic、ytmusicapi 和 YouTube.js，来源与许可证见 [调研文档](TELEGRAM_MUSIC_RESEARCH.md)，没有复制 GPL 代码；本轮恢复阶段没有新增功能方案检索。
 
 ### 已部署服务的 14 项真实检查
@@ -54,9 +54,9 @@
 
 ### 自动补齐补充历史（1.1.1/build 7，最终版见上方）
 
-- 最新产品提交 `4c69d895d513d4e7403bde0778a82a2b5b86143d` 的 [CI 43819839808](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43819839808) 与同提交项目静态验证已全通过：39 项单元/集成、3 项 UI、10 项 Worker 零失败；模拟器、iPhone Release、图标检查与 IPA 打包均通过，标签发布 job 按条件跳过。
+- 最新产品提交 `4c69d895d513d4e7403bde0778a82a2b5b86143d` 的 [CI 43819839808](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43819839808) 与同提交项目静态验证已全通过：39 项单元/集成、3 项 UI、10 项 Worker 零失败；模拟器、iPhone Release、图标检查与 IPA 打包均通过，标签发布 job 按条件跳过。
 - 新增自动补齐、旧缓存空专辑、版本歧义和第三列专辑回归已执行。自动补齐回归使用远端生成的无标签合成 M4A，实际解码、图片处理和缓存存储均走真实实现，只有外部 HTTP 响应用合成数据；重开后歌词、专辑和封面保留，音频 SHA-256 不变。
-- [新版 IPA 产物](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43819839808/artifacts/14203888195) 已完整下载，ZIP CRC 和 SHA-256 通过；归档 SHA-256 为 `9ed569fae03253b26d293f3463c716b2cf31a36385c3e1a743f32ecb3efd15df`，与 GitHub 和 CI 日志一致。IPA 为 25,013,551 字节，SHA-256 为 `13a30a15f2e1d010f40336eb65f36a24f952f771f5ea770defdda68187bb7df3`，已核对 1.1.1/build 7、原 Bundle ID、AppIcon 和 Assets.car。
+- [新版 IPA 产物](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43819839808/artifacts/14203888195) 已完整下载，ZIP CRC 和 SHA-256 通过；归档 SHA-256 为 `9ed569fae03253b26d293f3463c716b2cf31a36385c3e1a743f32ecb3efd15df`，与 GitHub 和 CI 日志一致。IPA 为 25,013,551 字节，SHA-256 为 `13a30a15f2e1d010f40336eb65f36a24f952f771f5ea770defdda68187bb7df3`，已核对 1.1.1/build 7、原 Bundle ID、AppIcon 和 Assets.car。
 - 用户追加要求点歌后自动加载封面、歌词和专辑，并减少同类手动步骤。此版新增后台精确补齐、专辑保存与显示、第三列专辑解析、输入自动搜索、进入资料库自动同步、待验证账户自动刷新、仓库连接后自动刷新，以及仓库下载的状态/错误显示。
 - 1.1.1/build 7 已通过心动签覆盖安装，原 2 首本地歌曲和封面、账户头像/会话、仓库连接保留。点“再次聆听”后，旧缓存自动补齐 Starboy 专辑，无须进入匹配页。
 - 随后在缓存页确认只有本次 Die For You，清除至 Zero KB，再点歌曲从仓库重新下载。自动出现 Starboy 专辑与同步歌词，未点击查找或选用版本；歌词高亮和滚动随真实时间推进，4:20 自然结束后回零暂停。进入在线资料库自动启动收藏同步，没有手点同步按钮。
@@ -81,9 +81,9 @@
 
 ## Issue #9 在线功能证据
 
-- 最终产品代码 `b8bf67887449c6f7bada48f17e147d174f19f6e4` 的 [CI 43680765143](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43680765143) 全通过：28 项单元/集成、3 项 UI，模拟器与 iPhone Release 编译、图标检查和 IPA 打包均通过。覆盖真实 Keychain 存取/注销、连续两次 Python/SSL/EJS/WebKit 执行、真实 yt-dlp 合成音频传输、移动页面转义解析、DASH 重新封装时长/解码/跳转、缓存淘汰与手动副本保留、设置/语言 UI。
+- 最终产品代码 `b8bf67887449c6f7bada48f17e147d174f19f6e4` 的 [CI 43680765143](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43680765143) 全通过：28 项单元/集成、3 项 UI，模拟器与 iPhone Release 编译、图标检查和 IPA 打包均通过。覆盖真实 Keychain 存取/注销、连续两次 Python/SSL/EJS/WebKit 执行、真实 yt-dlp 合成音频传输、移动页面转义解析、DASH 重新封装时长/解码/跳转、缓存淘汰与手动副本保留、设置/语言 UI。
 - 本地没有编译、构建或运行编译型测试，只做源码、Python AST、shell 语法、plist、差异和 CI 产物静态检查。已在 GitHub 检索并比较 NeriPlayer、Palladium、BeeWare、yt-dlp 等项目，来源与许可见 ONLINE_MUSIC_RESEARCH.md 和 THIRD_PARTY.md。
-- [v1.1.0-beta.1 Release](https://github.com/C0verSnow/C0SnowMusic/releases/tag/v1.1.0-beta.1) 已发布，标签指向上述产品提交，附带 24,696,065 字节的 `C0SnowMusic-unsigned.ipa`；GitHub 附件状态为 uploaded，服务器提供的 SHA-256 与本地核对一致。
+- [v1.1.0-beta.1 Release](https://github.com/C0verSnow/c0versnowmusic/releases/tag/v1.1.0-beta.1) 已发布，标签指向上述产品提交，附带 24,696,065 字节的 `C0SnowMusic-unsigned.ipa`；GitHub 附件状态为 uploaded，服务器提供的 SHA-256 与本地核对一致。
 - 最终 IPA 直接下载自上述 CI，SHA-256 为 `0a912f8d768cf007163a87c6603c9c0d7b9aa481bddffa2a42a40e1a48b03609`。1.1.0/build 6 已通过 iPhone Mirror、Chrome 和心动签覆盖安装，沿用现有证书与 Bundle ID；原来的 Die For You、封面和资料库保留。
 - 真机确认账户页进入 Music Settings，系统英文、简体中文/English 切换正常，账户导航标题立即更新。用户亲自在 App 内 Google 页面认证并保存；强退重开和覆盖安装后均恢复 YouTube 会话，无须 Client ID，没有读取 Safari、Chrome 或 YouTube App 的私有 Cookie。
 - 真实搜索 `BaW_jenozKc` 返回封面、标题和作者，自动预下载 162KB 纯 M4A 并播放。手动保存后清空缓存，永久副本仍可播放。随后复验清缓存时 Mini Player 同步消失，缓存归零；只移除了本次创建的测试视频及应用内副本，原歌曲保留。
@@ -91,18 +91,18 @@
 - 本轮真机发现并修复了清缓存残留播放器引用、连续加载插件失败和 DASH 双倍时长；均补入真实实现的远端回归。先前失败或取消的 CI 不算作最终通过证据。
 - 真实网站仍会受到网络、地区和 YouTube 验证限制，不代表全部账户、全部视频和全部地区都可用。用户音乐、登录 Cookie、证书与手机私人画面未上传到仓库。
 
-- issue #9 已按原要求关闭；[PR #10](https://github.com/C0verSnow/C0SnowMusic/pull/10) 已转为待审核，未合并。后续仅更新文档，不改变标签对应的产品代码；临时下载服务已关闭。
+- issue #9 已按原要求关闭；[PR #10](https://github.com/C0verSnow/c0versnowmusic/pull/10) 已转为待审核，未合并。后续仅更新文档，不改变标签对应的产品代码；临时下载服务已关闭。
 
 ## 本地播放器历史证据（issue #7）
 
 - 本机只有 Command Line Tools，没有完整 Xcode 和 iOS SDK。本地没有编译、构建或运行会触发编译的测试；仅阅读代码，检查属性列表、资源、语法和差异。真机通过 iPhone Mirroring 操作，不是 USB 调试会话；本轮系统日志显示 iPhone OS 27.0（24A435）。
-- [CI 43601356473](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43601356473) 是早期源码的通过结果，不能代表本轮源码。
-- [CI 43609769276](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43609769276)：模拟器、iPhone Release、图标和 IPA 通过；21 项单元/集成有 1 项 MP3 歌词失败，2 项 UI 有 1 项因嵌套页面出现两个“完成”按钮失败。
-- [诊断 CI 43611483223](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43611483223)：2 项 UI 全通过，21 项单元/集成仍有 1 项 MP3 歌词失败。真实文件日志确定 `id3/TXXX` 的 `.info` 为 `USLT`，文本值正常；读取器已补认该别名，临时诊断已删除。
-- 修复提交 `55c0a10` 的 [CI 43612778897](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43612778897) 全通过；之后真机发现新的封面回调崩溃，不能据此宣称真机完成。
+- [CI 43601356473](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43601356473) 是早期源码的通过结果，不能代表本轮源码。
+- [CI 43609769276](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43609769276)：模拟器、iPhone Release、图标和 IPA 通过；21 项单元/集成有 1 项 MP3 歌词失败，2 项 UI 有 1 项因嵌套页面出现两个“完成”按钮失败。
+- [诊断 CI 43611483223](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43611483223)：2 项 UI 全通过，21 项单元/集成仍有 1 项 MP3 歌词失败。真实文件日志确定 `id3/TXXX` 的 `.info` 为 `USLT`，文本值正常；读取器已补认该别名，临时诊断已删除。
+- 修复提交 `55c0a10` 的 [CI 43612778897](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43612778897) 全通过；之后真机发现新的封面回调崩溃，不能据此宣称真机完成。
 - 真机已通过 Chrome 下载 1.0.1，用户从心动签导入，沿用现有证书和 Bundle ID 覆盖安装成功。Spotlight 显示指定图标；原歌曲和 2:35 进度保留，启动时保持暂停。
 - 真机搜索 Die For You / The Weeknd / Starboy / 4:20 成功，同步歌词保存并显示；点击首行跳到 0:28，播放时高亮与滚动跟随，偏移可设为延后 0.5 秒，测试后恢复为 0。
-- 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。已在 1.0.3 / `5ab55d5` 把只读图片回调显式标为 `@Sendable`，并补系统后台读取回归；[CI 43614305475](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43614305475) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。
+- 真机首次封面请求返回 400。直接请求确认：CAA 小写 UUID 返回 200、JPEG、89,288 字节，同一 UUID 大写返回 400。请求已改用小写；1.0.2 真机重试后发生退出，日志确认系统后台请求封面时，RemoteCommandManager 的回调触发 Swift actor 隔离断言。已在 1.0.3 / `5ab55d5` 把只读图片回调显式标为 `@Sendable`，并补系统后台读取回归；[CI 43614305475](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43614305475) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查和 IPA 打包通过。
 - 先前真机已检查退到主屏幕后时间继续推进、控制中心暂停与恢复。本轮 1.0.3 锁屏持续播放、封面、暂停和恢复，以及耳机断开暂停、来电中断和挂断恢复均由用户确认正常。
 
 ## 自动化覆盖
@@ -180,7 +180,7 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 
 用户要求联网查歌词时自动修正歌名和艺术家。选用匹配版本后，标准歌名、艺术家和歌词在同一资料库事务中保存；艺人分组与系统媒体信息同步更新，搜索框采用标准参数供下次搜索使用。专辑和流派保留；专辑艺术家原本跟随歌曲艺术家时同步更新。不在仅浏览候选时改动歌曲。
 
-真实导入与下载持久化回归增加标准歌名、艺术家、分组和重开数据库检查；保留原音频 SHA-256 不变的验证。代码 `e24fbb5` 的 [CI 43615814350](https://github.com/C0verSnow/C0SnowMusic/actions/runs/43615814350) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查与 IPA 打包通过。真机已用 Chrome 下载、心动签覆盖安装 1.0.4 / build 5。
+真实导入与下载持久化回归增加标准歌名、艺术家、分组和重开数据库检查；保留原音频 SHA-256 不变的验证。代码 `e24fbb5` 的 [CI 43615814350](https://github.com/C0verSnow/c0versnowmusic/actions/runs/43615814350) 全通过：21 项单元/集成、2 项 UI，模拟器编译、iPhone Release、图标检查与 IPA 打包通过。真机已用 Chrome 下载、心动签覆盖安装 1.0.4 / build 5。
 
 实际操作：搜索并选用 Die For You / The Weeknd / Starboy / 4:20，提示歌名和艺术家已更新。播放器、控制中心显示 Die For You / The Weeknd 和封面，艺人列表显示 The Weeknd。强制退出再打开后修正结果、封面和进度保留，启动保持暂停。
 
@@ -189,3 +189,75 @@ CI 的测试音频仅是有限样本，不代表所有目标格式组合都兼�
 在 1.0.3 将歌词设为延后 0.5 秒。系统设置中只将 C0SnowMusic 的 Wireless Data 从 WLAN & Cellular Data 改为 Off，保留镜像连接；在多任务界面拖走应用卡片，确认退出后重新打开。歌曲、3:36 进度、封面、歌词和延后 0.5 秒全部保留，启动保持暂停。测完恢复 0 秒偏移和原来的 WLAN & Cellular Data。
 
 1.0.4 又完成一次强制退出重开，标准歌名、艺术家、封面和进度保留，启动暂停。临时局域网下载服务已关闭。
+
+## Issue #15：对象职责与播放链路回归
+
+新增 AudioRepositoryTests 的 8 项回归，覆盖真实缓存命中、Worker 音频交付、无仓库手机提取、六类云端失败恢复、Telegram-only 失败、取消、Telegram 缓存播放不误补传、自动淘汰后清理引用并保留永久副本。外部网络与提取器使用固定边界样本；音频验证、缓存、SwiftData、AVPlayer 使用真实实现。
+
+本地 git diff --check、plist 静态检查通过；没有本地编译、构建或编译型测试。最新 build 17 的远端编译和回归已通过，详情见本节最后的验收记录。三首指定歌曲的真机测试按 Issue 要求搁置。已在 GitHub 检索 yt-dlp 与 ytmusicapi，维护、许可与取舍见 [架构核对](OBJECT_ARCHITECTURE.md)。
+
+
+### 用户追加的品牌和图标修正（build 16，待真机验收）
+
+正确显示名为 c0versnow music，Library 使用系统 music.note.square.stack，缺封面和播放器等占位使用原有 AppLogo。现有 UI 测试同步使用正确名称；CI 截图将覆盖账户、搜索、Library 和无封面播放器。本地 plist 和差异检查通过，没有本地编译。用户最新指令：本次不直接合并 PR，等真机测试通过再合并；PR #16 保持草稿，Issue #15 保持打开，旧版验收不能替代 build 16。
+
+
+### build 16 远端结果与截图发现的问题
+
+提交 `44889eb7b3baf4d89e0eba3d9ea9c24df3c896ab` 的 [CI 44041199789](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44041199789) 已通过模拟器、iPhone Release、55 项单元/集成、6 项 UI、10 项 Worker；其中 8 项 AudioRepository 回归全部通过。[静态验证 44041199725](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44041199725) 通过，非标签发布正常跳过。没有待处理评论或审核。
+
+下载并核对测试证据与 IPA 归档，SHA-256 均与 GitHub 一致。证据为 `dbbe4a7752f1cac511882bb9e1c339ec998240828e49638f86cfa147dbe499a9`，IPA 归档为 `6d11b06ae7a9e3931464f90725fef8c8e81497d7ce3a4cd7e1eababe29e5aaf1`；解出的 IPA 为 25,165,929 字节，SHA-256 `2be9460f0c1a90c771d58dc5b9f96e0118ff282d7172f2b522e7b2feb2217902`。显示名 c0versnow music、1.2.0/build 16、原 Bundle ID、AppIcon 和 Assets.car 均已核对。
+
+Library 截图确认堆叠音符图标，首页、空 Mini Player 和无封面播放器确认原有 AppLogo。账户截图却显示标题被工具栏裁切，存在性断言无法发现这一问题。build 17 恢复标题固有宽度，增加账户标题的可见宽度回归，重新跑完整 CI；build 16 不作为最终真机验收包。LRC 测试附件另有系统 UIKitToolbar 层级诊断文字，但测试零失败；该诊断与旧版记录一致，本次不扩大范围处理。
+
+
+### build 17：完整 CI 与截图核对通过，等待真机测试
+
+最终代码提交 `f26cec62af1e96573a6be060d021c244c17ad2c8` 的 [CI 44048763713](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44048763713) 通过模拟器与 iPhone Release 编译、55 项单元/集成、6 项 UI、10 项 Worker，零失败；新增 8 项 AudioRepository 回归包含在 55 项中。[静态验证 44048763721](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44048763721) 通过，非标签发布正常跳过。
+
+已下载原始 [测试证据](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44048763713/artifacts/14313133827) 与 [未签名 IPA](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44048763713/artifacts/14313141539)，核对 ZIP CRC 和 GitHub SHA-256。证据归档为 `fad4ca73ce7cb98d93e84c7d9495c95bf09481b7ce6eb175346bc252b4273bc7`，IPA 归档为 `e6e9e3e693a3bf296ac6e5f4abe034bf1bcdf23b50bdeed6fbd3fb95a19d6f6d`。解出的 IPA 为 25,165,288 字节，SHA-256 `a26ba3fdaa79664d0f7f677981e919869bc203b8250b1365e3d78c2b6340fbcf`；显示名 c0versnow music、1.2.0/build 17、原 Bundle ID、AppIcon 和 Assets.car 均正确。完整脱敏记录见 [build 17 证据](evidence/issue-15-ci-build17.json)。
+
+逐张读取远端截图：账户标题 c0versnow music Account 完整显示，与关闭按钮分开；Library 为堆叠音符图标；空 Mini Player 和无封面播放器使用软件 AppLogo。新增标题宽度回归通过。仅确认本次模拟器截图范围，没有把它写成真机通过。
+
+按用户最新指令，PR #16 保持草稿、未合并，Issue #15 保持打开。下一步是真机安装 build 17，核对显示名、账户/搜索/Library、无封面播放，并按用户后续指令执行指定三首歌曲的播放链路测试。当前 IPA 未签名，需沿用用户自己的签名方式。最后的验收文档提交不改应用或测试代码，不需要重新跑编译；其静态检查仍须通过。本机始终未编译，本轮未新增 GitHub 功能检索，沿用已记录的图标和下载方案来源。
+
+### TG-S3 部署与 build 18 诊断功能
+
+`7b3e4af` 的 [CI 44092286402](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44092286402) 已通过 iOS 编译、iPhone Release、既有 55 项单元/集成和 6 项 UI，以及 17 项 Worker 测试。真实固定上游 bundle 已生成，原 10 项与新增 7 项后端回归均零失败。静态检查最初没有拿到执行器，GitHub 注释确认为 macOS arm64 容量不足；单独重跑的作业 134079887957 已通过，没有因此修改产品代码。
+
+产物 14332845562 的归档 SHA-256 为 `4d3a01dfc871a5c4cdfc83398fe85e972742b78c9603775483e28f018a55fd92`，已核对 CRC、固定上游提交和逐文件摘要。通过 `--no-bundle` 部署上游服务版本 `e9f435c1-2bc7-4791-8264-2a8e03d2efec` 与音乐网关版本 `e703cee7-61e3-40f4-806a-ba4508f8e112`，仅上传远端产物，没有本地编译。原音乐 Webhook 未改；对象服务关闭公网和预览入口，音乐 Service Binding 生效。
+
+3 份既有 ready 音频已复制到 TG-S3 并从原音乐内容接口完整取回，大小和 SHA-256 全部一致，原消息和索引保留。白色风车的 GET 为 200、4,410,306 字节、`X-Music-Storage: tg-s3`、`X-Cache: HIT`；HEAD 无正文，单段 GET 与 HEAD Range 为 206、190 字节长度。实际 R2 缓存已下载并核对同一完整哈希。脱敏记录见 [存储升级证据](evidence/issue-15-tg-s3-upgrade.json)。
+
+build 17 已通过心动签覆盖安装，原本地 2 首歌、账户和会话保留。《白色風車》用户确认声音正常，4:31 时长、封面专辑、暂停、进度跳转与旧库后台补传已核对；该文件现已迁入 TG-S3。《第57次取消发送》搜索到菲菲公主的歌曲，仓库此前无记录，点播后长时间 Preparing，尚未完成播放。《还是会想你》尚未测试。镜像没有触发单条缓存删除，未清除旧 Die For You 缓存，因此没有把服务端取回误记为手机清缓存后的取回。
+
+用户要求加入应用内 Debug。build 18 新增实时阶段、耗时、HTTP 状态、Python/WebKit/下载进度、连接检查与脱敏日志复制/分享，详见 [Debug 说明](APP_DEBUG.md)。新代码的远端 CI 和真机重现尚待执行；根因不能提前认定为网络。PR 保持草稿且不合并。
+
+### build 18：已完成的 CI、四首播放和云端取回
+
+本节更新上面的历史等待状态。提交 `9b189dfbffaea96aeb46110a1947d649e420bf8f` 的 [完整 CI 44100444847](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44100444847) 与 [静态 CI 44100444557](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44100444557) 全通过：59 项单元/集成、7 项 UI、17 项 Worker 和 1 项 Python 日志脱敏回归。IPA 与测试证据归档的 SHA-256 和 CRC 均已核对，版本为 1.2.0/build 18；完整脱敏结果见 [build 18 证据](evidence/issue-15-ci-build18.json)。
+
+build 18 已沿用原证书覆盖安装，手机复制的诊断头确认构建号，原本地 2 首歌和 10.2 MB、账户及既有缓存保留。白色风车、第57次取消发送、还是会想你，以及用户追加的龙卷风，声音均由用户确认正常；缓存重播、暂停和跳转已经检查，第三首播放结束正常停止。此处使用已有记录，没有在本轮重新装机或测试。
+
+手机一份原已在云端、未在本机缓存的合成 MP3，准备约 2.7 秒，诊断确认 `storage=tg-s3`、`cache=HIT`、24,641 字节及 Caching warehouse audio，没有调用提取器。三个新上传的歌曲也从云端完整取回并核对字节和 SHA-256；原始私人日志、歌曲和截图保存在仓库外，不提交到公开仓库。
+
+首播性能基线来自这些真实日志：本机缓存约 0.2 秒；第三首首次准备 19.4 秒，Python 下载 18.1 秒；龙卷风首次准备 65.6 秒，其中云端查询 8.4 秒、Python 57.1 秒，网页约 12 秒、播放器 JS 约 22 秒。后台补传分别耗时 24.3 秒和 70.3 秒，已在本地播放后启动。以上是特定手机和网络的单次样本，不是性能保证；旧 Preparing 停滞的根因仍不能唯一确定。
+
+### build 19：首播提速，真机复测搁置
+
+本轮先减少重复工作：同一 Cookie 快照复用 yt-dlp 实例、播放器 JS 与 WebKit 挑战运行时，提取器磁盘缓存放在 `Library/Caches/YouTubeExtractor`。换账户、退出登录后下一次提取、失败或取消后的失败会话均重建，下载文件、日志与进度使用本次暂存目录。保留上游默认网页、客户端和 player 请求；不硬编码媒体地址、不跳过验证、不取消 DASH 的无损重新封装。
+
+YouTube Music 的首页上下文仅在内存保留 5 分钟，并按 Cookie 快照隔离；同一会话的并发请求共享加载。上下文过期或读接口收到 400/401/403 时刷新，读操作最多再试一次，点赞写操作不自动重放。YouTube 音频准备的云端索引查询改用 5 秒无响应超时，超时继续手机提取；完整音频传输、后台操作和没有本机恢复来源的 Telegram 曲目继续使用原超时。该超时不是整条准备流程的硬时限。
+
+远端回归新增实际 yt-dlp + 本机 HTTP 合成音传输，确认两次下载只取一次播放器 JS、目录切换、Cookie 会话重建、磁盘缓存与取消恢复；Swift HTTP 边界回归检查上下文复用、账户切换、过期、拒绝后刷新、失败重试与并发共享，已有 AudioRepository 回归增加云端超时回退。真实 WebKit 回归改为同一 provider 连续执行，再跨两次 Swift 调用复用；音频封装、缓存和播放回归继续沿用完整 iOS CI。
+
+本地仅阅读源码、解析 Python 语法、检查 plist、JSON 与差异；没有编译、构建或测试执行。build 19 的 [完整 CI 44145269857](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269857) 与 [静态 CI 44145269782](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269782) 已全通过；提交为 `f7761ae19f606e1270e76ca7f2edcf56f890815c`，63 项单元/集成、7 项 UI、17 项 Worker、1 项 Python 日志脱敏与 3 项真实 yt-dlp 回归零失败。真实 WebKit provider 连续执行、跨两次 Swift 调用复用与 DASH 时长/播放回归均通过模拟器；iPhone Release、图标和 IPA 打包通过，非标签发布正常跳过。用户本轮明确搁置真机测试，因此没有新的首播实测，不能声称达到 1–2 秒。当前仍先完整下载再本地播放；渐进播放的接口约束与取舍记录在 [首播调研](PLAYBACK_LATENCY_RESEARCH.md)。PR #16 保持草稿，不合并、不关闭 Issue #15。
+
+
+#### build 19 产物与本轮收尾
+
+已下载 [未签名 IPA 产物](https://github.com/C0verSnow/c0versnowmusic/actions/runs/44145269857/artifacts/14357600257)，归档 SHA-256 `7cca61c31eaa086a7f33fe90f3264ce1cf3c05676c55f1f93fef78d836eee0b2` 与 GitHub 一致，归档和 IPA 内部 CRC 均通过。IPA 为 25,229,696 字节，SHA-256 `0da899ff2a0acb2880d398f18f55715e91db7267c1532a315f518bc4fb916f89`；1.2.0/build 19、原 Bundle ID、显示名 c0versnow music、AppIcon 与 Assets.car 正确。文件和远端日志保存在仓库外 `C0SnowMusic-device/issue-15/build19/`，脱敏结果见 [build 19 证据](evidence/issue-15-ci-build19.json)。没有安装、签名或开启临时下载服务。
+
+测试证据归档 14358215864 的 GitHub 摘要已记录；本轮没有修改产品布局，不下载和逐张复验该截图归档，也不宣称本地验证过它的 CRC。完整 CI 日志已读取并保存，新增网页上下文四项回归、AudioRepository 超时回退、WebKit 连续复用和音频容器回归均通过。日志仍有原有 WebKit delegate 签名、旧系统音量控件等编译警告，不能把零失败写成零警告；本轮未扩大范围修改旧接口。
+
+本轮实现、首播调研、build 18 历史证据补齐与 build 19 自动验证已完成。收尾提交只修改文档和脱敏 JSON，应用与测试代码与已验证的 `f7761ae` 相同；本地仍只做静态检查，最终文档沿用既有静态 CI。用户搁置的真机复测、未实现的渐进播放与 1–2 秒目标继续明确保留，不合并 PR #16，不关闭 Issue #15。

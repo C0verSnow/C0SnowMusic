@@ -1,0 +1,51 @@
+{
+  "recorded_unix_timestamp": 1794906260,
+  "source_commit": "f26cec62af1e96573a6be060d021c244c17ad2c8",
+  "pull_request": "https://github.com/C0verSnow/C0SnowMusic/pull/16",
+  "build_run": "https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763713",
+  "validation_run": "https://github.com/C0verSnow/C0SnowMusic/actions/runs/44048763721",
+  "tests": {
+    "unit_and_integration": 55,
+    "audio_repository_included": 8,
+    "ui": 6,
+    "worker": 10,
+    "failures": 0
+  },
+  "simulator_build": "success",
+  "iphone_release_build": "success",
+  "tag_release": "skipped_non_tag",
+  "evidence_artifact_id": 14313133827,
+  "evidence_zip_sha256": "fad4ca73ce7cb98d93e84c7d9495c95bf09481b7ce6eb175346bc252b4273bc7",
+  "ipa_artifact_id": 14313141539,
+  "ipa": {
+    "archive_sha256": "e6e9e3e693a3bf296ac6e5f4abe034bf1bcdf23b50bdeed6fbd3fb95a19d6f6d",
+    "ipa_sha256": "a26ba3fdaa79664d0f7f677981e919869bc203b8250b1365e3d78c2b6340fbcf",
+    "ipa_bytes": 25165288,
+    "display_name": "c0versnow music",
+    "version": "1.2.0",
+    "build": "17",
+    "bundle_id": "org.c0versnow.C0SnowMusic",
+    "icon": "AppIcon",
+    "assets": true
+  },
+  "screenshots": {
+    "account_title": {
+      "exported_filename": "2AE24029-888F-455B-BD58-5449127CDAA4.png",
+      "sha256": "0e0dd9d802f98b927fa355140379ee1036af55c33bff6aa58c87f610bd05dbf7"
+    },
+    "library_tab": {
+      "exported_filename": "C1FFA2D5-2A58-45C8-8A9B-AFF9536606A2.png",
+      "sha256": "84bc9d60a296cea3db1963eca27b5cdf759d40d2e3931ec417201533a35f2a46"
+    },
+    "missing_artwork_player": {
+      "exported_filename": "C9701737-B5F5-456C-AEB2-70988BDDFDC7.png",
+      "sha256": "bd643e0266fd1cbb7e51aab754a130b44ecd4214e4de1a80d72996e7c1be1385"
+    }
+  },
+  "visual_review": "Account title fully visible; Library uses stacked music note; missing artwork uses existing AppLogo.",
+  "physical_device_testing": "not_performed; pending user instruction",
+  "pr_state": "draft_unmerged",
+  "issue_15": "open",
+  "local_compilation": "not_run",
+  "github_research": "Previously verified yt-dlp, ytmusicapi and SFSafeSymbols; no additional feature search this CI follow-up."
+}

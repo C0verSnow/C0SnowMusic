@@ -11,6 +11,8 @@ struct SettingsView: View {
             Section("General") {
                 NavigationLink { OnlineCacheView() } label: { Label("Audio cache", systemImage: "externaldrive") }
                 NavigationLink { CloudLibrarySettingsView() } label: { Label("Music warehouse", systemImage: "cloud") }
+                NavigationLink { DiagnosticsView() } label: { Label("Debug", systemImage: "ladybug") }
+                    .accessibilityIdentifier("debugSettings")
             }
             Section("Import settings") {
                 Button("Import from Files", systemImage: "folder") { importing = true }
@@ -46,7 +48,7 @@ struct SettingsView: View {
                 Text("Some audio formats may need to be converted before they can play on your device.")
                     .font(.footnote).foregroundStyle(.secondary)
             }
-            Section("About c0vermusic") {
+            Section("About c0versnow music") {
                 Text("Native local music player").font(.headline)
                 Text("Local music works offline. Connecting a warehouse saves online downloads to Telegram. Imported local music is not uploaded automatically.")
                 Text("Version 1.2.0").font(.footnote).foregroundStyle(.secondary)

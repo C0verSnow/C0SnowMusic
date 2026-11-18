@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import WebKit
 
-final class OnDeviceDownloader: @unchecked Sendable {
+final class OnDeviceDownloader: AudioDownloading, @unchecked Sendable {
     static let shared = OnDeviceDownloader()
     // Python owns process-wide state. Every C API call stays on this serial queue.
     private let queue = DispatchQueue(label: "org.c0versnow.youtube-python", qos: .userInitiated)
@@ -10,23 +10,45 @@ final class OnDeviceDownloader: @unchecked Sendable {
 
     func download(_ track: OnlineTrack, directory: URL, cookies: [WebCookie] = []) async throws -> URL {
         let cancel = directory.appending(path: "cancel")
-        let response: DownloadResponse = try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { continuation in
-                queue.async {
-                    do {
-                        try self.initialize()
-                        let cookieData = try JSONEncoder().encode(cookies)
-                        let parameters = ["video_id": track.id, "directory": directory.path, "cookies": String(decoding: cookieData, as: UTF8.self)]
-                        let response = try self.execute(parameters)
-                        if FileManager.default.fileExists(atPath: cancel.path) { throw CancellationError() }
-                        if let error = response.error { throw DownloadError(message: error) }
-                        continuation.resume(returning: response)
-                    } catch { continuation.resume(throwing: error) }
-                }
+        let diagnosticID = await AppDiagnostics.shared.begin("On-device download \(track.id)")
+        let diagnosticFile = directory.appending(path: "diagnostics.jsonl")
+        let monitor = Task { @MainActor in
+            while !Task.isCancelled {
+                AppDiagnostics.shared.collectDownloadEvents(from: diagnosticFile, operation: diagnosticID)
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
             }
-        } onCancel: { try? Data().write(to: cancel) }
-        guard let duration = response.duration, duration.isFinite, duration > 0 else { throw OnlineMusicError.invalidAudio }
-        return try await Self.normalizeAudio(directory.appending(path: "audio.m4a"), duration: duration)
+        }
+        defer { monitor.cancel() }
+        await AppDiagnostics.shared.step(diagnosticID, "Downloader queue / Python startup")
+        do {
+            let response: DownloadResponse = try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { continuation in
+                    queue.async {
+                        do {
+                            try self.initialize()
+                            let cookieData = try JSONEncoder().encode(cookies)
+                            let parameters = ["video_id": track.id, "directory": directory.path, "cookies": String(decoding: cookieData, as: UTF8.self), "extractor_cache": URL.cachesDirectory.appending(path: "YouTubeExtractor").path]
+                            let response = try self.execute(parameters)
+                            if FileManager.default.fileExists(atPath: cancel.path) { throw CancellationError() }
+                            if let error = response.error { throw DownloadError(message: error) }
+                            continuation.resume(returning: response)
+                        } catch { continuation.resume(throwing: error) }
+                    }
+                }
+            } onCancel: { try? Data().write(to: cancel) }
+            await AppDiagnostics.shared.collectDownloadEvents(from: diagnosticFile, operation: diagnosticID)
+            guard let duration = response.duration, duration.isFinite, duration > 0 else { throw OnlineMusicError.invalidAudio }
+            monitor.cancel()
+            await AppDiagnostics.shared.step(diagnosticID, "Normalizing audio container")
+            let result = try await Self.normalizeAudio(directory.appending(path: "audio.m4a"), duration: duration)
+            await AppDiagnostics.shared.finish(diagnosticID)
+            return result
+        } catch {
+            monitor.cancel()
+            await AppDiagnostics.shared.collectDownloadEvents(from: diagnosticFile, operation: diagnosticID)
+            await AppDiagnostics.shared.finish(diagnosticID, error: error)
+            throw error
+        }
     }
 
     static func normalizeAudio(_ source: URL, duration: Double) async throws -> URL {
@@ -53,7 +75,7 @@ final class OnDeviceDownloader: @unchecked Sendable {
                     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
                     defer { try? FileManager.default.removeItem(at: directory) }
                     let fixture = Bundle.main.url(forResource: "Fixture", withExtension: "m4a", subdirectory: "Fixtures")
-                    let response = try self.execute(["directory": directory.path, "action": "verify", "fixture": fixture?.path ?? ""])
+                    let response = try self.execute(["directory": directory.path, "action": "verify", "fixture": fixture?.path ?? "", "extractor_cache": URL.cachesDirectory.appending(path: "YouTubeExtractor").path])
                     if let error = response.error { throw DownloadError(message: error) }
                     continuation.resume(returning: response.version ?? "")
                 } catch { continuation.resume(throwing: error) }
@@ -103,8 +125,11 @@ private struct DownloadResponse: Decodable {
     let duration: Double?
 }
 
-private struct DownloadError: LocalizedError {
+private struct DownloadError: LocalizedError, CustomNSError {
+    static let errorDomain = "AudioDownloader"
     let message: String
+    var errorCode: Int { 1 }
+    var errorUserInfo: [String: Any] { [NSLocalizedDescriptionKey: message] }
     var errorDescription: String? { message }
 }
 

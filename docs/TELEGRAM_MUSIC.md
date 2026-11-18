@@ -1,10 +1,10 @@
 # YouTube Music、Telegram 音乐仓库与 D1
 
-对应 [Issue #11](https://github.com/C0verSnow/C0SnowMusic/issues/11)。保留现有 SwiftUI、资料库和播放器设计；接口参考及许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
+对应 [Issue #11](https://github.com/C0verSnow/c0versnowmusic/issues/11)。保留现有 SwiftUI、资料库和播放器设计；接口参考及许可见 [调研](TELEGRAM_MUSIC_RESEARCH.md)。
 
 ## 用户流程
 
-- 搜索分为 c0vermusic 与 Library；已连接仓库的匹配结果合入 c0vermusic 搜索。YouTube Music 的综合/歌曲/视频/专辑/艺术家/歌单结果按服务返回分组，支持下一页与历史。艺人和专辑进入内容页，不当作音频下载。
+- 搜索分为 c0versnow music 与 Library；已连接仓库的匹配结果合入 c0versnow music 搜索。YouTube Music 的综合/歌曲/视频/专辑/艺术家/歌单结果按服务返回分组，支持下一页与历史。艺人和专辑进入内容页，不当作音频下载。
 - 首页读取 YouTube Music 实际首页分区；登录时使用当前账户 Cookie。再次聆听来自本设备真实播放记录，仓库社区热门来自 D1 真实播放次数；没有数据就不展示，不伪造推荐。
 - 顶栏只保留账户入口，使用已读取的真实头像。账户展示名字、handle、已验证/待验证状态，可刷新、重登或注销。原文件导入移到账户 → Music Settings → 从文件导入。
 - Music Settings → 音乐仓库输入 HTTPS 地址及设备密钥。密钥保存在本机 Keychain，不写入 IPA、UserDefaults 或公开文档。首次连接会请求真实 API；断开只清除本机连接，不删除云端资源。
@@ -25,7 +25,7 @@
 
 ## 部署与配置
 
-本服务使用专用 Bot、私有存储频道、新 D1 和独立 Worker，初期不使用 R2、Queues 或常驻服务器。不要复用或覆盖旁边 TGMusic 的 Worker/Webhook。
+以下是原音乐服务的首次配置流程。现有实例本次改用独立 TG-S3 Worker、D1 和 R2，按 [升级说明](TG_S3_UPGRADE.md) 部署和迁移；不要用旧部署步骤替代升级产物流程。原 Bot 和音乐 Webhook 保留，不覆盖旁边 TGMusic 的 Worker/Webhook。
 
 1. 复用现有 Wrangler 登录，运行 `wrangler d1 create c0snow-music --config worker/wrangler.toml`，将返回 UUID 填入该配置。已有数据库不得重复创建。
 2. 使用已登录 `tg` 与 BotFather 创建专用 Bot，用 `tg create-channel` 创建私有存储频道；把 Bot 加为可发音频的管理员。`tg` 的子命令对数字私有聊天支持不完全一致，先核对帮助；不能因为 `send` 支持 `id:` 就假设 `invite` 也支持。必要时在本人已登录的 Telegram 界面完成管理员配置。
@@ -85,3 +85,7 @@ wrangler d1 export c0snow-music --remote --output /安全的备份目录/c0snow-
 本地只做源码、JS 语法、plist/JSON 和差异检查。已有 build-player.yml 增加 Worker 远端 job，使用真实 SQLite 执行正式迁移、真实合成 MP3 及 HTTP Telegram 边界服务，检查去重、哈希、Range、429、发送不明、人工核对、失效、大文件、完整收藏事务和用户隔离。原 iOS 模拟器集成/UI、设备 Release 和 IPA 仍走原流程；Release 依赖两个 job 都通过。
 
 真实网站接口、真机账户头像、YouTube 登录/收藏授权、用户实际音乐播放与大文件性能要单独记录，不把合成测试当作全部真机验收。
+
+## Issue #15：职责与失败恢复
+
+对象对应表和完整链路见 [架构核对](OBJECT_ARCHITECTURE.md)。AudioRepository 统一本地缓存、Worker 与手机提取；云端索引存在但文件不可用时，YouTube 曲目仍可尝试本机重新获取。云端错误保留在后台错误状态，取消不会触发重新下载。Telegram-only 曲目无法借 YouTube 重建文件，也不会再误走 YouTube 上传接口。自动缓存淘汰后同步清理失效播放引用，永久资料库副本独立保留。

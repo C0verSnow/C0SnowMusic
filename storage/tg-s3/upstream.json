@@ -1,0 +1,7 @@
+{
+  "repository": "https://github.com/gps949/tg-s3",
+  "revision": "82bff102498658fd462ad478229fc49cb2f44c47",
+  "license": "MIT (declared in upstream README)",
+  "entrypoint": "src/index.ts",
+  "schema": "src/storage/schema.sql"
+}

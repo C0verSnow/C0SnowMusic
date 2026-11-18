@@ -160,6 +160,11 @@ import SwiftData
         }
     }
 
+    func forgetMissingCachedAudio() {
+        let missing = cachedURLs.values.filter { !FileManager.default.fileExists(atPath: $0.path) }
+        for url in missing { forgetCachedAudio(url.deletingPathExtension().lastPathComponent) }
+    }
+
     init(library: LibraryStore, engine: any PlayerEngine = AVPlayerEngine(), systemIntegration: Bool = true, lookupClient: MusicLookupClient? = .shared, musicClient: YouTubeMusicClient = YouTubeMusicClient()) throws {
         self.library = library; files = library.files; self.engine = engine; self.lookupClient = lookupClient; self.musicClient = musicClient
         if let saved = try library.context.fetch(FetchDescriptor<PlaybackSession>()).first { session = saved }

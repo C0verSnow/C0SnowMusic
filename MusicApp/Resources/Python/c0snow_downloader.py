@@ -5,15 +5,26 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import sys
+import time
+from urllib.parse import urlsplit
 
 _configured = False
+_active_directory = None
+_session = None
+_session_cookies = None
+_session_cache = None
+_last_progress = 0
 
 
 def run(request, navigation_callback):
+    global _active_directory
     directory = Path(request["directory"])
+    _active_directory = directory
     result = {}
     try:
+        _diagnostic(directory, "Python initialisation", "Configuring SSL and challenge provider")
         _configure(navigation_callback)
         if request.get("action") == "verify":
             import ssl
@@ -24,14 +35,30 @@ def run(request, navigation_callback):
 
             assert ssl.OPENSSL_VERSION
             assert AppleWebKitJCP.JS_RUNTIME_NAME
-            with YoutubeDL({"quiet": True, "cachedir": False}) as downloader:
+            downloader = _download_session(request, directory)
+            provider = getattr(downloader, "_c0snow_verification_provider", None)
+            if provider is None:
                 provider = AppleWebKitJCP(downloader.get_info_extractor("Youtube"), DefaultLoggerImpl(), {})
-                try:
-                    assert provider._lib_script.code and provider._core_script.code
-                    output = provider._run_js_runtime('console.log(JSON.stringify({answer: 1 + 1}));')
-                    assert json.loads(output) == {"answer": 2}
-                finally:
-                    provider.close()
+                downloader._c0snow_verification_provider = provider
+                downloader.add_close_hook(provider.close)
+            try:
+                assert provider._lib_script.code and provider._core_script.code
+                first = provider._run_js_runtime("""
+                    console.log(JSON.stringify({answer: 1 + 1}));
+                    window.previousChallenge = true;
+                    const policy = document.createElement('meta');
+                    policy.httpEquiv = 'Content-Security-Policy';
+                    policy.content = "require-trusted-types-for 'script'";
+                    document.head.append(policy);
+                """)
+                second = provider._run_js_runtime("""
+                    console.log(JSON.stringify({answer: eval('1 + 2'), reusedPage: Boolean(window.previousChallenge)}));
+                """)
+                assert json.loads(first) == {"answer": 2}
+                assert json.loads(second) == {"answer": 3, "reusedPage": False}
+            except Exception:
+                _close_session()
+                raise
             if request.get("fixture"):
                 source = Path(request["fixture"])
                 with YoutubeDL({"enable_file_urls": True, "quiet": True, "outtmpl": str(directory / "fixture.m4a")}) as downloader:
@@ -39,8 +66,11 @@ def run(request, navigation_callback):
                 assert (directory / "fixture.m4a").read_bytes() == source.read_bytes()
             result["version"] = __version__
         else:
+            _diagnostic(directory, "YouTube extraction", "Starting yt-dlp")
             result["duration"] = _download(request, directory)
+            _diagnostic(directory, "Audio downloaded", "Returning audio for container normalization")
     except Exception as error:
+        _diagnostic(directory, "Downloader error", str(error))
         result["error"] = str(error)
         if request.get("action") == "verify":
             import traceback
@@ -70,26 +100,77 @@ def _configure(navigation_callback):
     restrict = ctypes.CFUNCTYPE(None, ctypes.c_size_t)(navigation_callback)
 
     def webview(provider):
+        _diagnostic(_active_directory, "WebKit challenge", "Creating the JavaScript runtime")
+        # In apple-webkit-jsi v0.1.1 this replaces the factory closed by the previous challenge.
+        provider._try_init_factory()
         view = original(provider)
         restrict(view._wv)
         return view
 
     AppleWebKitJCP._get_webview_lazy = webview
+    original_runtime = AppleWebKitJCP._run_js_runtime
+
+    def runtime(provider, *args, **kwargs):
+        _diagnostic(_active_directory, "WebKit challenge", "Evaluating the YouTube JavaScript challenge")
+        try:
+            result = original_runtime(provider, *args, **kwargs)
+        finally:
+            # A reused page can retain Trusted Types restrictions on iOS.
+            provider.close()
+        _diagnostic(_active_directory, "WebKit challenge finished", "JavaScript evaluation returned")
+        return result
+
+    AppleWebKitJCP._run_js_runtime = runtime
     _configured = True
 
 
 def _download(request, directory):
+    from yt_dlp.utils import DownloadError, ExtractorError
+
+    global _active_directory, _last_progress
+    _active_directory = directory
+    _last_progress = 0
+    if (directory / "cancel").exists():
+        raise DownloadError("Download cancelled")
+    downloader = _download_session(request, directory)
+    downloader.params["outtmpl"]["default"] = str(directory / "audio.%(ext)s")
+    url = "https://m.youtube.com/watch?v=" + request["video_id"]
+    try:
+        # The pinned yt-dlp README documents both options. Build 21 used a
+        # direct M4A after fetching a separate client config and HLS manifest.
+        downloader.params["extractor_args"] = {"youtube": {"player_skip": ["configs"], "skip": ["hls"]}}
+        try:
+            info = downloader.extract_info(url, download=True)
+        except DownloadError as error:
+            if not isinstance(error.__context__, ExtractorError) or _last_progress or (directory / "cancel").exists():
+                raise
+            _diagnostic(directory, "YouTube extraction fallback", "Retrying with the default client configuration and manifests")
+            del downloader.params["extractor_args"]
+            info = downloader.extract_info(url, download=True)
+        if not (directory / "audio.m4a").is_file():
+            raise DownloadError("No compatible M4A audio was downloaded")
+        return info["duration"]
+    except Exception:
+        _close_session()
+        raise
+    finally:
+        downloader.params.pop("extractor_args", None)
+
+
+def _download_session(request, directory):
+    global _session, _session_cookies, _session_cache
     from http.cookiejar import Cookie
     from yt_dlp import YoutubeDL
-    from yt_dlp.utils import DownloadError
 
-    def progress(status):
-        if (directory / "cancel").exists():
-            raise DownloadError("Download cancelled")
-        if status.get("downloaded_bytes", 0) > 500_000_000:
-            raise DownloadError("Audio exceeds 500 MB")
-
-    options = {
+    records = json.loads(request.get("cookies", "[]"))
+    cache = request["extractor_cache"]
+    if _session is not None and records == _session_cookies and cache == _session_cache:
+        _diagnostic(directory, "Extractor session", "Reusing extractor and player JavaScript cache")
+        return _session
+    _close_session()
+    # yt-dlp keeps player source in the extractor instance, not its disk cache.
+    # Reference: yt-dlp/yt-dlp 2026.10.26, YoutubeIE._load_player.
+    downloader = YoutubeDL({
         "format": "bestaudio[ext=m4a][vcodec=none]",
         "outtmpl": str(directory / "audio.%(ext)s"),
         "noplaylist": True,
@@ -97,13 +178,14 @@ def _download(request, directory):
         "socket_timeout": 20,
         "retries": 2,
         "fragment_retries": 2,
-        "cachedir": False,
+        "cachedir": cache,
         "quiet": True,
         "noprogress": True,
-        "progress_hooks": [progress],
-    }
-    with YoutubeDL(options) as downloader:
-        for record in json.loads(request.get("cookies", "[]")):
+        "progress_hooks": [_download_progress],
+        "logger": _DiagnosticLogger(),
+    })
+    try:
+        for record in records:
             expires = record.get("expires")
             downloader.cookiejar.set_cookie(Cookie(
                 version=0, name=record["name"], value=record["value"],
@@ -114,7 +196,61 @@ def _download(request, directory):
                 discard=expires is None, comment=None, comment_url=None,
                 rest={"HttpOnly": None} if record["httpOnly"] else {},
             ))
-        info = downloader.extract_info("https://m.youtube.com/watch?v=" + request["video_id"], download=True)
-    if not (directory / "audio.m4a").is_file():
-        raise DownloadError("No compatible M4A audio was downloaded")
-    return info["duration"]
+    except Exception:
+        downloader.close()
+        raise
+    _session, _session_cookies, _session_cache = downloader, records, cache
+    _diagnostic(directory, "Extractor session", "Created session with persistent extractor cache")
+    return downloader
+
+
+def _close_session():
+    global _session, _session_cookies, _session_cache
+    previous = _session
+    _session = _session_cookies = _session_cache = None
+    if previous is not None:
+        previous.close()
+
+
+def _download_progress(status):
+    global _last_progress
+    from yt_dlp.utils import DownloadError
+
+    if (_active_directory / "cancel").exists():
+        raise DownloadError("Download cancelled")
+    if status.get("downloaded_bytes", 0) > 500_000_000:
+        raise DownloadError("Audio exceeds 500 MB")
+    now = time.monotonic()
+    if now - _last_progress >= 1 or status.get("status") == "finished":
+        downloaded = status.get("downloaded_bytes", 0)
+        total = status.get("total_bytes") or status.get("total_bytes_estimate")
+        _diagnostic(_active_directory, "Downloading audio", f"{downloaded} bytes received" + (f" / {total} bytes" if total else ""))
+        _last_progress = now
+
+
+def _diagnostic(directory, stage, message):
+    # Only diagnostics are redacted; this never modifies requests or account cookies.
+    message = re.sub(r"https?://[^\s<>\"']+", lambda match: "https://" + (urlsplit(match.group()).hostname or "redacted-url") + "/<redacted>", message)
+    message = re.sub(r"(?im)\b(authorization|cookie|set-cookie|x-api-key|x-admin-key)\s*[:=][^\r\n]*", "<redacted>", message)
+    message = re.sub(r"(?i)\bBearer\s+[^\s,;]+", "<redacted>", message)
+    with (directory / "diagnostics.jsonl").open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps({"stage": stage, "message": message[:800], "timestamp": time.time()}) + "\n")
+
+
+class _DiagnosticLogger:
+    def __init__(self, directory=None):
+        self._directory = directory
+
+    @property
+    def directory(self):
+        return self._directory or _active_directory
+
+    def debug(self, message):
+        if not message.startswith("[debug]"):
+            _diagnostic(self.directory, "YouTube extraction", message)
+
+    def warning(self, message):
+        _diagnostic(self.directory, "YouTube warning", message)
+
+    def error(self, message):
+        _diagnostic(self.directory, "YouTube error", message)

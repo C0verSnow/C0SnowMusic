@@ -2,6 +2,15 @@ name = "c0snow-music-api"
 main = "index.js"
 compatibility_date = "2026-11-01"
 
+[vars]
+AUDIO_STORAGE_BACKEND = "tg-s3"
+TGS3_ENDPOINT = "https://c0snow-tg-s3.f1515xcn.workers.dev"
+TGS3_BUCKET = "c0snow-audio"
+
+[[services]]
+binding = "TGS3"
+service = "c0snow-tg-s3"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "c0snow-music"

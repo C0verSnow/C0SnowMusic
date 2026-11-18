@@ -28,10 +28,9 @@ struct AccountView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 HStack(spacing: 8) {
-                    Image("AppLogo").resizable().scaledToFit().frame(width: 24, height: 24)
-                        .clipShape(.circle).accessibilityHidden(true)
-                    Text("c0vermusic Account")
-                }.font(.headline).fixedSize()
+                    AppLogoView().frame(width: 24, height: 24).clipShape(.circle)
+                    Text("c0versnow music Account")
+                }.font(.headline).lineLimit(1).fixedSize(horizontal: true, vertical: false)
             }.sharedBackgroundVisibility(.hidden)
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Close Account", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)

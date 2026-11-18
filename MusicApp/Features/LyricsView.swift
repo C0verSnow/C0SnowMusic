@@ -77,7 +77,7 @@ struct LyricsView: View {
                     .onChange(of: offset) { _, value in UserDefaults.standard.set(value, forKey: "lyricsOffset.\(song.id)") }
                 }
                 .sheet(isPresented: $onlineSearch) { NavigationStack { MusicLookupView(song: song) } }
-            } else { ContentUnavailableView("No song selected", systemImage: "music.note") }
+            } else { MusicUnavailableView(title: "No song selected") }
         }
         .localizedNavigationTitle("Lyrics").navigationBarTitleDisplayMode(.inline)
         .toolbar {

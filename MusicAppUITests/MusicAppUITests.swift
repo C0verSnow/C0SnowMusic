@@ -1,6 +1,25 @@
 import XCTest
 
 @MainActor final class MusicAppUITests: XCTestCase {
+    func testDebugConsoleIsAccessibleAndCopiesSessionLog() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
+        app.buttons["accountSettings"].firstMatch.tap()
+        app.buttons["musicSettings"].tap()
+        app.buttons["debugSettings"].tap()
+        XCTAssertTrue(app.navigationBars["Debug"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Current activity"].exists)
+        XCTAssertTrue(app.buttons["Check connections"].exists)
+        let copy = app.buttons["copyDiagnostics"]
+        if !copy.isHittable { app.swipeUp() }
+        XCTAssertTrue(copy.waitForExistence(timeout: 5))
+        copy.tap()
+        XCTAssertTrue(app.buttons["Copied"].waitForExistence(timeout: 5))
+        captureScreen("Debug console with real session diagnostics")
+    }
+
     func testEnglishProductInterfaceIgnoresPreviousChinesePreference() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "-appLanguage", "zh-Hans", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
@@ -8,7 +27,9 @@ import XCTest
         XCTAssertTrue(app.buttons["accountSettings"].firstMatch.waitForExistence(timeout: 15))
         XCTAssertTrue(app.tabBars.buttons["Home"].exists)
         app.buttons["accountSettings"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["c0vermusic Account"].waitForExistence(timeout: 5))
+        let accountTitle = app.staticTexts["c0versnow music Account"]
+        XCTAssertTrue(accountTitle.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(accountTitle.frame.width, 150, "The account title must remain readable in the toolbar")
         XCTAssertTrue(app.buttons["googleSignIn"].exists)
         captureScreen("Account title and grouped controls")
         app.buttons["musicSettings"].tap()
@@ -19,10 +40,10 @@ import XCTest
         app.launch()
         app.tabBars.buttons["Search"].tap()
         XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertFalse(app.segmentedControls.buttons["c0vermusic"].exists)
+        XCTAssertFalse(app.segmentedControls.buttons["c0versnow music"].exists)
         captureScreen("Search browse categories")
         app.searchFields.firstMatch.tap()
-        XCTAssertTrue(app.segmentedControls.buttons["c0vermusic"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls.buttons["c0versnow music"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.segmentedControls.buttons["Library"].exists)
         captureScreen("Focused search scopes")
     }

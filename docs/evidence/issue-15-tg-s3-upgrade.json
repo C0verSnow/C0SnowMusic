@@ -1,0 +1,75 @@
+{
+  "timestamp": 1794923065,
+  "commit": "7b3e4af7b791ac166edea7496a525751ad864552",
+  "upstream_revision": "82bff102498658fd462ad478229fc49cb2f44c47",
+  "storage_version": "e9f435c1-2bc7-4791-8264-2a8e03d2efec",
+  "gateway_version": "e703cee7-61e3-40f4-806a-ba4508f8e112",
+  "artifact_id": 14332845562,
+  "artifact_sha256": "4d3a01dfc871a5c4cdfc83398fe85e972742b78c9603775483e28f018a55fd92",
+  "ci_tests": 17,
+  "originals_retained": true,
+  "migrated_files": 3,
+  "checks": [
+    {
+      "method": "GET",
+      "range": null,
+      "status": 200,
+      "headers": {
+        "Content-Length": "4410306",
+        "Content-Range": null,
+        "X-Music-Storage": "tg-s3",
+        "X-Cache": "HIT",
+        "Cache-Control": "private, no-store"
+      },
+      "bytes": 4410306,
+      "sha256": "855aa0c21583a6a68e47bbf1159715a7658927870efa9589fc3c1ba0ddbb5016"
+    },
+    {
+      "method": "HEAD",
+      "range": null,
+      "status": 200,
+      "headers": {
+        "Content-Length": "4410306",
+        "Content-Range": null,
+        "X-Music-Storage": "tg-s3",
+        "X-Cache": null,
+        "Cache-Control": "private, no-store"
+      },
+      "bytes": 0,
+      "sha256": null
+    },
+    {
+      "method": "GET",
+      "range": "bytes=10-199",
+      "status": 206,
+      "headers": {
+        "Content-Length": "190",
+        "Content-Range": "bytes 10-199/4410306",
+        "X-Music-Storage": "tg-s3",
+        "X-Cache": null,
+        "Cache-Control": "private, no-store"
+      },
+      "bytes": 190,
+      "sha256": null
+    },
+    {
+      "method": "HEAD",
+      "range": "bytes=10-199",
+      "status": 206,
+      "headers": {
+        "Content-Length": "190",
+        "Content-Range": "bytes 10-199/4410306",
+        "X-Music-Storage": "tg-s3",
+        "X-Cache": null,
+        "Cache-Control": "private, no-store"
+      },
+      "bytes": 0,
+      "sha256": null
+    }
+  ],
+  "r2_cache": {
+    "verified": true,
+    "bytes": 4410306,
+    "sha256": "855aa0c21583a6a68e47bbf1159715a7658927870efa9589fc3c1ba0ddbb5016"
+  }
+}

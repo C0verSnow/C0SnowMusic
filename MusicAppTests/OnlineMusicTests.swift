@@ -123,7 +123,7 @@ import WebKit
         let version = try await OnDeviceDownloader.shared.verifyRuntime()
         XCTAssertEqual(version, "2026.10.26")
         let repeated = try await OnDeviceDownloader.shared.verifyRuntime()
-        XCTAssertEqual(repeated, version, "Consecutive downloads must reuse registered plugins")
+        XCTAssertEqual(repeated, version, "Consecutive checks must reuse registered plugins with fresh WebKit pages")
     }
 
     func testDASHAudioRemuxPreservesRealDurationAndPlayback() async throws {

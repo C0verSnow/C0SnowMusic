@@ -4,29 +4,12 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import worker from '../index.js';
+import { D1 } from './support/d1.js';
 
 const nativeFetch = globalThis.fetch;
 const fixture = readFileSync(new URL('../../MusicApp/Resources/Fixtures/Fixture.mp3', import.meta.url));
 const track = { source_id: 'abcdefghijk', title: 'A real test tone', artist: 'CI', album: 'Integration' };
 let db, env, server, origin, uploads, mode, telegramBytes;
-class D1 {
-  prepare(sql) {
-    const query = db.prepare(sql);
-    return { bind: (...params) => ({
-      async first() { return query.get(...params) ?? null; },
-      async all() { return { results: query.all(...params) }; },
-      async run() { return query.run(...params); },
-    }) };
-  }
-  async batch(statements) {
-    db.exec('BEGIN');
-    try {
-      const results = [];
-      for (const statement of statements) results.push(await statement.run());
-      db.exec('COMMIT'); return results;
-    } catch (error) { db.exec('ROLLBACK'); throw error; }
-  }
-}
 before(async () => {
   server = createServer(async (request, response) => {
     if (request.url.startsWith('/file/')) {
@@ -54,8 +37,8 @@ before(async () => {
 after(async () => { globalThis.fetch = nativeFetch; await new Promise(resolve => server.close(resolve)); db.close(); });
 beforeEach(() => {
   db?.close(); db = new DatabaseSync(':memory:');
-  for (const path of ['0001_music.sql', '0002_favorite_snapshots.sql']) db.exec(readFileSync(new URL(`../migrations/${path}`, import.meta.url), 'utf8'));
-  env = { DB: new D1(), API_KEYS: '{"device":"owner","other":"another"}', TELEGRAM_BOT_TOKEN: '123:secret-token', TELEGRAM_STORAGE_CHAT_ID: '-100123', TELEGRAM_WEBHOOK_SECRET: 'webhook-secret', SEND_CHAT_IDS: '{"owner":"789"}', ADMIN_KEY: 'admin' };
+  for (const path of ['0001_music.sql', '0002_favorite_snapshots.sql', '0003_tg_s3_objects.sql']) db.exec(readFileSync(new URL(`../migrations/${path}`, import.meta.url), 'utf8'));
+  env = { DB: new D1(db), API_KEYS: '{"device":"owner","other":"another"}', TELEGRAM_BOT_TOKEN: '123:secret-token', TELEGRAM_STORAGE_CHAT_ID: '-100123', TELEGRAM_WEBHOOK_SECRET: 'webhook-secret', SEND_CHAT_IDS: '{"owner":"789"}', ADMIN_KEY: 'admin' };
   uploads = 0; mode = 'ok'; telegramBytes = fixture;
 });
 function call(path, { method = 'GET', body, key = 'device', headers = {} } = {}) {

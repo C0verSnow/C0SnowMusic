@@ -86,7 +86,7 @@
             ENABLE_USER_SCRIPT_SANDBOXING = NO; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
             SWIFT_OBJC_BRIDGING_HEADER = MusicApp/Core/Utilities/PythonBridge.h;
             PRODUCT_BUNDLE_IDENTIFIER = org.c0versnow.C0SnowMusic; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = MusicApp/Info.plist;
-            CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 15; MARKETING_VERSION = 1.2.0;
+            CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 22; MARKETING_VERSION = 1.2.0;
             TARGETED_DEVICE_FAMILY = 1; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         }; };
         A00000000000000000000073 = { isa = XCBuildConfiguration; name = Release; buildSettings = {
@@ -94,7 +94,7 @@
             SWIFT_OBJC_BRIDGING_HEADER = MusicApp/Core/Utilities/PythonBridge.h;
             EXCLUDED_SOURCE_FILE_NAMES = Fixtures;
             PRODUCT_BUNDLE_IDENTIFIER = org.c0versnow.C0SnowMusic; PRODUCT_NAME = "$(TARGET_NAME)"; INFOPLIST_FILE = MusicApp/Info.plist;
-            CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 15; MARKETING_VERSION = 1.2.0;
+            CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 22; MARKETING_VERSION = 1.2.0;
             TARGETED_DEVICE_FAMILY = 1; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SUPPORTS_MACCATALYST = NO; ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
         }; };
         A00000000000000000000074 = { isa = XCBuildConfiguration; name = Debug; buildSettings = {

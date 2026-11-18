@@ -48,7 +48,7 @@ struct MusicCollectionView: View {
             ForEach(Array(sections.enumerated()), id: \.offset) { _, section in
                 Section(section.title) { ForEach(section.items) { OnlineTrackRow(track: $0) } }
             }
-            if sections.isEmpty && !busy && error == nil { ContentUnavailableView("No Music Yet", systemImage: "music.note.list") }
+            if sections.isEmpty && !busy && error == nil { MusicUnavailableView(title: "No Music Yet") }
             if continuation != nil { Button("Load more") { Task { await load(more: true) } }.disabled(busy) }
         }.listStyle(.plain).navigationTitle(title).task { await load(more: false) }
             .refreshable { await load(more: false) }

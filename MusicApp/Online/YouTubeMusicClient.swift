@@ -37,7 +37,11 @@ enum MusicSearchFilter: String, CaseIterable, Identifiable {
 // Independent implementation; renderer/API design references are in TELEGRAM_MUSIC_RESEARCH.md.
 struct YouTubeMusicClient: Sendable {
     let session: URLSession
-    init(session: URLSession = .shared) { self.session = session }
+    private let bootstrap: YouTubeMusicBootstrap
+    init() { session = .shared; bootstrap = .shared }
+    init(session: URLSession, bootstrap: YouTubeMusicBootstrap = YouTubeMusicBootstrap()) {
+        self.session = session; self.bootstrap = bootstrap
+    }
 
     func search(_ query: String, filter: MusicSearchFilter = .all, continuation: String? = nil, cookies: [WebCookie]) async throws -> MusicPage {
         var body: [String: Any] = ["query": query]
@@ -80,12 +84,33 @@ struct YouTubeMusicClient: Sendable {
     }
 
     private func call(_ endpoint: String, body: [String: Any], continuation: String? = nil, cookies: [WebCookie]) async throws -> Data {
+        let context = try await bootstrap.context(cookies: cookies) { try await loadContext(cookies: cookies) }
+        let (data, result) = try await apiResponse(endpoint, body: body, continuation: continuation, cookies: cookies, context: context)
+        let status = (result as? HTTPURLResponse)?.statusCode
+        if [400, 401, 403].contains(status ?? 0) {
+            await bootstrap.invalidate()
+            // Only reads can be retried after refreshing an expired web configuration.
+            if ["search", "browse", "account/account_menu"].contains(endpoint) {
+                let fresh = try await bootstrap.context(cookies: cookies) { try await loadContext(cookies: cookies) }
+                let (retry, response) = try await apiResponse(endpoint, body: body, continuation: continuation, cookies: cookies, context: fresh)
+                return try Self.validated(retry, response: response)
+            }
+        }
+        return try Self.validated(data, response: result)
+    }
+
+    private func loadContext(cookies: [WebCookie]) async throws -> Data {
         var bootstrap = URLRequest(url: URL(string: "https://music.youtube.com/")!)
         headers(&bootstrap, cookies: cookies)
-        let (page, response) = try await session.data(for: bootstrap)
+        let (page, response) = try await diagnosticResponse(for: bootstrap, operation: "YouTube bootstrap")
         guard (response as? HTTPURLResponse)?.statusCode == 200, let html = String(data: page, encoding: .utf8) else { throw OnlineMusicError.invalidResponse }
         let config = try Self.configuration(html)
-        guard var context = config["INNERTUBE_CONTEXT"] as? [String: Any] else { throw OnlineMusicError.searchLayoutChanged }
+        guard let context = config["INNERTUBE_CONTEXT"] as? [String: Any], context["client"] is [String: Any] else { throw OnlineMusicError.searchLayoutChanged }
+        return try JSONSerialization.data(withJSONObject: context)
+    }
+
+    private func apiResponse(_ endpoint: String, body: [String: Any], continuation: String?, cookies: [WebCookie], context data: Data) async throws -> (Data, URLResponse) {
+        var context = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         var components = URLComponents(string: "https://music.youtube.com/youtubei/v1/\(endpoint)")!
         components.queryItems = [URLQueryItem(name: "prettyPrint", value: "false")]
         if let continuation { components.queryItems?.append(URLQueryItem(name: "continuation", value: continuation)) }
@@ -105,10 +130,31 @@ struct YouTubeMusicClient: Sendable {
             request.setValue(client["visitorData"] as? String, forHTTPHeaderField: "X-Goog-Visitor-Id")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        let (data, result) = try await session.data(for: request)
-        guard (result as? HTTPURLResponse)?.statusCode == 200,
+        do {
+            return try await diagnosticResponse(for: request, operation: "YouTube \(endpoint)")
+        } catch let error as URLError where endpoint == "search" && error.code == .networkConnectionLost {
+            try Task.checkCancellation()
+            return try await diagnosticResponse(for: request, operation: "YouTube search retry")
+        }
+    }
+
+    private static func validated(_ data: Data, response: URLResponse) throws -> Data {
+        guard (response as? HTTPURLResponse)?.statusCode == 200,
               let root = try JSONSerialization.jsonObject(with: data) as? [String: Any], root["error"] == nil else { throw OnlineMusicError.invalidResponse }
         return data
+    }
+
+    private func diagnosticResponse(for request: URLRequest, operation: String) async throws -> (Data, URLResponse) {
+        let id = await AppDiagnostics.shared.begin(operation)
+        await AppDiagnostics.shared.step(id, "HTTP request", detail: "\(request.url?.host ?? "unknown"); \(Int(request.timeoutInterval)) s timeout")
+        do {
+            let (data, response) = try await session.data(for: request)
+            await AppDiagnostics.shared.finish(id, detail: "HTTP \((response as? HTTPURLResponse)?.statusCode ?? 0), \(data.count) bytes")
+            return (data, response)
+        } catch {
+            await AppDiagnostics.shared.finish(id, error: error)
+            throw error
+        }
     }
 
     private func headers(_ request: inout URLRequest, cookies: [WebCookie]) {
@@ -286,4 +332,36 @@ struct YouTubeMusicClient: Sendable {
         guard let object = node as? [String: Any] else { return "" }
         return object["simpleText"] as? String ?? (object["runs"] as? [[String: Any]])?.compactMap { $0["text"] as? String }.joined() ?? ""
     }
+}
+
+actor YouTubeMusicBootstrap {
+    static let shared = YouTubeMusicBootstrap()
+    private var saved: (cookies: [WebCookie], context: Data, expires: Date)?
+    private var pending: (id: UUID, cookies: [WebCookie], task: Task<Data, Error>)?
+    private let lifetime: TimeInterval
+
+    init(lifetime: TimeInterval = 300) { self.lifetime = lifetime }
+
+    func context(cookies: [WebCookie], load: @escaping @Sendable () async throws -> Data) async throws -> Data {
+        try Task.checkCancellation()
+        if let saved, saved.cookies == cookies, saved.expires > .now { return saved.context }
+        if let pending, pending.cookies == cookies { return try await pending.task.value }
+        let id = UUID()
+        let task = Task { try await load() }
+        pending = (id, cookies, task)
+        do {
+            let context = try await task.value
+            if pending?.id == id {
+                saved = (cookies, context, Date.now.addingTimeInterval(lifetime))
+                pending = nil
+            }
+            try Task.checkCancellation()
+            return context
+        } catch {
+            if pending?.id == id { pending = nil }
+            throw error
+        }
+    }
+
+    func invalidate() { saved = nil; pending = nil }
 }

@@ -1,0 +1,39 @@
+{
+  "timestamp": 1794940318,
+  "commit": "f7761ae19f606e1270e76ca7f2edcf56f890815c",
+  "build_run": 44145269857,
+  "validation_run": 44145269782,
+  "unit_integration_tests": 63,
+  "ui_tests": 7,
+  "worker_tests": 17,
+  "python_logger_redaction_tests": 1,
+  "python_real_ytdlp_latency_tests": 3,
+  "all_passed": true,
+  "reused_webkit_provider_multiple_executions_and_swift_calls_passed": true,
+  "simulator_and_iphone_release_builds_passed": true,
+  "release_skipped_for_non_tag": true,
+  "ipa_artifact": {
+    "id": 14357600257,
+    "archive_sha256": "7cca61c31eaa086a7f33fe90f3264ce1cf3c05676c55f1f93fef78d836eee0b2",
+    "ipa": {
+      "CFBundleVersion": "19",
+      "CFBundleShortVersionString": "1.2.0",
+      "CFBundleIdentifier": "org.c0versnow.C0SnowMusic",
+      "CFBundleDisplayName": "c0versnow music",
+      "bytes": 25229696,
+      "sha256": "0da899ff2a0acb2880d398f18f55715e91db7267c1532a315f518bc4fb916f89"
+    }
+  },
+  "evidence_artifact": {
+    "id": 14358215864,
+    "archive_sha256": "c801fd8c612ff388d6998290ab455f15e07ff793a2b9630ae89f9eab975b1f2a",
+    "digest_source": "GitHub artifact metadata",
+    "downloaded": false
+  },
+  "ipa_archive_and_payload_crc_verified": true,
+  "packaged_app_icon_verified": true,
+  "local_build_performed": false,
+  "local_tests_executed": false,
+  "device_testing_deferred": true,
+  "device_installation_performed": false
+}

@@ -1,12 +1,16 @@
+import { TgS3Store, TgS3Error } from './tg-s3-store.js';
+
 const MAX_AUDIO_BYTES = 20_000_000;
 const MAX_JSON_BYTES = 4_000_000;
+// The pinned gps949/tg-s3 only populates shared R2 for full GETs of at least 64 KiB.
+const TG_S3_SHARED_CACHE_MIN_BYTES = 64 * 1024;
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 
 export default {
-  async fetch(request, env) {
-    try { return await route(request, env); }
+  async fetch(request, env, ctx) {
+    try { return await route(request, env, ctx); }
     catch (error) {
-      if (error instanceof APIError) return json({ error: error.message }, error.status, error.headers);
+      if (error instanceof APIError || error instanceof TgS3Error) return json({ error: error.message }, error.status, error.headers);
       // Upstream exceptions can contain the Bot token in their URL.
       console.error('Music API request failed', error?.name ?? 'Error');
       return json({ error: 'Service unavailable; retry later.' }, 503);
@@ -14,7 +18,7 @@ export default {
   },
 };
 
-async function route(request, env) {
+async function route(request, env, ctx) {
   const url = new URL(request.url);
   const path = url.pathname;
   if (path === '/api/telegram/webhook' && request.method === 'POST') return webhook(request, env);
@@ -29,7 +33,7 @@ async function route(request, env) {
       : await all(env, 'SELECT * FROM tracks WHERE title LIKE ? OR artist LIKE ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?', `%${search}%`, `%${search}%`, limit, offset);
     return json({ items: await presentTracks(env, rows) });
   }
-  if (path === '/api/tracks' && request.method === 'POST') return upload(request, env);
+  if (path === '/api/tracks' && request.method === 'POST') return upload(request, env, ctx);
   if (path === '/api/favorites/snapshots' && request.method === 'POST') {
     const id = crypto.randomUUID();
     await env.DB.batch([
@@ -89,6 +93,17 @@ async function route(request, env) {
     if (action === 'send' && request.method === 'POST') {
       const chat = JSON.parse(env.SEND_CHAT_IDS ?? '{}')[user];
       if (!chat) fail(403, 'No authorized Telegram recipient configured.');
+      const stored = await s3ObjectForTrack(env, id);
+      if (stored) {
+        const response = await new TgS3Store(env).content(stored.sha256, 'GET');
+        if (!response.ok) fail(502, 'Stored audio could not be retrieved.');
+        const payload = new FormData();
+        payload.set('chat_id', chat);
+        payload.set('audio', new File([await limitedBody(response, MAX_AUDIO_BYTES)], stored.mime_type === 'audio/mpeg' ? 'audio.mp3' : 'audio.m4a', { type: stored.mime_type }));
+        payload.set('title', track.title); payload.set('performer', track.artist);
+        const sent = await telegram(env, 'sendAudio', payload);
+        return json({ message_id: sent.message_id });
+      }
       const object = await playableObject(env, id, false);
       const sent = await telegram(env, 'sendAudio', { chat_id: chat, audio: object.tg_file_id });
       return json({ message_id: sent.message_id });
@@ -103,11 +118,26 @@ async function route(request, env) {
       return json({ ok: true });
     }
   }
-  const file = path.match(/^\/api\/files\/([a-f0-9]{64})$/);
-  if (file && request.method === 'GET') {
+  const file = path.match(/^\/api\/files\/([a-f0-9]{64})(?:\/(migrate))?$/);
+  if (file && !file[2] && request.method === 'GET') {
     const row = await first(env, 'SELECT id, sha256, size_bytes, mime_type, status FROM audio_files WHERE sha256 = ?', file[1]);
     if (!row) fail(404, 'File not found.');
     return json(row);
+  }
+  if (file?.[2] && request.method === 'POST') {
+    if (request.headers.get('X-Admin-Key') !== env.ADMIN_KEY || !env.ADMIN_KEY) fail(403, 'Administrator required.');
+    const row = await first(env, "SELECT a.*, tf.track_id FROM audio_files a JOIN track_files tf ON tf.audio_file_id = a.id WHERE a.sha256 = ? AND a.status = 'ready' LIMIT 1", file[1]);
+    if (!row) fail(404, 'No ready audio to migrate.');
+    const migrated = await first(env, "SELECT audio_file_id FROM tg_s3_objects WHERE audio_file_id = ? AND status = 'active'", row.id);
+    if (migrated) return json({ id: row.id, storage: 'tg-s3' });
+    const object = await playableObject(env, row.track_id, true);
+    const receipt = await telegram(env, 'getFile', { file_id: object.tg_file_id });
+    const response = await fetch(telegramFileURL(env, receipt.file_path));
+    if (!response.ok) fail(502, 'Original audio could not be read.');
+    const bytes = await limitedBody(response, MAX_AUDIO_BYTES);
+    if (bytes.byteLength !== row.size_bytes || await sha256(bytes) !== row.sha256) fail(502, 'Original audio does not match its index.');
+    await storeTgS3Audio(env, row.id, row.sha256, bytes, row.mime_type, ctx);
+    return json({ id: row.id, storage: 'tg-s3' });
   }
   const job = path.match(/^\/api\/jobs\/([A-Za-z0-9_-]+)(?:\/(reconcile))?$/);
   if (job && !job[2] && request.method === 'GET') {
@@ -122,6 +152,11 @@ async function route(request, env) {
     if (!pending || !['pending', 'uncertain'].includes(pending.status)) fail(409, 'Job does not need reconciliation.');
     if (body.not_sent === true) {
       await stmt(env, "UPDATE upload_jobs SET status = 'failed', error_message = 'Confirmed not sent', updated_at = CURRENT_TIMESTAMP WHERE id = ?", pending.id).run();
+    } else if (pending.id.startsWith('s3_')) {
+      const file = await first(env, 'SELECT sha256, size_bytes FROM audio_files WHERE id = ?', pending.audio_file_id);
+      const stored = await new TgS3Store(env).head(file.sha256);
+      if (!stored || stored.size !== file.size_bytes) fail(409, 'TG-S3 has no matching object receipt.');
+      await commitTgS3Receipt(env, pending.audio_file_id, file.sha256, stored);
     } else {
       if (!Number.isSafeInteger(body.message_id) || body.message_id <= 0 || typeof body.file_id !== 'string' || typeof body.file_unique_id !== 'string') fail(400, 'Supply the actual Telegram receipt.');
       await commitReceipt(env, pending.audio_file_id, pending.id, { message_id: body.message_id, audio: body }, env.TELEGRAM_STORAGE_CHAT_ID);
@@ -131,7 +166,7 @@ async function route(request, env) {
   fail(404, 'Not found.');
 }
 
-async function upload(request, env) {
+async function upload(request, env, ctx) {
   if (Number(request.headers.get('Content-Length')) > MAX_AUDIO_BYTES + 65536) fail(413, 'Cloud Bot delivery is limited to 20 MB.');
   const form = await new Response(await limitedBody(request, MAX_AUDIO_BYTES + 65536), { headers: { 'Content-Type': request.headers.get('Content-Type') ?? '' } }).formData();
   const audio = form.get('audio');
@@ -151,6 +186,10 @@ async function upload(request, env) {
     stmt(env, "INSERT OR IGNORE INTO audio_files VALUES (?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)", fileID, hash, audio.size, audio.type),
     stmt(env, 'INSERT OR IGNORE INTO track_files VALUES (?, ?)', track.id, fileID),
   ]);
+  if (env.AUDIO_STORAGE_BACKEND === 'tg-s3') {
+    await storeTgS3Audio(env, fileID, hash, bytes, audio.type, ctx);
+    return json(await presentTrack(env, await first(env, 'SELECT * FROM tracks WHERE id = ?', track.id)), 201);
+  }
   const existing = await first(env, "SELECT id FROM telegram_objects WHERE audio_file_id = ? AND status = 'active'", fileID);
   if (existing) return json(await presentTrack(env, await first(env, 'SELECT * FROM tracks WHERE id = ?', track.id)));
   const claimed = await stmt(env, "INSERT INTO upload_jobs(id, idempotency_key, audio_file_id, status) VALUES (?, ?, ?, 'pending') ON CONFLICT(idempotency_key) DO UPDATE SET status = 'pending', retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP WHERE upload_jobs.status = 'failed' AND upload_jobs.retry_after <= ? RETURNING id", jobID, hash, fileID, Date.now()).first();
@@ -211,6 +250,28 @@ async function webhook(request, env) {
 }
 
 async function content(request, env, id) {
+  const stored = await s3ObjectForTrack(env, id);
+  if (stored) {
+    const range = parseRange(request.headers.get('Range'), stored.size_bytes);
+    const response = await new TgS3Store(env).content(stored.sha256, request.method, request.headers.get('Range'));
+    if (response.status !== 404) {
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'private, no-store');
+      headers.set('X-Music-Storage', 'tg-s3');
+      if (request.method === 'HEAD' && range && response.ok) {
+        headers.set('Content-Range', `bytes ${range.start}-${range.end}/${stored.size_bytes}`);
+        headers.set('Content-Length', String(range.end - range.start + 1));
+        return new Response(null, { status: 206, headers });
+      }
+      return new Response(response.body, { status: response.status, headers });
+    }
+    await env.DB.batch([
+      stmt(env, "UPDATE tg_s3_objects SET status = 'missing' WHERE audio_file_id = ?", stored.audio_file_id),
+      stmt(env, "UPDATE upload_jobs SET status = 'failed', error_message = 'TG-S3 object missing' WHERE id = ? AND status = 'ready'", `s3_${stored.sha256}`),
+    ]);
+    const original = await first(env, "SELECT id FROM telegram_objects WHERE audio_file_id = ? AND status = 'active'", stored.audio_file_id);
+    if (!original) await stmt(env, "UPDATE audio_files SET status = 'missing' WHERE id = ?", stored.audio_file_id).run();
+  }
   const object = await playableObject(env, id, true);
   const size = object.size_bytes;
   const range = parseRange(request.headers.get('Range'), size);
@@ -242,6 +303,48 @@ async function content(request, env, id) {
   const length = upstream.headers.get('Content-Length');
   if (length && Number(length) !== size) { await upstream.body.cancel(); fail(502, 'Telegram media size changed.'); }
   return new Response(sliceStream(upstream.body, range?.start ?? 0, range?.end ?? size - 1), { status: range ? 206 : 200, headers });
+}
+
+async function storeTgS3Audio(env, fileID, hash, bytes, mimeType, ctx) {
+  const storage = new TgS3Store(env);
+  const existing = await storage.head(hash);
+  if (existing) {
+    if (existing.size !== bytes.byteLength) fail(502, 'Stored audio size does not match.');
+    await commitTgS3Receipt(env, fileID, hash, existing);
+    return;
+  }
+  const jobID = `s3_${hash}`;
+  const claimed = await stmt(env, "INSERT INTO upload_jobs(id, idempotency_key, audio_file_id, status) VALUES (?, ?, ?, 'pending') ON CONFLICT(idempotency_key) DO UPDATE SET status = 'pending', retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP WHERE upload_jobs.status = 'failed' AND upload_jobs.retry_after <= ? RETURNING id", jobID, `tg-s3:${hash}`, fileID, Date.now()).first();
+  if (!claimed) {
+    const current = await first(env, 'SELECT status, retry_after FROM upload_jobs WHERE id = ?', jobID);
+    const headers = current.retry_after > Date.now() ? { 'Retry-After': String(Math.ceil((current.retry_after - Date.now()) / 1000)) } : {};
+    return fail(409, 'TG-S3 upload is pending or needs reconciliation.', headers);
+  }
+  try {
+    const receipt = await storage.put(hash, bytes, mimeType);
+    await commitTgS3Receipt(env, fileID, hash, receipt);
+  } catch (error) {
+    const rejected = error instanceof TgS3Error && error.definite;
+    await stmt(env, 'UPDATE upload_jobs SET status = ?, error_message = ?, retry_after = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', rejected ? 'failed' : 'uncertain', rejected ? 'TG-S3 rejected upload' : 'Verify TG-S3 object before retrying', error.retryAfter ?? 0, jobID).run();
+    // Migration failures must leave an existing readable Telegram copy available.
+    if (rejected) await stmt(env, "UPDATE audio_files SET status = 'failed' WHERE id = ? AND status != 'ready'", fileID).run();
+    throw error;
+  }
+  if (bytes.byteLength >= TG_S3_SHARED_CACHE_MIN_BYTES) {
+    ctx?.waitUntil(storage.warmCache(hash).catch(() => console.warn('TG-S3 cache warm-up failed')));
+  }
+}
+
+async function commitTgS3Receipt(env, fileID, hash, receipt) {
+  await env.DB.batch([
+    stmt(env, "INSERT INTO tg_s3_objects(audio_file_id, object_key, etag) VALUES (?, ?, ?) ON CONFLICT(audio_file_id) DO UPDATE SET object_key = excluded.object_key, etag = excluded.etag, status = 'active'", fileID, receipt.key, receipt.etag),
+    stmt(env, "UPDATE audio_files SET status = 'ready' WHERE id = ?", fileID),
+    stmt(env, "INSERT INTO upload_jobs(id, idempotency_key, audio_file_id, status) VALUES (?, ?, ?, 'ready') ON CONFLICT(id) DO UPDATE SET status = 'ready', error_message = NULL, retry_after = 0, updated_at = CURRENT_TIMESTAMP", `s3_${hash}`, `tg-s3:${hash}`, fileID),
+  ]);
+}
+
+async function s3ObjectForTrack(env, id) {
+  return first(env, "SELECT s.audio_file_id, a.sha256, a.size_bytes, a.mime_type FROM tg_s3_objects s JOIN audio_files a ON a.id = s.audio_file_id JOIN track_files tf ON tf.audio_file_id = a.id WHERE tf.track_id = ? AND s.status = 'active' AND a.status = 'ready' ORDER BY a.size_bytes LIMIT 1", id);
 }
 
 export function sliceStream(stream, start, end) {

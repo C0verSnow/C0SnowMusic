@@ -11,12 +11,7 @@ struct ArtworkView: View {
         GeometryReader { geometry in
             Group {
                 if let image { Image(uiImage: image).resizable().scaledToFill() }
-                else {
-                    ZStack {
-                        Color.secondary.opacity(0.12)
-                        Image(systemName: "music.note").font(.largeTitle).foregroundStyle(.tertiary)
-                    }
-                }
+                else { AppLogoView() }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .clipped()
@@ -48,9 +43,11 @@ struct AlbumCard: View {
 struct EmptyLibraryView: View {
     var body: some View {
         ContentUnavailableView {
-            Label("Your Music Starts Here", systemImage: "music.note.house")
+            Label { Text("Your Music Starts Here") } icon: {
+                AppLogoView().frame(width: 64, height: 64).clipShape(.rect(cornerRadius: 12))
+            }
         } description: {
-            Text("Find something you love in Search, or add your music from c0vermusic Account → Music Settings.")
+            Text("Find something you love in Search, or add your music from c0versnow music Account → Music Settings.")
         }
     }
 }

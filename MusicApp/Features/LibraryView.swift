@@ -226,7 +226,7 @@ struct SongListView: View {
             ForEach(sortedOnlineSongs) { OnlineTrackRow(track: $0) }
         }
         .listStyle(.plain)
-        .overlay { if songs.isEmpty && onlineSongs.isEmpty { ContentUnavailableView("No songs here yet", systemImage: "music.note") } }
+        .overlay { if songs.isEmpty && onlineSongs.isEmpty { MusicUnavailableView(title: "No songs here yet") } }
         .navigationTitle(title)
         .toolbar {
             Menu("Sort", systemImage: "arrow.up.arrow.down") {
