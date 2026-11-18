@@ -43,9 +43,19 @@ def run(request, navigation_callback):
                 downloader.add_close_hook(provider.close)
             try:
                 assert provider._lib_script.code and provider._core_script.code
-                for expected in (2, 3):
-                    output = provider._run_js_runtime(f'console.log(JSON.stringify({{answer: 1 + {expected - 1}}}));')
-                    assert json.loads(output) == {"answer": expected}
+                first = provider._run_js_runtime("""
+                    console.log(JSON.stringify({answer: 1 + 1}));
+                    window.previousChallenge = true;
+                    const policy = document.createElement('meta');
+                    policy.httpEquiv = 'Content-Security-Policy';
+                    policy.content = "require-trusted-types-for 'script'";
+                    document.head.append(policy);
+                """)
+                second = provider._run_js_runtime("""
+                    console.log(JSON.stringify({answer: eval('1 + 2'), reusedPage: Boolean(window.previousChallenge)}));
+                """)
+                assert json.loads(first) == {"answer": 2}
+                assert json.loads(second) == {"answer": 3, "reusedPage": False}
             except Exception:
                 _close_session()
                 raise
@@ -91,6 +101,7 @@ def _configure(navigation_callback):
 
     def webview(provider):
         _diagnostic(_active_directory, "WebKit challenge", "Creating the JavaScript runtime")
+        provider._try_init_factory()
         view = original(provider)
         restrict(view._wv)
         return view
@@ -100,7 +111,14 @@ def _configure(navigation_callback):
 
     def runtime(provider, *args, **kwargs):
         _diagnostic(_active_directory, "WebKit challenge", "Evaluating the YouTube JavaScript challenge")
-        result = original_runtime(provider, *args, **kwargs)
+        try:
+            result = original_runtime(provider, *args, **kwargs)
+        finally:
+            # A reused page can retain Trusted Types restrictions on iOS.
+            # grqz/yt-dlp-apple-webkit-jsi v0.1.1 closes its factory with the view.
+            if provider.ie.__yt_dlp_plugin__apple_webkit_jsi__webview is not None:
+                provider.close()
+                del provider.ie.__yt_dlp_plugin__apple_webkit_jsi__factory
         _diagnostic(_active_directory, "WebKit challenge finished", "JavaScript evaluation returned")
         return result
 
@@ -136,7 +154,7 @@ def _download_session(request, directory):
     records = json.loads(request.get("cookies", "[]"))
     cache = request["extractor_cache"]
     if _session is not None and records == _session_cookies and cache == _session_cache:
-        _diagnostic(directory, "Extractor session", "Reusing player JavaScript and challenge runtime")
+        _diagnostic(directory, "Extractor session", "Reusing extractor and player JavaScript cache")
         return _session
     _close_session()
     # yt-dlp keeps player source in the extractor instance, not its disk cache.

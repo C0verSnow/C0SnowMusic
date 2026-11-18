@@ -131,6 +131,23 @@ final class YouTubeMusicTests: XCTestCase {
         XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/youtubei/v1/like/like" }.count, 1)
     }
 
+    func testSearchRetriesOneLostConnectionAndReturnsTheSecondFailure() async throws {
+        let fixture = musicSession()
+        defer { fixture.session.invalidateAndCancel() }
+        BootstrapProtocol.dropSearchConnections(1, host: fixture.host)
+        _ = try await fixture.client.search("Retryable", cookies: [])
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/youtubei/v1/search" }.count, 2)
+
+        BootstrapProtocol.dropSearchConnections(2, host: fixture.host)
+        do {
+            _ = try await fixture.client.search("Still disconnected", cookies: [])
+            XCTFail("Search must return the second connection failure")
+        } catch let error as URLError {
+            XCTAssertEqual(error.code, .networkConnectionLost)
+        }
+        XCTAssertEqual(BootstrapProtocol.paths(host: fixture.host).filter { $0 == "/youtubei/v1/search" }.count, 4)
+    }
+
     func testFailedBootstrapCanBeRetriedAndConcurrentReadsShareOneLoad() async throws {
         let fixture = musicSession()
         defer { fixture.session.invalidateAndCancel() }
@@ -178,17 +195,23 @@ private final class BootstrapProtocol: URLProtocol, @unchecked Sendable {
     private struct State {
         var paths: [String: [String]] = [:]
         var failedBootstraps: Set<String> = []
+        var droppedSearchConnections: [String: Int] = [:]
     }
     private static let state = Mutex(State())
     static func paths(host: String) -> [String] { state.withLock { $0.paths[host] ?? [] } }
     static func failNextBootstrap(host: String) { state.withLock { _ = $0.failedBootstraps.insert(host) } }
+    static func dropSearchConnections(_ count: Int, host: String) { state.withLock { $0.droppedSearchConnections[host] = count } }
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         let url = request.url!
         let host = request.value(forHTTPHeaderField: "X-Test-Session")!
-        let result = Self.state.withLock { state -> (Int, String) in
+        let response = Self.state.withLock { state -> (Int, String)? in
             state.paths[host, default: []].append(url.path)
+            if url.path == "/youtubei/v1/search", let remaining = state.droppedSearchConnections[host], remaining > 0 {
+                state.droppedSearchConnections[host] = remaining - 1
+                return nil
+            }
             if url.path == "/" {
                 if state.failedBootstraps.remove(host) != nil { return (503, "Unavailable") }
                 return (200, #"<script>ytcfg.set({"INNERTUBE_CONTEXT":{"client":{"clientVersion":"test"}}});</script>"#)
@@ -207,6 +230,10 @@ private final class BootstrapProtocol: URLProtocol, @unchecked Sendable {
                 return (403, #"{"error":{"code":403}}"#)
             }
             return (200, #"{"contents":{"musicShelfRenderer":{"contents":[]}}}"#)
+        }
+        guard let result = response else {
+            client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+            return
         }
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: result.0, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(result.1.utf8))

@@ -125,8 +125,11 @@ private struct DownloadResponse: Decodable {
     let duration: Double?
 }
 
-private struct DownloadError: LocalizedError {
+private struct DownloadError: LocalizedError, CustomNSError {
+    static let errorDomain = "AudioDownloader"
     let message: String
+    var errorCode: Int { 1 }
+    var errorUserInfo: [String: Any] { [NSLocalizedDescriptionKey: message] }
     var errorDescription: String? { message }
 }
 

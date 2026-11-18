@@ -130,7 +130,12 @@ struct YouTubeMusicClient: Sendable {
             request.setValue(client["visitorData"] as? String, forHTTPHeaderField: "X-Goog-Visitor-Id")
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
-        return try await diagnosticResponse(for: request, operation: "YouTube \(endpoint)")
+        do {
+            return try await diagnosticResponse(for: request, operation: "YouTube \(endpoint)")
+        } catch let error as URLError where endpoint == "search" && error.code == .networkConnectionLost {
+            try Task.checkCancellation()
+            return try await diagnosticResponse(for: request, operation: "YouTube search retry")
+        }
     }
 
     private static func validated(_ data: Data, response: URLResponse) throws -> Data {
